@@ -1,13 +1,13 @@
 # bof3player
 
-[![CI](https://github.com/raulcorreia7/bof3player/actions/workflows/ci.yml/badge.svg?branch=main&event=workflow_dispatch)](https://github.com/raulcorreia7/bof3player/actions/workflows/ci.yml)
+[![CI](https://github.com/raulcorreia7/bof3player/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/raulcorreia7/bof3player/actions/workflows/ci.yml)
 
 A player for the music and sound of *Breath of Fire III* (PlayStation). It reads the game's sound
 banks, sequences, XA streams and CD audio from your own disc image and renders them through a model
 of the PlayStation sound chip (the SPU).
 
-**No game data is included.** Bring your own disc image (`.cue` and `.bin`) or a folder extracted
-from one. This is a fan project, not affiliated with or endorsed by Capcom. *Breath of Fire* is
+**No game data is included.** Dump your own US disc (Redump-verified CUE sheet and BIN tracks), or
+use a folder extracted from it. This is a fan project, not affiliated with or endorsed by Capcom. *Breath of Fire* is
 Capcom's trademark.
 
 ## The tools
@@ -38,7 +38,8 @@ bof3player-tui -i "Breath of Fire III.cue"
 - a folder of files extracted from the disc. Use the folder that holds `SLUS_004.22` and `BIN/`,
   or the `BIN` folder itself.
 
-Any tool that copies the disc's files out works for extraction. Then pass the folder:
+To extract a folder, use a disc tool such as `rebof3 disc extract` from
+[rebof3-tools](https://github.com/raulcorreia7/rebof3-tools). Then pass the folder:
 
 ```sh
 bof3player -i ~/games/bof3-extracted list --kind music
@@ -90,5 +91,7 @@ lists the hardware documentation the SPU model follows.
 
 ## Contributing and license
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The code is MIT licensed ([LICENSE](LICENSE)). Do not add
-game data, extracted assets or game text to the repository.
+See [CONTRIBUTING.md](CONTRIBUTING.md), the [code of conduct](CODE_OF_CONDUCT.md) and the
+[security policy](SECURITY.md). The code is MIT licensed ([LICENSE](LICENSE)). The SPU model's
+sources are in [docs/PROVENANCE.md](docs/PROVENANCE.md). Do not add game data, extracted assets or
+game text to the repository.

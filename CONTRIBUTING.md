@@ -1,6 +1,8 @@
 # Contributing
 
-Issues and pull requests are welcome.
+Issues and pull requests are welcome. All contributions follow the
+[code of conduct](CODE_OF_CONDUCT.md). `AGENTS.md` is optional guidance for coding agents; people can
+ignore it.
 
 ## Before a pull request
 
@@ -30,4 +32,4 @@ through a `Naming` implementation.
 
 ## License
 
-By contributing you agree that your changes are licensed under the MIT license.
+Contributions are under the repository's [MIT license](LICENSE).
