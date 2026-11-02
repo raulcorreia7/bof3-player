@@ -1,1 +1,10 @@
 /target
+
+# Local work
+*.bin
+*.cue
+*.iso
+*.img
+*.wav
+*.flac
+*.ogg
