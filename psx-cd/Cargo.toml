@@ -1,10 +1,12 @@
 [package]
 name = "psx-cd"
 version = "0.1.2"
-edition = "2024"
-rust-version = "1.88"
+edition.workspace = true
+rust-version.workspace = true
 description = "PlayStation disc images: ISO9660, CD-XA and Mode 2 sectors, CUE sheets, extraction and patching"
-license = "MIT"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 readme = "README.md"
 keywords = ["playstation", "psx", "iso9660", "cdrom", "disc-image"]
 categories = ["parser-implementations", "filesystem", "multimedia"]

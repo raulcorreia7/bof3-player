@@ -2,9 +2,11 @@
 name = "psx-audio"
 description = "PlayStation audio: an SPU voice engine, XA and CD-DA playback, file sources and WAV/FLAC/Ogg export"
 version = "0.1.2"
-edition = "2024"
-rust-version = "1.88"
-license = "MIT"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 readme = "README.md"
 keywords = ["playstation", "audio", "psx", "spu", "adpcm"]
 categories = ["multimedia::audio", "game-development", "no-std"]
