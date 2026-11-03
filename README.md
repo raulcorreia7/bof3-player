@@ -1,6 +1,7 @@
 # bof3-player
 
 [![CI](https://github.com/raulcorreia7/bof3-player/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/raulcorreia7/bof3-player/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A player for the music and sound of *Breath of Fire III* (PlayStation). It reads the game's sound
 banks, sequences, XA streams and CD audio from your own disc image and renders them through a model
@@ -10,7 +11,32 @@ of the PlayStation sound chip (the SPU).
 use a folder extracted from it. This is a fan project, not affiliated with or endorsed by Capcom. *Breath of Fire* is
 Capcom's trademark.
 
-## The tools
+## Install
+
+From a release: download an archive from
+[Releases](https://github.com/raulcorreia7/bof3-player/releases), unpack it and run the tools from the
+folder. Each archive contains all three tools and `data/bof3-names.json`:
+
+- `bof3player-linux-x86_64.tar.gz` or `bof3player-linux-aarch64.tar.gz`
+- `bof3player-macos-arm64.tar.gz` or `bof3player-macos-x86_64.tar.gz`
+- `bof3player-windows-x86_64.zip`
+
+Each archive has a matching `.sha256` file; check it with `sha256sum -c` (Linux) or
+`shasum -a 256 -c` (macOS).
+
+From source: you need Rust 1.88 or later and GNU make. On Linux, audio output needs the ALSA headers.
+Ogg export builds a bundled libvorbis and needs a C compiler.
+
+```sh
+git clone https://github.com/raulcorreia7/bof3-player.git
+cd bof3-player
+make build   # release builds of the three tools into target/release
+make check   # format, clippy, cargo deny, tests and no-default-features check
+```
+
+`make help` lists every target and the plain cargo commands (use those on Windows without make).
+
+## Usage
 
 | Tool             | What it does                                                                      |
 | ---------------- | --------------------------------------------------------------------------------- |
@@ -45,28 +71,13 @@ To extract a folder, use a disc tool such as `bof3 disc extract` from
 bof3player -i ~/games/bof3-extracted list --kind music
 ```
 
-## Install
+## Supported formats
 
-Download an archive from [Releases](https://github.com/raulcorreia7/bof3-player/releases), unpack it
-and run the tools from the folder. Each archive contains all three tools and `data/bof3-names.json`:
-
-- `bof3player-linux-x86_64.tar.gz` or `bof3player-linux-aarch64.tar.gz`
-- `bof3player-macos-arm64.tar.gz` or `bof3player-macos-x86_64.tar.gz`
-- `bof3player-windows-x86_64.zip`
-
-Each archive has a matching `.sha256` checksum file.
-
-## Build from source
-
-You need Rust 1.88 or newer and GNU make. On Linux, audio output needs the ALSA headers. Ogg export
-builds a bundled libvorbis and needs a C compiler.
-
-```sh
-make build   # release builds of the three tools into target/release
-make check   # format, clippy, cargo deny, tests and no-default-features check
-```
-
-`make help` lists every target and the plain cargo commands (use those on Windows without make).
+| Input                                                    | Output                            |
+| -------------------------------------------------------- | --------------------------------- |
+| CUE and BIN disc image, raw `.bin` or `.iso`, or a folder | Catalog of music, sound and voice |
+| VAB sound banks, SEP sequences, XA streams, CD-DA tracks  | WAV, FLAC or Ogg Vorbis audio     |
+| SEP sequences                                            | Standard MIDI files               |
 
 ## Names file
 
@@ -89,9 +100,12 @@ directory or in `data/`. `--names FILE` or `$BOF3_NAMES` picks another file. See
 The crates are not on crates.io. Use them as path or git dependencies. [docs/spu-model.md](docs/spu-model.md)
 lists the hardware documentation the SPU model follows.
 
-## Contributing and license
+## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), the [code of conduct](CODE_OF_CONDUCT.md) and the
-[security policy](SECURITY.md). The code is MIT licensed ([LICENSE](LICENSE)). The SPU model's
-sources are in [docs/PROVENANCE.md](docs/PROVENANCE.md). Do not add game data, extracted assets or
-game text to the repository.
+[security policy](SECURITY.md). Run `make check` before a pull request. Do not add game data,
+extracted assets or game text to the repository.
+
+## License
+
+MIT. See [LICENSE](LICENSE). The SPU model's sources are in [docs/PROVENANCE.md](docs/PROVENANCE.md).
