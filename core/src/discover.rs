@@ -4,7 +4,7 @@
 //! Probes, in order: the explicit hint and `$BOF3_GAME_DIR` (each as itself
 //! and as `<value>/out/extracted`), the working directory and
 //! its parents, then the executable's directory and its parents; each of those folders is probed
-//! as itself and as `out/extracted`, `rebof3/build/disc` (the monorepo's disc), `BIN` and
+//! as itself and as `out/extracted`, `decomp/build/disc` (the monorepo's disc), `BIN` and
 //! `inputs/external` below it. A candidate is
 //! accepted when it is an extracted tree whose `BIN/BGM` holds an `.EMI`
 //! archive (also when the path names `BIN`, an asset directory or one archive:
@@ -144,7 +144,7 @@ fn probes(hint: Option<&Path>) -> Vec<(String, PathBuf)> {
     let scan = |out: &mut Vec<(String, PathBuf)>, label: String, base: &Path| {
         for (suffix, sub) in [
             ("/out/extracted", "out/extracted"),
-            ("/rebof3/build/disc", "rebof3/build/disc"),
+            ("/decomp/build/disc", "decomp/build/disc"),
             ("/BIN", "BIN"),
             ("/inputs/external", "inputs/external"),
             ("", ""),

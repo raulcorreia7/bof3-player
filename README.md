@@ -1,6 +1,6 @@
-# bof3player
+# bof3-player
 
-[![CI](https://github.com/raulcorreia7/bof3player/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/raulcorreia7/bof3player/actions/workflows/ci.yml)
+[![CI](https://github.com/raulcorreia7/bof3-player/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/raulcorreia7/bof3-player/actions/workflows/ci.yml)
 
 A player for the music and sound of *Breath of Fire III* (PlayStation). It reads the game's sound
 banks, sequences, XA streams and CD audio from your own disc image and renders them through a model
@@ -38,8 +38,8 @@ bof3player-tui -i "Breath of Fire III.cue"
 - a folder of files extracted from the disc. Use the folder that holds `SLUS_004.22` and `BIN/`,
   or the `BIN` folder itself.
 
-To extract a folder, use a disc tool such as `rebof3 disc extract` from
-[rebof3-tools](https://github.com/raulcorreia7/rebof3-tools). Then pass the folder:
+To extract a folder, use a disc tool such as `bof3 disc extract` from
+[bof3-tools](https://github.com/raulcorreia7/bof3-tools). Then pass the folder:
 
 ```sh
 bof3player -i ~/games/bof3-extracted list --kind music
@@ -47,7 +47,7 @@ bof3player -i ~/games/bof3-extracted list --kind music
 
 ## Install
 
-Download an archive from [Releases](https://github.com/raulcorreia7/bof3player/releases), unpack it
+Download an archive from [Releases](https://github.com/raulcorreia7/bof3-player/releases), unpack it
 and run the tools from the folder. Each archive contains all three tools and `data/bof3-names.json`:
 
 - `bof3player-linux-x86_64.tar.gz` or `bof3player-linux-aarch64.tar.gz`

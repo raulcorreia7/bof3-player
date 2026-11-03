@@ -2,7 +2,7 @@
 
 PS1 SPU behavior implemented by the offline renderer, with evidence from public
 hardware documentation. For crate boundaries and supported playback paths, see
-the [bof3player README](../README.md).
+the [bof3-player README](../README.md).
 
 ## Evidence
 
