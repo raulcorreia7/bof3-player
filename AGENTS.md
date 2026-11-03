@@ -1,6 +1,6 @@
 # Agent guide
 
-bof3player plays the music and sound of *Breath of Fire III* (PS1) from the user's own disc image.
+bof3-player plays the music and sound of *Breath of Fire III* (PS1) from the user's own disc image.
 It is a Rust workspace (`core`, `emi`, `psx-audio`, `psx-cd`, `psx-formats`) with a CLI and a
 Rust library. Read [README.md](README.md) first, then [CONTRIBUTING.md](CONTRIBUTING.md)
 and the page in [docs/](docs/) for the area you change.

@@ -1,4 +1,4 @@
-# Build, test and check the bof3player workspace. Needs cargo; GNU make.
+# Build, test and check the bof3-player workspace. Needs cargo; GNU make.
 # Cargo's target dir is target/ here; set CARGO_TARGET_DIR to move it.
 
 .DEFAULT_GOAL := help
@@ -9,7 +9,7 @@ ARGS ?=
 .PHONY: help build build-cli build-gui test format lint check run-tui run-gui clean
 
 help:
-	@echo "bof3player: the player, its library and the PlayStation crates (cargo)"
+	@echo "bof3-player: the player, its library and the PlayStation crates (cargo)"
 	@echo ""
 	@echo "Targets:"
 	@echo "  help     List these targets (default)."

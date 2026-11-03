@@ -6,7 +6,7 @@ embedding engine brings its own mixer. The crate is not on crates.io, so add it 
 
 ```toml
 [dependencies]
-bof3player = { path = "bof3player/core" }
+bof3player = { path = "bof3-player/core" }
 ```
 
 PCM comes out at each item's native rate, with no resampling. Music, samples and CD-DA use

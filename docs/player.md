@@ -25,7 +25,7 @@ Without `-i` the player looks, in order, at:
 2. the working directory and its parents;
 3. the executable's directory and its parents.
 
-Each folder is also tried with `out/extracted`, `rebof3/build/disc` (the monorepo's disc), `BIN` and
+Each folder is also tried with `out/extracted`, `decomp/build/disc` (the monorepo's disc), `BIN` and
 `inputs/external` below it.
 
 `bof3player doctor` lists every place it tried and the audio device it found. If nothing opens,
