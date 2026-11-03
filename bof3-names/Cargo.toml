@@ -5,6 +5,11 @@ version = "0.1.2"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["breath-of-fire", "playstation", "names"]
+categories = ["game-development"]
 publish = false
 
 [dependencies]

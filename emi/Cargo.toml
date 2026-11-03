@@ -2,9 +2,11 @@
 name = "emi"
 description = "EMI archive container: table of contents, entry extraction and type-8 cue records"
 version = "0.1.2"
-edition = "2024"
-rust-version = "1.88"
-license = "MIT"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 readme = "README.md"
 keywords = ["playstation", "archive", "container", "cue"]
 categories = ["parser-implementations", "no-std"]
