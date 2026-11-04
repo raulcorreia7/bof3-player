@@ -1,17 +1,23 @@
 name: CI
 
+# A pull request that changes only docs runs the format check and nothing heavier. Every job still
+# runs and reports, because the main ruleset requires each check by name; the `changes` step gates
+# the steps. cargo-deny runs on a pull request only when a manifest, the lockfile, deny.toml or a
+# workflow changes, and weekly, so new advisories surface.
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "37 5 * * 1"
 
 permissions:
   contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_INCREMENTAL: 0
@@ -26,10 +32,31 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 2
           persist-credentials: false
+      # Lists the files of this pull request (the checkout is the merge commit). Only docs: code=false.
+      - id: changes
+        name: Changes
+        shell: bash
+        run: |
+          code=true
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            files=$(git diff --name-only HEAD^1 HEAD) || files=unknown
+            code=false
+            if printf '%s\n' "$files" | grep -qvE '^(.*\.md|docs/.*|LICENSE[^/]*|NOTICE|\.github/ISSUE_TEMPLATE/.*)$'; then code=true; fi
+            if printf '%s\n' "$files" | grep -qE '^\.github/workflows/'; then code=true; fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          deps=true
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            deps=false
+            if printf '%s\n' "$files" | grep -qE '^(Cargo\.toml|Cargo\.lock|deny\.toml|.*/Cargo\.toml|\.github/workflows/.*|unknown)$'; then deps=true; fi
+          fi
+          echo "deps=$deps" >> "$GITHUB_OUTPUT"
       - name: Check formatting
         run: cargo fmt --all --check
-      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+      - if: steps.changes.outputs.deps == 'true'
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
         with:
           arguments: ''
 
@@ -39,9 +66,25 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 2
           persist-credentials: false
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      # Lists the files of this pull request (the checkout is the merge commit). Only docs: code=false.
+      - id: changes
+        name: Changes
+        shell: bash
+        run: |
+          code=true
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            files=$(git diff --name-only HEAD^1 HEAD) || files=unknown
+            code=false
+            if printf '%s\n' "$files" | grep -qvE '^(.*\.md|docs/.*|LICENSE[^/]*|NOTICE|\.github/ISSUE_TEMPLATE/.*)$'; then code=true; fi
+            if printf '%s\n' "$files" | grep -qE '^\.github/workflows/'; then code=true; fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+      - if: steps.changes.outputs.code == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Check without default features
+        if: steps.changes.outputs.code == 'true'
         run: cargo check -p psx-formats -p emi -p psx-audio -p bof3player --no-default-features --locked
 
   check:
@@ -54,18 +97,36 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 2
           persist-credentials: false
+      # Lists the files of this pull request (the checkout is the merge commit). Only docs: code=false.
+      - id: changes
+        name: Changes
+        shell: bash
+        run: |
+          code=true
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            files=$(git diff --name-only HEAD^1 HEAD) || files=unknown
+            code=false
+            if printf '%s\n' "$files" | grep -qvE '^(.*\.md|docs/.*|LICENSE[^/]*|NOTICE|\.github/ISSUE_TEMPLATE/.*)$'; then code=true; fi
+            if printf '%s\n' "$files" | grep -qE '^\.github/workflows/'; then code=true; fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
       - name: Install Linux dependencies
-        if: runner.os == 'Linux'
+        if: steps.changes.outputs.code == 'true' && runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libfontconfig1-dev libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libvulkan-dev
       - name: Install Rust components
+        if: steps.changes.outputs.code == 'true'
         run: rustup update stable && rustup default stable && rustup component add rustfmt clippy
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - if: steps.changes.outputs.code == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Clippy
+        if: steps.changes.outputs.code == 'true'
         run: cargo clippy --workspace --all-features --all-targets --locked -- -D warnings
       - name: Test
+        if: steps.changes.outputs.code == 'true'
         run: cargo test --workspace --all-features --locked
 
   msrv:
@@ -74,18 +135,36 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 2
           persist-credentials: false
+      # Lists the files of this pull request (the checkout is the merge commit). Only docs: code=false.
+      - id: changes
+        name: Changes
+        shell: bash
+        run: |
+          code=true
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            files=$(git diff --name-only HEAD^1 HEAD) || files=unknown
+            code=false
+            if printf '%s\n' "$files" | grep -qvE '^(.*\.md|docs/.*|LICENSE[^/]*|NOTICE|\.github/ISSUE_TEMPLATE/.*)$'; then code=true; fi
+            if printf '%s\n' "$files" | grep -qE '^\.github/workflows/'; then code=true; fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
       - name: Install Linux dependencies
+        if: steps.changes.outputs.code == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libfontconfig1-dev libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libvulkan-dev
       - name: Install the minimum supported Rust version
+        if: steps.changes.outputs.code == 'true'
         run: |
           msrv=$(sed -n 's/^rust-version = "\(.*\)"/\1/p' Cargo.toml)
           rustup toolchain install "$msrv" --profile minimal
           echo "RUSTUP_TOOLCHAIN=$msrv" >> "$GITHUB_ENV"
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - run: cargo check --workspace --all-features --locked
+      - if: steps.changes.outputs.code == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - if: steps.changes.outputs.code == 'true'
+        run: cargo check --workspace --all-features --locked
 
   build-release:
     runs-on: ubuntu-latest
@@ -93,13 +172,31 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 2
           persist-credentials: false
+      # Lists the files of this pull request (the checkout is the merge commit). Only docs: code=false.
+      - id: changes
+        name: Changes
+        shell: bash
+        run: |
+          code=true
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            files=$(git diff --name-only HEAD^1 HEAD) || files=unknown
+            code=false
+            if printf '%s\n' "$files" | grep -qvE '^(.*\.md|docs/.*|LICENSE[^/]*|NOTICE|\.github/ISSUE_TEMPLATE/.*)$'; then code=true; fi
+            if printf '%s\n' "$files" | grep -qE '^\.github/workflows/'; then code=true; fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
       - name: Install Linux GUI/audio dependencies
+        if: steps.changes.outputs.code == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libfontconfig1-dev libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libvulkan-dev
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - if: steps.changes.outputs.code == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Build release CLI and TUI
+        if: steps.changes.outputs.code == 'true'
         run: make build-cli
       - name: Build release GUI
+        if: steps.changes.outputs.code == 'true'
         run: make build-gui
