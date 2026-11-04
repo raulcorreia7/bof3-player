@@ -24,14 +24,15 @@ make check
 cargo fmt --all --check
 cargo clippy --workspace --all-features --all-targets -- -D warnings
 cargo test --workspace --all-features
+cargo check -p psx-formats -p emi -p psx-audio -p bof3player --no-default-features
 cargo deny check
 ```
 
 Install `cargo-deny` once with `cargo install cargo-deny --locked`. CI also builds with the minimum
 supported Rust version (`rust-version` in `Cargo.toml`).
 
-`psx-formats`, `psx-audio` and `emi` are `no_std` plus `alloc` without their `std` feature. If you
-change them, also run `cargo check -p psx-formats --no-default-features`.
+`psx-formats`, `psx-audio` and `emi` are `no_std` plus `alloc` without their `std` feature; the
+`cargo check` line covers that.
 
 ## Test data
 

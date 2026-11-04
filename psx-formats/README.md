@@ -9,4 +9,4 @@ cargo test -p psx-formats --all-features
 
 Guide: [psx-formats](../docs/crates.md#psx-formats).
 
-> A fan project, not affiliated with Capcom. *Breath of Fire* is Capcom's trademark. No game data is included; bring your own disc.
+> A fan project, not affiliated with or endorsed by Capcom. *Breath of Fire* is Capcom's trademark. No game data is included; bring your own disc.

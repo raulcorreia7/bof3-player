@@ -9,4 +9,4 @@ cargo test -p psx-cd --all-features
 
 Guide: [psx-cd](../docs/crates.md#psx-cd).
 
-> A fan project, not affiliated with Capcom. *Breath of Fire* is Capcom's trademark. No game data is included; bring your own disc.
+> A fan project, not affiliated with or endorsed by Capcom. *Breath of Fire* is Capcom's trademark. No game data is included; bring your own disc.

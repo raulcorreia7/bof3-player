@@ -25,7 +25,7 @@ Without `-i` the player looks, in order, at:
 2. the working directory and its parents;
 3. the executable's directory and its parents.
 
-Each folder is also tried with `out/extracted`, `decomp/build/disc` (the monorepo's disc), `BIN` and
+Each folder is also tried with `out/extracted`, `decomp/build/disc` (the bof3 workspace's extracted disc), `BIN` and
 `inputs/external` below it.
 
 `bof3player doctor` lists every place it tried and the audio device it found. If nothing opens,
@@ -45,6 +45,7 @@ and runs on Linux, macOS and Windows. Build and run it from the repository root:
 cargo run --release -p bof3player --features gui --bin bof3player-gui -- -i "Breath of Fire III.cue"
 ```
 
+On Linux, gpui needs the Wayland or X11, xkbcommon, fontconfig and Vulkan development packages.
 The window takes the same switches as `bof3player`; `--help` lists them. `--names FILE` reads
 a [names file](#names-file). `--mute` starts with the sound off; click the speaker or press `M` to turn it on.
 
@@ -102,8 +103,6 @@ and its parents. With none found they show archive names. A copy of a track stay
 Every section and field except `version` may be absent. Unknown fields are ignored; an unknown
 `source`, another `version` or text that is not JSON is an error: `--names` stops, and a default
 file is reported and skipped.
-
-On Linux, gpui needs the Wayland or X11, xkbcommon, fontconfig and Vulkan development packages.
 
 ## Commands
 
