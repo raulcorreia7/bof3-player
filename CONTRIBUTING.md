@@ -29,7 +29,8 @@ cargo deny check
 ```
 
 Install `cargo-deny` once with `cargo install cargo-deny --locked`. CI also builds with the minimum
-supported Rust version (`rust-version` in `Cargo.toml`).
+supported Rust version (`rust-version` in `Cargo.toml`) and builds the release CLI, TUI and GUI. A
+pull request that changes only docs runs the format checks only.
 
 `psx-formats`, `psx-audio` and `emi` are `no_std` plus `alloc` without their `std` feature; the
 `cargo check` line covers that.
