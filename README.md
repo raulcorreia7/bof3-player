@@ -8,8 +8,8 @@ banks, sequences, XA streams and CD audio from your own disc image and renders t
 of the PlayStation sound chip (the SPU).
 
 **No game data is included.** Dump your own US disc (Redump-verified CUE sheet and BIN tracks), or
-use a folder extracted from it. This is a fan project, not affiliated with or endorsed by Capcom. *Breath of Fire* is
-Capcom's trademark.
+use a folder extracted from it. This is a fan project, not affiliated with or endorsed by Capcom.
+*Breath of Fire* is Capcom's trademark.
 
 ## Install
 
@@ -64,7 +64,7 @@ bof3player-tui -i "Breath of Fire III.cue"
 - a folder of files extracted from the disc. Use the folder that holds `SLUS_004.22` and `BIN/`,
   or the `BIN` folder itself.
 
-To extract a folder, use a disc tool such as `bof3 disc extract` from
+To extract a folder, run `bof3 disc extract` from
 [bof3-tools](https://github.com/raulcorreia7/bof3-tools). Then pass the folder:
 
 ```sh
@@ -73,11 +73,11 @@ bof3player -i ~/games/bof3-extracted list --kind music
 
 ## Supported formats
 
-| Input                                                    | Output                            |
-| -------------------------------------------------------- | --------------------------------- |
+| Input                                                     | Output                            |
+| --------------------------------------------------------- | --------------------------------- |
 | CUE and BIN disc image, raw `.bin` or `.iso`, or a folder | Catalog of music, sound and voice |
 | VAB sound banks, SEP sequences, XA streams, CD-DA tracks  | WAV, FLAC or Ogg Vorbis audio     |
-| SEP sequences                                            | Standard MIDI files               |
+| SEP sequences                                             | Standard MIDI files               |
 
 ## Names file
 
@@ -90,21 +90,22 @@ directory or in `data/`. `--names FILE` or `$BOF3_NAMES` picks another file. See
 
 | Part                                 | What it is                                                                                           | Guide                                        |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| [bof3-names](bof3-names/README.md)   | Bundled game names for Rust library callers.                                                          | [Names file](data/README.md)                 |
+| [bof3-names](bof3-names/README.md)   | Bundled game names for Rust library callers.                                                         | [Names file](data/README.md)                 |
 | [core](core/README.md)               | `bof3player`: catalog, playback and export in Rust, and the `bof3player` and `bof3player-tui` tools. | [docs/rust-api.md](docs/rust-api.md)         |
 | [psx-audio](psx-audio/README.md)     | SPU voices, XA and CD-DA playback, sources, WAV, FLAC and Ogg export.                                | [docs/crates.md](docs/crates.md#psx-audio)   |
 | [psx-formats](psx-formats/README.md) | VAB, SEP, ADPCM, sector, VRAM, CLUT and TIM formats.                                                 | [docs/crates.md](docs/crates.md#psx-formats) |
 | [psx-cd](psx-cd/README.md)           | ISO 9660 and cue-sheet disc images: read, extract, patch, rebuild.                                   | [docs/crates.md](docs/crates.md#psx-cd)      |
 | [emi](emi/README.md)                 | The EMI archive reader.                                                                              | [docs/crates.md](docs/crates.md#emi)         |
 
-The crates are not on crates.io. Use them as path or git dependencies. [docs/spu-model.md](docs/spu-model.md)
-lists the hardware documentation the SPU model follows.
+The crates are not on crates.io. Use them as path or git dependencies.
+[docs/spu-model.md](docs/spu-model.md) lists the hardware documentation the SPU model follows. The
+[bof3 workspace](https://github.com/raulcorreia7/bof3) links this project with the others.
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), the [code of conduct](CODE_OF_CONDUCT.md) and the
 [security policy](SECURITY.md). Run `make check` before a pull request. Do not add game data,
-extracted assets or game text to the repository.
+extracted assets or game text.
 
 ## License
 

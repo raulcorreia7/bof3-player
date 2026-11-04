@@ -112,8 +112,9 @@ send bits and master enable/output controls.
 
 - The SPU voice decoder truncates each predictor term; the XA decoder rounds
   the sum. `psx_formats::adpcm::Rounding` names these modes.
-- The default reverb timing follows psx-spx. `ReverbModel::Legacy` preserves
-  the earlier timing.
+- The default reverb timing follows psx-spx. `ReverbModel::Legacy` uses 2-byte address units and
+  one buffer step per 44.1 kHz sample, so its delays are 8 times shorter than on hardware. It
+  exists only to reproduce old renders.
 
 ## Boundaries
 

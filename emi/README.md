@@ -9,4 +9,4 @@ cargo test -p emi --all-features
 
 Guide: [emi](../docs/crates.md#emi).
 
-> A fan project, not affiliated with Capcom. *Breath of Fire* is Capcom's trademark. No game data is included; bring your own disc.
+> A fan project, not affiliated with or endorsed by Capcom. *Breath of Fire* is Capcom's trademark. No game data is included; bring your own disc.
