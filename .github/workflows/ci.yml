@@ -1,8 +1,7 @@
 name: CI
 
-# A pull request that changes only docs runs the format check and nothing heavier. Every job still
-# runs and reports, because the main ruleset requires each check by name; the `changes` step gates
-# the steps. cargo-deny runs on every pull request.
+# Format, lint, test, minimum Rust version, dependency and release build checks.
+
 on:
   push:
     branches: [main]
@@ -44,7 +43,7 @@ jobs:
         with:
           fetch-depth: 2
           persist-credentials: false
-      # Lists the files of this pull request (the checkout is the merge commit). Only docs: code=false.
+      # Docs-only pull requests skip the build steps.
       - id: changes
         name: Changes
         shell: bash
@@ -75,7 +74,7 @@ jobs:
         with:
           fetch-depth: 2
           persist-credentials: false
-      # Lists the files of this pull request (the checkout is the merge commit). Only docs: code=false.
+      # Docs-only pull requests skip the build steps.
       - id: changes
         name: Changes
         shell: bash
@@ -113,7 +112,7 @@ jobs:
         with:
           fetch-depth: 2
           persist-credentials: false
-      # Lists the files of this pull request (the checkout is the merge commit). Only docs: code=false.
+      # Docs-only pull requests skip the build steps.
       - id: changes
         name: Changes
         shell: bash
@@ -150,7 +149,7 @@ jobs:
         with:
           fetch-depth: 2
           persist-credentials: false
-      # Lists the files of this pull request (the checkout is the merge commit). Only docs: code=false.
+      # Docs-only pull requests skip the build steps.
       - id: changes
         name: Changes
         shell: bash
