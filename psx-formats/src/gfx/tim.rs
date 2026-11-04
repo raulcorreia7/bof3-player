@@ -2,7 +2,7 @@
 //!
 //! A TIM file is a header of two words and up to two blocks of frame buffer
 //! data. The header's ID word is `0x10` with a version of zero, and the flag
-//! word names the pixel mode (4-bit, 8-bit or 15-bit direct colour) and
+//! word names the pixel mode (4-bit, 8-bit or 15-bit direct color) and
 //! whether a CLUT block follows. Each block is a length, the frame buffer
 //! position, the size and the words themselves; the words are the frame
 //! buffer's own 16-bit units, so a texture's VRAM words are a TIM's image data
@@ -52,11 +52,11 @@ pub const ID: u32 = 0x10;
 /// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Mode {
-    /// 4-bit CLUT: four pixels per word, sixteen colours.
+    /// 4-bit CLUT: four pixels per word, sixteen colors.
     Four,
-    /// 8-bit CLUT: two pixels per word, 256 colours.
+    /// 8-bit CLUT: two pixels per word, 256 colors.
     Eight,
-    /// 15-bit direct colour: one pixel per word.
+    /// 15-bit direct color: one pixel per word.
     Fifteen,
 }
 
