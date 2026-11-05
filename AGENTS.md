@@ -49,6 +49,16 @@ cargo deny check
 - Commit as `type(scope): subject`, imperative and lowercase. Add no AI attribution. Never amend,
   force-push or rewrite history.
 
+## Index
+
+- Skills: none; this guide is the entry point.
+- Tools: `bof3player --help` and [docs/player.md](docs/player.md).
+- Docs: [docs/](docs/) (table above) and each crate's `README.md`.
+- CI: [.github/workflows/ci.yml](.github/workflows/ci.yml) runs the gate above;
+  [release.yml](.github/workflows/release.yml) builds the release archives.
+- Wiki (game and format facts): [site](https://raulcorreia7.github.io/bof3-wiki/). For a model: [llms.txt](https://raulcorreia7.github.io/bof3-wiki/llms.txt) (index), [llms-small.txt](https://raulcorreia7.github.io/bof3-wiki/llms-small.txt) (compact, for a small context), [llms-full.txt](https://raulcorreia7.github.io/bof3-wiki/llms-full.txt) (everything).
+- Project standard: [docs/standard.md](https://github.com/raulcorreia7/bof3/blob/main/docs/standard.md).
+
 ## Writing
 
 Docs, comments, commit messages and pull requests follow one standard.
