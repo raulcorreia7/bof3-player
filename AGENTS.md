@@ -2,8 +2,22 @@
 
 bof3-player plays the music and sound of *Breath of Fire III* (PlayStation) from the user's own disc image.
 It is a Cargo workspace (`core`, `emi`, `psx-audio`, `psx-cd`, `psx-formats`) with a CLI and a
-Rust library. Read [README.md](README.md) first, then [CONTRIBUTING.md](CONTRIBUTING.md)
-and the page in [docs/](docs/) for the area you change.
+Rust library. Read [README.md](README.md) first, then [CONTRIBUTING.md](CONTRIBUTING.md),
+then the doc for the area you change.
+
+## Where things are
+
+| Path                   | What it holds                                                          | Doc                                                     |
+| ---------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------- |
+| `core/`                | The `bof3player` crate and CLI: catalog, sources, playback, rendering  | [docs/rust-api.md](docs/rust-api.md), [core/README.md](core/README.md) |
+| `core/` binaries       | `bof3player`, `bof3player-tui`, `bof3player-gui` and how to run them  | [docs/player.md](docs/player.md)                        |
+| `psx-audio/`           | SPU voice engine, XA and CD-DA playback, WAV, FLAC and Ogg output      | [docs/spu-model.md](docs/spu-model.md), [psx-audio/README.md](psx-audio/README.md) |
+| `psx-formats/`         | SPU and XA ADPCM, VAB, SEP and other PlayStation file formats          | [psx-formats/README.md](psx-formats/README.md)          |
+| `psx-cd/`              | ISO 9660, Mode 2 XA sectors, CUE/BIN images                            | [psx-cd/README.md](psx-cd/README.md)                    |
+| `emi/`                 | The EMI archive reader                                                 | [emi/README.md](emi/README.md)                          |
+| `bof3-names/`, `data/` | The bundled catalog names and their sources                            | [data/README.md](data/README.md), [bof3-names/README.md](bof3-names/README.md) |
+| all crates             | How the crates depend on each other                                    | [docs/crates.md](docs/crates.md)                        |
+| SPU evidence           | Where the SPU model's behaviour comes from                             | [docs/PROVENANCE.md](docs/PROVENANCE.md)                |
 
 ## Build and test
 
