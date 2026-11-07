@@ -9,7 +9,8 @@ use std::time::{Duration, Instant};
 
 use crate::catalog::{Catalog, Filter, Item, Kind, Naming};
 use crate::player::Loop;
-use crate::save::{ExportFormat, ExportOptions, Save, Step};
+use crate::render::{self, RenderStyle};
+use crate::save::ExportFormat;
 use crate::{Library, Player, discover};
 use serde_json::json;
 
@@ -441,53 +442,6 @@ fn wait_deck(deck: &Deck) -> Outcome {
     Ok(ExitCode::SUCCESS)
 }
 
-/// How `render` writes one item.
-struct RenderStyle<'a> {
-    format: ExportFormat,
-    quality: f32,
-    loops: Option<u32>,
-    seconds: Option<f64>,
-    fade: f64,
-    /// The format name for error messages.
-    name: &'a str,
-}
-
-fn render_item(
-    global: &Global,
-    library: &'static Library<'static>,
-    item: &Item,
-    path: &Path,
-    style: &RenderStyle,
-) -> Result<(), String> {
-    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-        std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
-    }
-    let options = ExportOptions {
-        loops: style.loops,
-        fade: style.fade,
-        format: style.format,
-        quality: style.quality,
-        seconds: style.seconds,
-    };
-    let mut save = Save::start_to(library, item, global.player_options(), path.to_path_buf(), options)
-        .map_err(|e| format!("{}: {e}", item.id))?;
-    loop {
-        match save.step() {
-            Step::Progress => {}
-            Step::Done => break,
-            Step::Failed(error) => return Err(format!("{} ({}): {error}", item.id, style.name)),
-        }
-    }
-    eprintln!(
-        "wrote {}: {:.1}s, {} Hz, {} ch",
-        crate::save::absolute(path).display(),
-        save.rendered(),
-        save.sample_rate(),
-        save.channels()
-    );
-    Ok(())
-}
-
 use crate::save::file_stem;
 
 /// The output format named on the command line.
@@ -504,85 +458,20 @@ fn parse_format(name: &str, quality: f32) -> Result<ExportFormat, String> {
     }
 }
 
-/// Render every playable item matching `query` and `filters` into `dir`; returns how many failed.
-fn render_all(
-    global: &Global,
-    library: &'static Library<'static>,
-    query: &str,
-    dir: &Path,
-    style: &RenderStyle,
-    filters: &Filters,
-    all_flag: bool,
-) -> Result<usize, String> {
-    let mut filter = filter_of(filters)?;
-    filter.playable_only = true;
-    let mut failed = 0;
-    let catalog = library.catalog();
-    let groups = catalog.groups();
-    use std::collections::HashSet;
-    let mut rendered: HashSet<String> = HashSet::new();
-    for hit in catalog.search(query, &filter) {
-        if !all_flag {
-            if let Some(canon) = groups.canonical_of(&hit.id) {
-                if canon != hit.id {
-                    continue;
-                }
-                if rendered.contains(&canon) {
-                    continue;
-                }
-                rendered.insert(canon.clone());
-                let path = dir.join(format!("{}.{}", file_stem(&hit.id), style.format.extension()));
-                if let Err(e) = render_item(global, library, hit, &path, style) {
-                    eprintln!("player: {e}");
-                    failed += 1;
-                }
-                continue;
-            } else if let Some(members) = groups.group_members(&hit.id) {
-                if groups.canonical_of(&hit.id).as_deref() == Some(hit.id.as_str()) && !rendered.contains(&hit.id) {
-                    rendered.insert(hit.id.clone());
-                    let path = dir.join(format!("{}.{}", file_stem(&hit.id), style.format.extension()));
-                    if let Err(e) = render_item(global, library, hit, &path, style) {
-                        eprintln!("player: {e}");
-                        failed += 1;
-                    }
-                    continue;
-                } else if groups.canonical_of(&hit.id).is_none()
-                    && members.contains(&hit.id)
-                    && members[0] == hit.id
-                    && !rendered.contains(&hit.id)
-                {
-                    // shouldn't happen if canonical logic is correct
-                }
-            }
-        }
-        if rendered.contains(&hit.id) && !all_flag {
-            // check if it's a non-canonical duplicate
-            if groups.is_duplicate(&hit.id) && groups.canonical_of(&hit.id).as_deref() != Some(hit.id.as_str()) {
-                continue;
-            }
-        }
-        let path = dir.join(format!("{}.{}", file_stem(&hit.id), style.format.extension()));
-        if let Err(e) = render_item(global, library, hit, &path, style) {
-            eprintln!("player: {e}");
-            failed += 1;
-        }
-        rendered.insert(hit.id.clone());
-    }
-    Ok(failed)
-}
-
 /// Render every playable item matching `query` as WAV into `dir`; returns how many failed.
 pub fn render_matching(global: &Global, query: &str, dir: &Path, naming: &dyn Naming) -> Result<usize, String> {
     let library = open_library(global, naming)?;
     let style = RenderStyle {
-        format: ExportFormat::Wav,
-        quality: crate::export::DEFAULT_OGG_QUALITY,
         loops: global.loops,
-        seconds: None,
         fade: global.fade.unwrap_or(0.0),
-        name: "wav",
+        player: global.player_options(),
+        ..RenderStyle::default()
     };
-    render_all(global, library, query, dir, &style, &Filters::default(), false)
+    Ok(render::render(library, query, dir, &playable(), &style, false))
+}
+
+fn playable() -> Filter<'static> {
+    Filter { playable_only: true, ..Filter::default() }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -605,12 +494,14 @@ pub fn render(
         loops,
         seconds,
         fade: global.fade.unwrap_or(0.0),
-        name: format,
+        player: global.player_options(),
     };
     let library = open_library(global, naming)?;
     if all {
         let dir = out_dir.ok_or("render --all needs an output folder: pass --out-dir DIR.")?;
-        let failed = render_all(global, library, item.unwrap_or(""), &dir, &style, filters, all)?;
+        let mut filter = filter_of(filters)?;
+        filter.playable_only = true;
+        let failed = render::render(library, item.unwrap_or(""), &dir, &filter, &style, all);
         return Ok(if failed == 0 { ExitCode::SUCCESS } else { ExitCode::from(1) });
     }
     let query = item.ok_or("render needs an item: pass an id or query, or --all.")?;
@@ -625,7 +516,7 @@ pub fn render(
         eprintln!("player: {} carries no audio - {}", hit.id, hit.detail);
         return Ok(ExitCode::from(2));
     }
-    render_item(global, library, hit, &path, &style)?;
+    render::render_item(library, hit, &path, &style)?;
     Ok(ExitCode::SUCCESS)
 }
 
