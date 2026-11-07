@@ -66,6 +66,8 @@ pub mod names;
 pub mod options;
 pub mod player;
 #[cfg(feature = "std")]
+pub mod render;
+#[cfg(feature = "std")]
 pub mod save;
 #[cfg(feature = "audio")]
 pub mod spectrum;
