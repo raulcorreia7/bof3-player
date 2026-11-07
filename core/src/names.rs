@@ -17,6 +17,17 @@ pub const VERSION: u32 = 1;
 /// The file name [`default_path`] looks for.
 pub const DEFAULT_FILE: &str = "bof3-names.json";
 
+/// The names this repository ships, `data/bof3-names.json`, parsed on first use.
+#[cfg(feature = "bundled-names")]
+#[must_use]
+pub fn game_names() -> &'static Names {
+    static GAME: std::sync::LazyLock<Names> = std::sync::LazyLock::new(|| {
+        Names::from_json(include_str!("../../data/bof3-names.json"))
+            .expect("data/bof3-names.json is a valid names file")
+    });
+    &GAME
+}
+
 /// Where a name comes from, from most to least trusted.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -248,6 +259,27 @@ mod tests {
 
     /// The file the repository ships, `data/bof3-names.json`.
     const SHIPPED: &str = include_str!("../../data/bof3-names.json");
+
+    #[cfg(feature = "bundled-names")]
+    #[test]
+    fn bundled_names_answer_every_lookup() {
+        let game = game_names();
+        assert_eq!(game.music_title("BGMOPN", 0), Some("Opening"));
+        assert_eq!(game.music_title("BGMOPN", 999), None);
+        assert_eq!(game.music_title("DEMO", 0), Some("Opening"));
+        assert_eq!(game.music_copy("DEMO#0"), Some("BGMOPN#0"));
+        assert_eq!(game.music_sound("BGM000#0"), Some(0));
+        assert_eq!(game.bank_name("BIN/BENEMY/ENEMY001.EMI"), Some("Area 001 enemy bank (no enemy records)"));
+        assert_eq!(game.bank_duplicate("AREA001"), Some("AREA000"));
+        assert_eq!(game.magic_ability(160), Some("Nue Stomp"));
+        assert_eq!(game.xa_span("xa:S_XA00#ch0@0"), Some("S_XA00 cue 0 (game 0x0000)"));
+    }
+
+    #[cfg(feature = "bundled-names")]
+    #[test]
+    fn quoted_titles_survive() {
+        assert_eq!(game_names().music_title("BGMEND", 1), Some("\"Fin\""));
+    }
 
     fn scratch(test: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("bof3player-{test}-{}", std::process::id()));
