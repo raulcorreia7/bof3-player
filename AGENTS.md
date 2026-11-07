@@ -15,7 +15,7 @@ then the doc for the area you change.
 | `psx-formats/`         | SPU and XA ADPCM, VAB, SEP and other PlayStation file formats          | [psx-formats/README.md](psx-formats/README.md)          |
 | `psx-cd/`              | ISO 9660, Mode 2 XA sectors, CUE/BIN images                            | [psx-cd/README.md](psx-cd/README.md)                    |
 | `emi/`                 | The EMI archive reader                                                 | [emi/README.md](emi/README.md)                          |
-| `bof3-names/`, `data/` | The bundled catalog names and their sources                            | [data/README.md](data/README.md), [bof3-names/README.md](bof3-names/README.md) |
+| `data/`                | The bundled catalog names and their sources                            | [data/README.md](data/README.md)                        |
 | all crates             | How the crates depend on each other                                    | [docs/crates.md](docs/crates.md)                        |
 | SPU evidence           | Where the SPU model's behaviour comes from                             | [docs/PROVENANCE.md](docs/PROVENANCE.md)                |
 

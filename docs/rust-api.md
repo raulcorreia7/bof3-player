@@ -82,7 +82,8 @@ The catalog knows ids, paths and formats. `Library::open` uses `NoNaming`, so it
 archive names. To show display names or soundtrack titles, implement `Naming`
 (see `core/src/catalog.rs`) and pass it to `Library::open_with`. Every method has a default that
 returns `None`. `names::Names` is a `Naming` that reads the JSON names file
-([player.md](player.md#names-file)) with the `names` feature; `data/bof3-names.json` is the file this repository ships.
+([player.md](player.md#names-file)) with the `names` feature; `data/bof3-names.json` is the file this repository ships, and the
+`bundled-names` feature embeds it as `names::game_names()`.
 
 ## Features and threads
 
