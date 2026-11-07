@@ -26,6 +26,7 @@ Each archive has a matching `.sha256` file; check it with `sha256sum -c` (Linux)
 
 From source: you need Rust 1.88 or later and GNU make. On Linux, audio output needs the ALSA headers.
 Ogg export builds a bundled libvorbis and needs a C compiler.
+The workspace selects stable Rust; run `rustup update stable` to update an installed toolchain.
 
 ```sh
 git clone https://github.com/raulcorreia7/bof3-player.git
