@@ -37,6 +37,8 @@
 //!   WAV and FLAC export work without it (`no_std + alloc`).
 //! * `ogg` (default): Ogg Vorbis export through the bundled libvorbis; adds a
 //!   C compiler at build time.
+//! * `names` (off): the names file reader, [`names::Names`].
+//! * `bundled-names` (off): the shipped names embedded as [`names::game_names`].
 //! * `audio` (off): the [`deck`] audio output through `cpal`.
 //! * `gui` (off): the `bof3player-gui` window.
 //! * `cli` (off): the `bof3player` binary and its terminal browser.

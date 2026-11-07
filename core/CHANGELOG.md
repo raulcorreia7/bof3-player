@@ -4,12 +4,17 @@ All notable changes to `bof3player` are recorded here. The project follows
 [Semantic Versioning](https://semver.org/) and is distributed as a repository,
 not through a package registry.
 
+## 0.1.3
+
+- Added `bof3player::render` (`render`, `render_item`, `RenderStyle`): render items to files without the `cli` feature.
+- Replaced the `bof3-names` crate with the `bundled-names` feature: `names::game_names()`.
+
 ## 0.1.2
 
 - Removed the C API.
 - Group tracks with the same content; --all and a view-all toggle show every entry.
 - Improved spectrum bands, colours and TUI responsiveness.
-- Added `bof3-names` crate for bundled catalog names.
+- Added `bof3-names` crate for bundled catalog names (replaced by the `bundled-names` feature in 0.1.3).
 - Patched `taffy`/grid for a security update.
 - Meter the signal before volume and mute.
 - Report a missing GPU context instead of panicking.

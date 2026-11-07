@@ -1,7 +1,7 @@
 [package]
 name = "bof3player"
 description = "Breath of Fire III player and audio library: soundbanks, sequences, XA and CD-DA through an SPU-accurate voice engine"
-version = "0.1.2"
+version = "0.1.3"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -23,6 +23,8 @@ ogg = ["std", "psx-audio/ogg"]
 audio = ["std", "dep:cpal"]
 # The names file reader (JSON through `serde`).
 names = ["std", "dep:serde", "dep:serde_json"]
+# The shipped names file embedded in the library: `names::game_names()`.
+bundled-names = ["names"]
 # The `bof3player-gui` binary: a `gpui` window.
 gui = ["audio", "names", "dep:clap", "dep:gpui"]
 # The `bof3player` and `bof3player-tui` binaries.
@@ -55,7 +57,7 @@ required-features = ["gui"]
 psx-audio = { workspace = true, default-features = false }
 emi.workspace = true
 psx-formats.workspace = true
-sha2 = "0.11.1"
+sha2.workspace = true
 clap = { workspace = true, optional = true }
 cpal = { workspace = true, optional = true }
 gpui = { workspace = true, optional = true }

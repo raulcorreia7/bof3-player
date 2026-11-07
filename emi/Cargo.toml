@@ -1,7 +1,7 @@
 [package]
 name = "emi"
 description = "EMI archive container: table of contents, entry extraction and type-8 cue records"
-version = "0.1.2"
+version = "0.1.3"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -20,9 +20,9 @@ default = ["std"]
 std = ["psx-formats/std", "dep:serde", "dep:serde_json"]
 
 [dependencies]
-psx-formats = { version = "0.1.2", path = "../psx-formats", default-features = false }
-serde = { version = "1.0.229", features = ["derive"], optional = true }
-serde_json = { version = "1.0.154", optional = true }
+psx-formats = { version = "0.1.3", path = "../psx-formats", default-features = false }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
