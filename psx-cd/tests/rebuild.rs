@@ -28,19 +28,12 @@ fn rebuilds_sorted_top_level_files_to_a_byte_stable_cooked_iso() {
     let first_bytes = fs::read(&first).unwrap();
     assert_eq!(first_bytes, fs::read(&second).unwrap());
     assert_eq!(first_bytes.len(), 21 * 2_048);
-    assert_eq!(
-        Sha256::digest(&first_bytes).iter().map(|byte| format!("{byte:02x}")).collect::<String>(),
-        "1997bdd3837a50f473ae727e7f8d1bdcbe7a1cafbead8a4e351c707e62a6c59c"
-    );
+    assert_eq!(Sha256::digest(&first_bytes).iter().map(|byte| format!("{byte:02x}")).collect::<String>(), "1997bdd3837a50f473ae727e7f8d1bdcbe7a1cafbead8a4e351c707e62a6c59c");
 
     let mut image = Image::open(&first).unwrap();
     let entries = image.entries().unwrap();
     assert_eq!(
-        entries
-            .iter()
-            .filter(|entry| !entry.is_directory)
-            .map(|entry| (entry.path.clone(), entry.lba, entry.size))
-            .collect::<Vec<_>>(),
+        entries.iter().filter(|entry| !entry.is_directory).map(|entry| (entry.path.clone(), entry.lba, entry.size)).collect::<Vec<_>>(),
         vec![("ALPHA.TXT".into(), 19, 6), ("ZETA.BIN".into(), 20, 3),]
     );
     Image::open(&first).unwrap().extract(root.join("out")).unwrap();

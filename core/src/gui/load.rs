@@ -53,11 +53,7 @@ impl Loading {
 
 fn open(hint: Option<&Path>, names: Option<&Path>) -> Result<Loaded, Failed> {
     let discovery = discover::discover(hint);
-    let probes = discovery
-        .candidates
-        .iter()
-        .map(|c| format!("{}: {} ({})", c.label, c.path.display(), c.detail))
-        .collect::<Vec<_>>();
+    let probes = discovery.candidates.iter().map(|c| format!("{}: {} ({})", c.label, c.path.display(), c.detail)).collect::<Vec<_>>();
     let Some((kind, path)) = discovery.found.clone() else {
         let message = match hint {
             Some(hint) => format!("No game data found at {}.", hint.display()),

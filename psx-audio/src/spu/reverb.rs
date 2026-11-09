@@ -110,17 +110,7 @@ fn mul(sample: i32, volume: u16) -> i32 {
 impl Reverb {
     /// A unit with all registers zero and the work area at `base` (bytes).
     pub(crate) fn new(base: u32) -> Self {
-        Self {
-            regs: [0; 32],
-            base,
-            cursor: base,
-            out_left: 0,
-            out_right: 0,
-            enabled: false,
-            tick: 0,
-            out: (0, 0),
-            model: ReverbModel::Hardware,
-        }
+        Self { regs: [0; 32], base, cursor: base, out_left: 0, out_right: 0, enabled: false, tick: 0, out: (0, 0), model: ReverbModel::Hardware }
     }
 
     /// Choose the delay-line timing; call before the first sample.
@@ -178,8 +168,7 @@ impl Reverb {
     /// All-pass stage; returns the new running value.
     fn all_pass(&self, ram: &mut [u8], value: i32, m: usize, d: usize, volume: usize) -> i32 {
         let regs = &self.regs;
-        let delayed_at = self
-            .wrap(self.cursor.wrapping_add(u32::from(regs[m]).wrapping_sub(u32::from(regs[d])) * self.model.unit()));
+        let delayed_at = self.wrap(self.cursor.wrapping_add(u32::from(regs[m]).wrapping_sub(u32::from(regs[d])) * self.model.unit()));
         let delayed = self.read(ram, delayed_at);
         let value = value - mul(delayed, regs[volume]);
         self.write(ram, self.at(m, 0), value);
@@ -213,10 +202,7 @@ impl Reverb {
             let ro = self.all_pass(ram, ro, M_RAPF1, D_APF1, V_APF1);
             let lo = self.all_pass(ram, lo, M_LAPF2, D_APF2, V_APF2);
             let ro = self.all_pass(ram, ro, M_RAPF2, D_APF2, V_APF2);
-            self.out = (
-                sat((lo * i32::from(self.out_left)) >> VOLUME_BITS),
-                sat((ro * i32::from(self.out_right)) >> VOLUME_BITS),
-            );
+            self.out = (sat((lo * i32::from(self.out_left)) >> VOLUME_BITS), sat((ro * i32::from(self.out_right)) >> VOLUME_BITS));
             self.cursor += SAMPLE_BYTES;
             if self.cursor > RAM_LAST_PAIR {
                 self.cursor = self.base;

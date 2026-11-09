@@ -86,12 +86,7 @@ pub fn open_with(kind: SourceKind, path: &Path, naming: &dyn Naming) -> Result<L
 
 fn folder_ok(dir: &Path) -> std::result::Result<String, String> {
     let source = FolderSource::open(dir).map_err(|e| e.message().to_string())?;
-    let count = source
-        .list()
-        .map_err(|e| e.message().to_string())?
-        .iter()
-        .filter(|p| p.to_ascii_lowercase().starts_with("bin/bgm/") && p.to_ascii_lowercase().ends_with(".emi"))
-        .count();
+    let count = source.list().map_err(|e| e.message().to_string())?.iter().filter(|p| p.to_ascii_lowercase().starts_with("bin/bgm/") && p.to_ascii_lowercase().ends_with(".emi")).count();
     if count == 0 { Err("no BIN/BGM/*.EMI archive".into()) } else { Ok(format!("BIN/BGM: {count} EMI archives")) }
 }
 
@@ -120,9 +115,7 @@ fn probe(path: &Path) -> (Option<SourceKind>, PathBuf, String) {
     }
     match DiscSource::open(path) {
         Ok(disc) => match disc.list() {
-            Ok(files) if files.iter().any(|f| f.to_ascii_lowercase().starts_with("bin/")) => {
-                (Some(SourceKind::Disc), path.to_path_buf(), disc.describe())
-            }
+            Ok(files) if files.iter().any(|f| f.to_ascii_lowercase().starts_with("bin/")) => (Some(SourceKind::Disc), path.to_path_buf(), disc.describe()),
             _ => (None, path.to_path_buf(), "ISO9660 root has no BIN directory".into()),
         },
         Err(e) => (None, path.to_path_buf(), if reason.is_empty() { e.message().to_string() } else { reason }),
@@ -142,13 +135,7 @@ fn probes(hint: Option<&Path>) -> Vec<(String, PathBuf)> {
         root("BOF3_GAME_DIR", PathBuf::from(value));
     }
     let scan = |out: &mut Vec<(String, PathBuf)>, label: String, base: &Path| {
-        for (suffix, sub) in [
-            ("/out/extracted", "out/extracted"),
-            ("/decomp/build/disc", "decomp/build/disc"),
-            ("/BIN", "BIN"),
-            ("/inputs/external", "inputs/external"),
-            ("", ""),
-        ] {
+        for (suffix, sub) in [("/out/extracted", "out/extracted"), ("/decomp/build/disc", "decomp/build/disc"), ("/BIN", "BIN"), ("/inputs/external", "inputs/external"), ("", "")] {
             out.push((format!("{label}{suffix}"), if sub.is_empty() { base.to_path_buf() } else { base.join(sub) }));
         }
     };
@@ -213,9 +200,7 @@ pub fn browse(dir: &Path) -> std::io::Result<Vec<Entry>> {
             let name = item.file_name().to_string_lossy().into_owned();
             let path = item.path();
             let is_dir = path.is_dir();
-            let supported = path
-                .extension()
-                .is_some_and(|ext| ["cue", "bin", "iso", "img"].iter().any(|wanted| ext.eq_ignore_ascii_case(wanted)));
+            let supported = path.extension().is_some_and(|ext| ["cue", "bin", "iso", "img"].iter().any(|wanted| ext.eq_ignore_ascii_case(wanted)));
             (!name.starts_with('.') && (is_dir || supported)).then_some(Entry { name, path, is_dir })
         })
         .collect();

@@ -193,8 +193,7 @@ impl Event {
     /// assert_eq!(event.tempo(), Some(500_000));
     /// ```
     pub fn tempo(&self) -> Option<u32> {
-        (self.kind() == Kind::Meta && self.meta_type == META_TEMPO && self.meta.len() >= 3)
-            .then(|| u24_be(&self.meta, 0))
+        (self.kind() == Kind::Meta && self.meta_type == META_TEMPO && self.meta.len() >= 3).then(|| u24_be(&self.meta, 0))
     }
 }
 
@@ -271,8 +270,7 @@ impl Sequence {
                 event.meta_type = *track.get(at).ok_or_else(|| midi_error("a meta event has no type"))?;
                 at += 1;
                 let length = midi_vlq(track, &mut at)? as usize;
-                let payload =
-                    track.get(at..at + length).ok_or_else(|| midi_error("a meta payload runs past the track"))?;
+                let payload = track.get(at..at + length).ok_or_else(|| midi_error("a meta payload runs past the track"))?;
                 event.meta = payload.to_vec();
                 at += length;
             } else if status >= 0xf0 {
@@ -525,8 +523,7 @@ impl Package {
     /// assert_eq!(&midi[..4], b"MThd");
     /// ```
     pub fn to_midi(&self, index: usize) -> Result<Vec<u8>> {
-        let sequence =
-            self.sequences.get(index).ok_or(Error::SepSequenceOutOfRange { index, count: self.sequences.len() })?;
+        let sequence = self.sequences.get(index).ok_or(Error::SepSequenceOutOfRange { index, count: self.sequences.len() })?;
         if sequence.resolution == 0 {
             return Err(Error::SepNoResolution);
         }
@@ -633,8 +630,7 @@ impl Package {
                     running = message.status;
                 }
             }
-            let ends =
-                item.events.last().is_some_and(|event| event.kind() == Kind::Meta && event.meta_type == META_END);
+            let ends = item.events.last().is_some_and(|event| event.kind() == Kind::Meta && event.meta_type == META_END);
             if !ends {
                 problems.push(Problem::NoEndOfTrack { sequence });
             }

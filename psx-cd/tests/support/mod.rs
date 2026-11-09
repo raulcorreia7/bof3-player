@@ -77,12 +77,7 @@ pub fn xa_fixture() -> Vec<u8> {
     let mut bytes = fixture(true, false);
     let directory = 20 * RAW_SECTOR_SIZE + RAW_USER_DATA_OFFSET;
     bytes[directory..directory + ISO_SECTOR_SIZE].fill(0);
-    let records = [
-        record(20, 2048, 2, &[0]),
-        record(20, 2048, 2, &[1]),
-        xa_record(24, (XA_SECTORS * ISO_SECTOR_SIZE) as u32, b"STREAM.XA;1"),
-        record(22, 2048, 2, b"DIR"),
-    ];
+    let records = [record(20, 2048, 2, &[0]), record(20, 2048, 2, &[1]), xa_record(24, (XA_SECTORS * ISO_SECTOR_SIZE) as u32, b"STREAM.XA;1"), record(22, 2048, 2, b"DIR")];
     let mut offset = directory;
     for record in records {
         bytes[offset..offset + record.len()].copy_from_slice(&record);

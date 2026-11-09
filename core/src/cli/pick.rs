@@ -23,8 +23,7 @@ struct Picker {
 
 impl Picker {
     fn new(dir: PathBuf, folders_only: bool) -> Self {
-        let mut picker =
-            Self { dir: PathBuf::new(), entries: Vec::new(), error: None, state: ListState::default(), folders_only };
+        let mut picker = Self { dir: PathBuf::new(), entries: Vec::new(), error: None, state: ListState::default(), folders_only };
         picker.go(dir);
         picker
     }
@@ -63,10 +62,7 @@ impl Picker {
     }
 
     fn draw(&mut self, frame: &mut Frame<'_>, message: &str) {
-        let rows = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Length(4), Constraint::Min(3), Constraint::Length(1)])
-            .split(frame.area());
+        let rows = Layout::default().direction(Direction::Vertical).constraints([Constraint::Length(4), Constraint::Min(3), Constraint::Length(1)]).split(frame.area());
         let head = vec![
             Line::styled("♫ Breath of Fire III: choose your game data", Style::new().add_modifier(Modifier::BOLD)),
             Line::styled(message.to_string(), Style::new().fg(Color::Yellow)),
@@ -77,24 +73,14 @@ impl Picker {
             .entries
             .iter()
             .map(|entry| {
-                let (mark, style) = if entry.is_dir {
-                    ("▸ ", Style::new().fg(ACCENT))
-                } else {
-                    ("◉ ", Style::new().fg(Color::Green).add_modifier(Modifier::BOLD))
-                };
+                let (mark, style) = if entry.is_dir { ("▸ ", Style::new().fg(ACCENT)) } else { ("◉ ", Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)) };
                 ListItem::new(Line::from(vec![Span::styled(mark, style), Span::styled(entry.name.clone(), style)]))
             })
             .collect();
         let title = self.error.clone().unwrap_or_else(|| " Folders, .cue and disc images ".to_string());
-        let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title(title))
-            .highlight_style(Style::new().add_modifier(Modifier::REVERSED));
+        let list = List::new(items).block(Block::default().borders(Borders::ALL).title(title)).highlight_style(Style::new().add_modifier(Modifier::REVERSED));
         frame.render_stateful_widget(list, rows[1], &mut self.state);
-        let help = hints(
-            &[("j/k", "move"), ("Enter", "open"), ("h", "up"), ("o", "use this folder"), ("q", "quit")],
-            2,
-            frame.area().width as usize,
-        );
+        let help = hints(&[("j/k", "move"), ("Enter", "open"), ("h", "up"), ("o", "use this folder"), ("q", "quit")], 2, frame.area().width as usize);
         frame.render_widget(Paragraph::new(help), rows[2]);
     }
 }
@@ -113,12 +99,7 @@ pub fn pick_folder(terminal: &mut DefaultTerminal, message: &str, start: &Path) 
     run(terminal, message, start.to_path_buf(), true)
 }
 
-fn run(
-    terminal: &mut DefaultTerminal,
-    message: &str,
-    start: PathBuf,
-    folders_only: bool,
-) -> Result<Option<PathBuf>, String> {
+fn run(terminal: &mut DefaultTerminal, message: &str, start: PathBuf, folders_only: bool) -> Result<Option<PathBuf>, String> {
     let mut picker = Picker::new(start, folders_only);
     let result = (|| -> std::io::Result<Option<PathBuf>> {
         loop {

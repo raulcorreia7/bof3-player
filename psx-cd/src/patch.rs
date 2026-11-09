@@ -106,11 +106,7 @@ pub struct Summary {
 /// ```
 pub fn apply(cue_path: &Path, output: &Path, replacements: &[Replacement]) -> Result<Summary> {
     let sheet = cue::read(cue_path)?;
-    let data_track = sheet
-        .tracks
-        .iter()
-        .find(|track| track.mode != cue::TrackMode::Audio)
-        .ok_or_else(|| Error::Patch(format!("{} has no data track", cue_path.display())))?;
+    let data_track = sheet.tracks.iter().find(|track| track.mode != cue::TrackMode::Audio).ok_or_else(|| Error::Patch(format!("{} has no data track", cue_path.display())))?;
     let mut image = Image::open(cue_path)?;
     let entries = image.entries()?;
     let mut targets = Vec::with_capacity(replacements.len());
@@ -144,20 +140,13 @@ pub fn apply(cue_path: &Path, output: &Path, replacements: &[Replacement]) -> Re
 /// than the sectors it occupies.
 fn target(entries: &[Entry], replacement: &Replacement) -> Result<Entry> {
     let name = replacement.path.display();
-    let entry = entries
-        .iter()
-        .find(|entry| !entry.is_directory && entry.path == replacement.path)
-        .ok_or_else(|| Error::Patch(format!("the disc has no file {name}")))?;
+    let entry = entries.iter().find(|entry| !entry.is_directory && entry.path == replacement.path).ok_or_else(|| Error::Patch(format!("the disc has no file {name}")))?;
     if entry.is_xa {
         return Err(Error::Patch(format!("{name} is a Form 2 stream, which cannot be replaced")));
     }
     let room = entry.sectors() * USER_BYTES as u64;
     if replacement.bytes.len() as u64 > room {
-        return Err(Error::Patch(format!(
-            "{name} grows from {} to {} bytes; the disc holds {room} for it",
-            entry.size,
-            replacement.bytes.len()
-        )));
+        return Err(Error::Patch(format!("{name} grows from {} to {} bytes; the disc holds {room} for it", entry.size, replacement.bytes.len())));
     }
     Ok(entry.clone())
 }
@@ -216,9 +205,7 @@ fn records_of(file: &mut File, lba: u32, size: u32) -> Result<Vec<(u32, usize)>>
                 cursor = (cursor / USER_BYTES + 1) * USER_BYTES;
                 continue;
             }
-            let record = data
-                .get(cursor..cursor + record_length)
-                .ok_or_else(|| Error::Patch("a directory record is truncated".into()))?;
+            let record = data.get(cursor..cursor + record_length).ok_or_else(|| Error::Patch("a directory record is truncated".into()))?;
             let name_length = usize::from(record[RECORD_NAME_LENGTH_AT]);
             let name = record.get(RECORD_NAME_AT..RECORD_NAME_AT + name_length).unwrap_or_default();
             // Identifiers 0 and 1 are the directory itself and its parent.
@@ -251,10 +238,7 @@ fn read_extent(file: &mut File, extent: u32, length: u32) -> Result<Vec<u8>> {
 
 /// The sector `index` sectors after `start`.
 fn sector_of(start: u32, index: u64) -> Result<u32> {
-    u64::from(start)
-        .checked_add(index)
-        .and_then(|sector| u32::try_from(sector).ok())
-        .ok_or_else(|| Error::Patch("a sector number is past the disc".into()))
+    u64::from(start).checked_add(index).and_then(|sector| u32::try_from(sector).ok()).ok_or_else(|| Error::Patch("a sector number is past the disc".into()))
 }
 
 fn read_raw(file: &mut File, sector: u32) -> Result<[u8; RAW_SIZE]> {

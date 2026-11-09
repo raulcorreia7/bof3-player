@@ -27,13 +27,11 @@ fn a_synthetic_disc_takes_a_shorter_file_and_every_sector_stays_sealed() {
     let bin = dir.join("synthetic.bin");
     fs::write(&bin, wrap_raw(&fs::read(&cooked).expect("the cooked image"))).expect("the raw image");
     let cue_path = dir.join("synthetic.cue");
-    fs::write(&cue_path, "FILE \"synthetic.bin\" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n")
-        .expect("the cue sheet");
+    fs::write(&cue_path, "FILE \"synthetic.bin\" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n").expect("the cue sheet");
 
     let output = dir.join("patched");
     let shorter = pattern(1200, 3);
-    let summary = apply(&cue_path, &output, &[Replacement { path: "BETA.DAT".into(), bytes: shorter.clone() }])
-        .expect("the synthetic disc patches");
+    let summary = apply(&cue_path, &output, &[Replacement { path: "BETA.DAT".into(), bytes: shorter.clone() }]).expect("the synthetic disc patches");
     // Two sectors of BETA.DAT and the root directory sector that holds its record.
     assert_eq!((summary.files, summary.sealed), (1, 3));
 
@@ -46,19 +44,14 @@ fn a_synthetic_disc_takes_a_shorter_file_and_every_sector_stays_sealed() {
 
     let before = fs::read(&bin).expect("the original image");
     let after = fs::read(output.join("synthetic.bin")).expect("the patched image");
-    let changed: BTreeSet<usize> = (0..before.len() / RAW_SIZE)
-        .filter(|&index| {
-            before[index * RAW_SIZE..(index + 1) * RAW_SIZE] != after[index * RAW_SIZE..(index + 1) * RAW_SIZE]
-        })
-        .collect();
+    let changed: BTreeSet<usize> = (0..before.len() / RAW_SIZE).filter(|&index| before[index * RAW_SIZE..(index + 1) * RAW_SIZE] != after[index * RAW_SIZE..(index + 1) * RAW_SIZE]).collect();
     let first = beta.lba as usize;
     assert_eq!(changed, BTreeSet::from([first, first + 1, SYNTHETIC_ROOT_SECTOR]));
     for raw in after.as_chunks::<RAW_SIZE>().0 {
         assert!(sector::is_sealed(raw));
     }
 
-    let grown =
-        apply(&cue_path, &dir.join("grown"), &[Replacement { path: "BETA.DAT".into(), bytes: pattern(4097, 4) }]);
+    let grown = apply(&cue_path, &dir.join("grown"), &[Replacement { path: "BETA.DAT".into(), bytes: pattern(4097, 4) }]);
     assert!(grown.is_err(), "a file cannot grow past its last sector");
 }
 
