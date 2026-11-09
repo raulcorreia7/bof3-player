@@ -3,7 +3,9 @@
 //! BIOS region and the cache control register, reached through KUSEG, KSEG0 and KSEG1
 //! (psx-spx "Memory Map").
 
-use crate::irq::Irq;
+use crate::dma::{Dma, channel};
+use crate::gpu::Gpu;
+use crate::irq::{Irq, Line};
 
 /// Bytes of main RAM.
 pub const RAM_SIZE: usize = 2 * 1024 * 1024;
@@ -43,6 +45,12 @@ pub struct Bus {
     pub(crate) scratchpad: Vec<u8>,
     /// Interrupt status and mask.
     pub irq: Irq,
+    /// The DMA controller.
+    pub dma: Dma,
+    /// The GPU.
+    pub gpu: Gpu,
+    /// GPU linked lists cut short because they did not end.
+    pub dma_list_overruns: u64,
     io: Vec<u8>,
     cache_control: u32,
     /// CPU cycles run since power-on.
@@ -63,6 +71,9 @@ impl Bus {
             ram: vec![0; RAM_SIZE],
             scratchpad: vec![0; SCRATCHPAD_SIZE],
             irq: Irq::default(),
+            dma: Dma::default(),
+            gpu: Gpu::new(),
+            dma_list_overruns: 0,
             io: vec![0; (IO_END - IO) as usize],
             cache_control: 0,
             cycles: 0,
@@ -173,18 +184,55 @@ impl Bus {
     }
 
     fn read_io(&mut self, p: u32, width: Width) -> u32 {
-        match p {
-            0x1F80_1070 => u32::from(self.irq.status()),
-            0x1F80_1074 => u32::from(self.irq.mask()),
+        let shift = (p & 3) * 8;
+        match p & !3 {
+            0x1F80_1070 => u32::from(self.irq.status()) >> shift,
+            0x1F80_1074 => u32::from(self.irq.mask()) >> shift,
+            0x1F80_1080..=0x1F80_10FF => self.dma.read((p & !3) - 0x1F80_1080) >> shift,
+            0x1F80_1810 => self.gpu.read() >> shift,
+            0x1F80_1814 => self.gpu.status() >> shift,
             _ => read_slice(&self.io, (p - IO) as usize, width),
         }
     }
 
     fn write_io(&mut self, p: u32, value: u32, width: Width) {
-        match p {
-            0x1F80_1070 => self.irq.acknowledge(value as u16),
-            0x1F80_1074 => self.irq.set_mask(value as u16),
-            _ => write_slice(&mut self.io, (p - IO) as usize, value, width),
+        let shift = (p & 3) * 8;
+        let mask = match width {
+            Width::Byte => 0xFF << shift,
+            Width::Half => 0xFFFF << shift,
+            Width::Word => 0xFFFF_FFFF,
+        };
+        let value = value << shift;
+        match p & !3 {
+            0x1F80_1070 => self.irq.acknowledge((value | !mask) as u16),
+            0x1F80_1074 => self.irq.set_mask(((u32::from(self.irq.mask()) & !mask) | (value & mask)) as u16),
+            0x1F80_1080..=0x1F80_10FF => self.dma_write((p & !3) - 0x1F80_1080, value, mask),
+            0x1F80_1810 => {
+                self.gpu.gp0(value);
+                if self.gpu.take_irq() {
+                    self.irq.raise(Line::Gpu);
+                }
+            }
+            0x1F80_1814 => self.gpu.gp1(value),
+            _ => write_slice(&mut self.io, (p - IO) as usize, value >> shift, width),
+        }
+    }
+
+    /// A word a DMA channel moves from RAM to its device.
+    pub(crate) fn dma_to_device(&mut self, index: usize, value: u32) {
+        if index == channel::GPU {
+            self.gpu.gp0(value);
+            if self.gpu.take_irq() {
+                self.irq.raise(Line::Gpu);
+            }
+        }
+    }
+
+    /// A word a DMA channel moves from its device to RAM.
+    pub(crate) fn dma_from_device(&mut self, index: usize) -> u32 {
+        match index {
+            channel::GPU => self.gpu.read(),
+            _ => 0,
         }
     }
 }

@@ -94,11 +94,15 @@ needs no BIOS image.
 | `gte`     | coprocessor 2 registers                                                   |
 | `bus`     | RAM and its mirrors, scratchpad, I/O ports, KUSEG/KSEG0/KSEG1             |
 | `irq`     | `I_STAT` and `I_MASK`                                                     |
+| `gpu`     | `GP0`/`GP1`, VRAM, and the command log: draws with page, CLUT and UVs, uploads |
+| `dma`     | the seven DMA channels, `DPCR` and `DICR`                                 |
 
 | Part | Reference                                                         |
 | ---- | ----------------------------------------------------------------- |
 | CPU  | psx-spx "CPU Specifications", "COP0 - Exception Handling"; MIPS I |
 | Bus  | psx-spx "Memory Map", "Interrupts"                                |
+| GPU  | psx-spx "GPU Render Polygon/Line/Rectangle Commands", "GPU Memory Transfer Commands", "GPU Rendering Attributes", "GPU Display Control Commands", "GPU Status Register" |
+| DMA  | psx-spx "DMA Channels"                                            |
 
 The crate README says why it writes its own core instead of depending on an emulator crate.
 

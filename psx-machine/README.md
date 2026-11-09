@@ -19,8 +19,18 @@ Guide: [psx-machine](../docs/crates.md#psx-machine). The hardware sources are in
 | CPU  | R3000A: every MIPS I instruction, branch and load delay slots, coprocessor 0, exceptions and the interrupt line |
 | GTE  | the coprocessor 2 registers; a GTE command stops the run with `Halt::Gte`                                   |
 | Bus  | 2 MB RAM with its mirrors, 1 KB scratchpad, I/O ports, an empty BIOS region; KUSEG, KSEG0 and KSEG1           |
+| GPU  | `GP0`, `GP1`, `GPUSTAT`, `GPUREAD`; a 1024×512 16-bit VRAM and a log of every command                       |
+| DMA  | seven channels in block, request and linked-list modes, `DPCR`, `DICR` and its interrupt                     |
 
-Unmapped reads return 0 and unmapped writes are dropped; the machine raises no bus errors.
+The GPU log is the point of the crate. Each draw records its shape, vertices (before the drawing
+offset), colours, UVs, texture page, CLUT, depth, texture window, the drawing offset and the
+drawing area. Uploads record their rectangle and pixels; fills, copies, downloads and display
+commands are logged too. Uploads, fills and copies change VRAM; draws are recorded but not
+rasterized, so VRAM holds what the game loaded, not what it drew. A renderer can come later behind
+a feature; the log and VRAM do not depend on one.
+
+Unmapped reads return 0 and unmapped writes are dropped; the machine raises no bus errors. A DMA
+transfer runs to its end the moment it starts.
 
 ## Why the crate writes its own core
 

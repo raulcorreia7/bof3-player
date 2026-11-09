@@ -37,3 +37,7 @@ Avocado, DuckStation) and rustation, whose licence is unclear, were not used as 
 | Exceptions, `SR`, `CAUSE` | COP0 - Exception Handling; COP0 - Register Summary     |
 | Memory map and mirrors    | Memory Map                                             |
 | `I_STAT`, `I_MASK`        | Interrupts                                             |
+| `GP0` command formats     | GPU Render Polygon, Line and Rectangle Commands; GPU Memory Transfer Commands |
+| Page, CLUT, window bits   | GPU Rendering Attributes                               |
+| `GP1`, `GPUSTAT`          | GPU Display Control Commands; GPU Status Register      |
+| DMA modes, `DPCR`, `DICR` | DMA Channels                                           |
