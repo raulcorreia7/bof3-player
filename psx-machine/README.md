@@ -54,9 +54,12 @@ machine) run it; a `Halt` names what stopped it, such as a kernel function with 
 
 With `BOF3_DISC_DIR` naming a *Breath of Fire III* (USA) image, `cargo run --release -p
 psx-machine --example boot -- 600` prints the frames run, GPU command counts and the VRAM
-rectangles written, and `tests/retail.rs` checks that the game's first 32×32 texture upload equals
-the type-3 EMI entry it came from. The game boots through its logo movie to the title screen and,
-with Start pressed, to the title menu. The tty shows one `VSync: timeout`, at frame 481 just after
+rectangles written. `tests/retail.rs` checks that the game's first 32×32 texture upload equals
+the type-3 EMI entry it came from, and plays a new game with scripted buttons: Start through the
+title screen and the opening, then Cross every second. The game loads the first area
+(`WORLD00/AREA024`), fights the first boss battle (`BOSS/BOSS001`) and is back in the field at
+frame 8054, where it waits for the player to walk. The run is deterministic, so the same buttons
+give the same frames. The tty shows one `VSync: timeout`, at frame 481 just after
 the logo returns: `VSync` gives its wait for the next vertical blank 32768 polls, about one frame
 at the machine's flat two cycles per instruction, and the run carries on.
 
