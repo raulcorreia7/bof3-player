@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
-//! Boots the disc in `$BOF3_DISC_DIR` (a folder holding the CUE sheet, or the image itself) and prints what the game
-//! told the GPU.
+//! Boots the disc in `$BOF3_DISC_DIR` (a folder holding the CUE sheet, or the image itself) and
+//! prints what the game told the GPU.
+//!
 //! ```sh
 //! cargo build --release -p psx-machine --example boot
 //! BOF3_DISC_DIR=/path/to/disc target/release/examples/boot 600

@@ -1,4 +1,11 @@
 //! Project XML and `disc_lba.json`, the two metadata files an extraction writes.
+//!
+//! The project XML is the flat `mkpsxiso` project shape: one data track, an
+//! optional license file and a list of files. `disc_lba.json` records every
+//! file's LBA, size and sector length for tools that seek directly.
+//!
+//! # Examples
+//!
 //! ```
 //! let entries = vec![psx_cd::Entry {
 //!     path: "HELLO.TXT".into(),
@@ -49,6 +56,9 @@ struct LbaRow {
 }
 
 /// Names that identify an archive container and its manifest in `disc_lba.json`.
+///
+/// # Examples
+///
 /// ```
 /// let naming = psx_cd::metadata::ArchiveNaming { extension: Some("EMI"), manifest: "emi.json" };
 /// assert_eq!(naming.manifest, "emi.json");
@@ -67,7 +77,11 @@ impl Default for ArchiveNaming<'static> {
     }
 }
 
-/// Writes a project XML for `entries` to `path`; `image_name` names the image the project builds.
+/// Writes a project XML for `entries` to `path`; `image_name` names the image
+/// the project builds.
+///
+/// # Examples
+///
 /// ```
 /// let entries = vec![psx_cd::Entry {
 ///     path: "HELLO.TXT".into(),
@@ -117,6 +131,12 @@ pub fn write_project(path: &Path, entries: &[Entry], image_name: &str) -> Result
 }
 
 /// Writes `disc_lba.json` with caller-named archive manifests.
+///
+/// A file whose extension matches [`ArchiveNaming::extension`] gains a `manifest_path` in
+/// [`ArchiveNaming::manifest`] under its directory. [`ArchiveNaming::default`] maps no archives.
+///
+/// # Examples
+///
 /// ```
 /// let entries = vec![psx_cd::Entry {
 ///     path: "HELLO.TXT".into(),

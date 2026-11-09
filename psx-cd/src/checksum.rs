@@ -1,4 +1,11 @@
 //! MD5 and SHA-256 manifests of an extracted tree.
+//!
+//! A manifest records the image files (`bin`, `cue`, `img` and `iso`, matched
+//! case-insensitively) below a root by their path, size and two digests. Equal
+//! content is recorded once, under the lexically first path.
+//!
+//! # Examples
+//!
 //! ```
 //! let dir = tempfile::tempdir().unwrap();
 //! std::fs::write(dir.path().join("disc.bin"), b"abc").unwrap();
@@ -18,6 +25,9 @@ use sha2::Sha256;
 use crate::error::{Error, Result};
 
 /// One recorded file: its path, size and both digests.
+///
+/// # Examples
+///
 /// ```
 /// let record = psx_cd::checksum::Record {
 ///     path: "disc.bin".into(),
@@ -46,6 +56,9 @@ struct Manifest {
 }
 
 /// Scans the image files below `root`, recording paths relative to `current_dir`.
+///
+/// # Examples
+///
 /// ```
 /// let dir = tempfile::tempdir().unwrap();
 /// std::fs::create_dir(dir.path().join("sub")).unwrap();
@@ -78,6 +91,9 @@ pub fn scan(root: &Path, current_dir: &Path) -> Result<Vec<Record>, Error> {
 }
 
 /// Writes `records` as the manifest JSON at `path`.
+///
+/// # Examples
+///
 /// ```
 /// # let dir = tempfile::tempdir().unwrap();
 /// # std::fs::write(dir.path().join("disc.bin"), b"abc").unwrap();
@@ -96,6 +112,9 @@ pub fn write(path: &Path, records: &[Record]) -> Result<(), Error> {
 }
 
 /// Reads a manifest written by [`write()`].
+///
+/// # Examples
+///
 /// ```
 /// # let dir = tempfile::tempdir().unwrap();
 /// # std::fs::write(dir.path().join("disc.bin"), b"abc").unwrap();
@@ -115,8 +134,11 @@ pub fn read(path: &Path) -> Result<Vec<Record>, Error> {
     Ok(manifest.files)
 }
 
-/// Compares a fresh scan of `root` with `expected`; returns one message per difference, and an empty vector when every
-/// file matches.
+/// Compares a fresh scan of `root` with `expected`; returns one message per
+/// difference, and an empty vector when every file matches.
+///
+/// # Examples
+///
 /// ```
 /// # let dir = tempfile::tempdir().unwrap();
 /// # std::fs::write(dir.path().join("disc.bin"), b"abc").unwrap();
@@ -185,6 +207,9 @@ fn digest(path: &Path) -> Result<(String, String), Error> {
 }
 
 /// The lowercase hex SHA-256 of `bytes`.
+///
+/// # Examples
+///
 /// ```
 /// assert_eq!(
 ///     psx_cd::checksum::sha256_hex(b"abc"),

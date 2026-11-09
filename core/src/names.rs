@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 //! The names file: titles and labels for the catalog, read from one JSON file.
+//!
+//! The library ships no game text. A names file supplies it; `--names FILE` picks one and
+//! [`default_path`] finds one when the switch is absent. The schema is in `docs/player.md`.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -45,7 +48,7 @@ pub enum Source {
 /// One named item.
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Entry {
-    /// The title or label.
+    /// The title or label. Absent for a copy that shares its original's title.
     pub title: Option<String>,
     /// Where the title comes from.
     #[serde(default)]
@@ -78,6 +81,9 @@ pub struct Names {
 
 impl Names {
     /// Parse a names file.
+    ///
+    /// # Errors
+    /// Returns the reason when the text is not a names file or its version is not [`VERSION`].
     pub fn from_json(text: &str) -> Result<Self, String> {
         let names: Self = serde_json::from_str(text).map_err(|error| error.to_string())?;
         if names.version == VERSION {
@@ -88,6 +94,9 @@ impl Names {
     }
 
     /// Read the names file at `path`.
+    ///
+    /// # Errors
+    /// Returns the reason when the file cannot be read or parsed.
     pub fn read(path: &Path) -> Result<Self, String> {
         let text = std::fs::read_to_string(path).map_err(|error| error.to_string())?;
         Self::from_json(&text)
@@ -120,8 +129,9 @@ impl Names {
     }
 }
 
-/// The names file to use when `--names` is absent: `$BOF3_NAMES`, then `bof3-names.json`, `build/bof3-names.json` or
-/// `data/bof3-names.json` in the working directory and its parents, then in the executable's directory and its parents.
+/// The names file to use when `--names` is absent: `$BOF3_NAMES`, then `bof3-names.json`,
+/// `build/bof3-names.json` or `data/bof3-names.json` in the working directory and its parents,
+/// then in the executable's directory and its parents. `None` when none exists.
 #[must_use]
 pub fn default_path() -> Option<PathBuf> {
     if let Some(value) = std::env::var_os("BOF3_NAMES").filter(|value| !value.is_empty()) {
@@ -138,7 +148,8 @@ pub fn default_path() -> Option<PathBuf> {
         .find(|path| path.is_file())
 }
 
-/// The names file `--names` selects, or else the default one.
+/// The names file `--names` selects, or else the default one. A file that was asked for must
+/// read; a default file that does not read gives the reason as the second value and no names.
 #[must_use]
 pub fn load(explicit: Option<&Path>) -> (Names, Option<String>) {
     let (path, asked) = match explicit {
@@ -187,6 +198,7 @@ impl Naming for Names {
 
     fn music_title(&self, archive: &str, sequence: u32) -> Option<&str> {
         let mut entry = self.music_entry(&format!("{archive}#{sequence}"))?;
+        // The original of a copy is never itself a copy; the bound only guards a bad file.
         for _ in 0..4 {
             if let Some(title) = entry.title.as_deref() {
                 return Some(title);
@@ -290,6 +302,7 @@ mod tests {
     #[test]
     fn every_same_as_in_the_shipped_file_stays_in_its_section() {
         let names = Names::from_json(SHIPPED).unwrap();
+        // A music original is always listed; a bank original may be an archive without an entry.
         for (id, entry) in names.music() {
             if let Some(original) = &entry.same_as {
                 assert!(names.music().contains_key(original), "{id} points at the missing {original}");

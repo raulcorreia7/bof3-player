@@ -1,4 +1,12 @@
 //! A deterministic cooked ISO9660 image built from a folder of files.
+//!
+//! The image has a primary volume descriptor at sector 16, a terminator at 17,
+//! a flat root directory at 18 and the sorted files from sector 19 on. It is a
+//! fixture builder: the input is top-level regular files with conservative
+//! names, at most 32 MiB in total.
+//!
+//! # Examples
+//!
 //! ```
 //! let dir = tempfile::tempdir().unwrap();
 //! std::fs::write(dir.path().join("HELLO.TXT"), b"hello").unwrap();
@@ -25,6 +33,9 @@ struct FileEntry {
 }
 
 /// Text a rebuilt image writes into its primary volume descriptor.
+///
+/// # Examples
+///
 /// ```
 /// let labels = psx_cd::rebuild::VolumeLabels { system: "PLAYSTATION", volume: "FIXTURE" };
 /// assert_eq!(labels.volume, "FIXTURE");
@@ -43,7 +54,11 @@ impl Default for VolumeLabels<'static> {
     }
 }
 
-/// Rebuilds a deterministic cooked ISO9660 image from top-level regular files, with neutral PVD labels.
+/// Rebuilds a deterministic cooked ISO9660 image from top-level regular files,
+/// with neutral PVD labels.
+///
+/// # Examples
+///
 /// ```
 /// let dir = tempfile::tempdir().unwrap();
 /// std::fs::write(dir.path().join("HELLO.TXT"), b"hello").unwrap();
@@ -55,7 +70,14 @@ pub fn iso(input: &Path, output: &Path) -> Result<(), Error> {
     iso_with_labels(input, output, VolumeLabels::default())
 }
 
-/// Rebuilds a deterministic cooked ISO9660 image from top-level regular files with the given PVD labels.
+/// Rebuilds a deterministic cooked ISO9660 image from top-level regular files
+/// with the given PVD labels.
+///
+/// Each label is padded with spaces to its 32-byte field. A label longer than
+/// 32 bytes, or with non-ASCII text, is an error.
+///
+/// # Examples
+///
 /// ```
 /// let dir = tempfile::tempdir().unwrap();
 /// std::fs::write(dir.path().join("HELLO.TXT"), b"hello").unwrap();

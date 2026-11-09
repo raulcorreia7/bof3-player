@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-//! The small controls the window draws itself: panels, buttons, a text field, a slider, level meters and a spectrum.
+//! The small controls the window draws itself: panels, buttons, a text field, a slider, level
+//! meters and a spectrum.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -85,7 +86,7 @@ pub fn panel() -> Div {
     div().bg(palette.surface).border_1().border_color(palette.border).rounded(px(RADIUS_LARGE))
 }
 
-/// A clickable button with an icon, a label or both.
+/// A clickable button with an icon, a label or both. The caller adds `on_click`.
 pub fn button(id: &'static str, icon_name: Option<&'static str>, label: &str, enabled: bool) -> Stateful<Div> {
     let palette = Palette::get();
     let color = if enabled { palette.text } else { palette.disabled };
@@ -117,7 +118,8 @@ pub fn button(id: &'static str, icon_name: Option<&'static str>, label: &str, en
     }
 }
 
-/// A round transport button of `diameter` pixels with an icon.
+/// A round transport button of `diameter` pixels with an icon. `primary` is the accent-colored
+/// play button, the only filled accent control. The caller adds `on_click`.
 pub fn transport(
     id: &'static str,
     icon_name: &'static str,
@@ -156,7 +158,7 @@ pub fn transport(
     }
 }
 
-/// A switch with an icon and a label.
+/// A switch with an icon and a label. The caller adds `on_click`.
 pub fn chip(id: &'static str, icon_name: &'static str, text: &str, on: bool) -> Stateful<Div> {
     let palette = Palette::get();
     let color = if on { palette.accent_hover } else { palette.muted };
@@ -178,7 +180,7 @@ pub fn chip(id: &'static str, icon_name: &'static str, text: &str, on: bool) -> 
         .child(text.to_string())
 }
 
-/// A one-line text box.
+/// A one-line text box. The caller routes the keys; `|` marks the end of the text while active.
 pub fn field(id: &'static str, text: &str, hint: &'static str, active: bool) -> Stateful<Div> {
     let palette = Palette::get();
     let shown: SharedString = match (text.is_empty(), active) {
@@ -202,7 +204,10 @@ pub fn field(id: &'static str, text: &str, hint: &'static str, active: bool) -> 
         .child(shown)
 }
 
-/// A horizontal bar that sets a value from `0.0` to `1.0` on click and drag.
+/// A horizontal bar that sets a value from `0.0` to `1.0` on click and drag. `bounds` receives the
+/// bar's last painted area, which maps the pointer to the value. `marks` are `(start, end)`
+/// fractions for the loop window: a band under the fill, a tint over the played part of it, and
+/// markers above everything.
 pub fn slider<T: 'static>(
     id: &'static str,
     fraction: f32,
@@ -305,11 +310,12 @@ pub fn meter(level: f32) -> Div {
         .child(div().h_full().w(relative(level.clamp(0.0, 1.0))).rounded_full().bg(color))
 }
 
-/// The spectrum: rounded bars colored by height from the theme's gradient and tinted by the music, with a thin cap on
-/// each peak.
+/// The spectrum: rounded bars colored by height from the theme's gradient and tinted by the
+/// music, with a thin cap on each peak.
 pub fn spectrum(levels: Vec<f32>, caps: Vec<f32>, tint: Tint) -> Div {
     let palette = Palette::get();
     let cap_color = color(theme::SPECTRUM_PEAK);
+    // The top of a bar takes the gradient's color at its level, the foot the color at zero.
     let bar_fill = move |level: f32| {
         let stop = |height: f32, at: f32| linear_color_stop(rgb(tint.apply(theme::spectrum_at(height))), at);
         linear_gradient(0.0, stop(level, 0.0), stop(0.0, 1.0))

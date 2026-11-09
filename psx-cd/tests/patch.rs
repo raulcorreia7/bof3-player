@@ -1,5 +1,6 @@
-//! The patch writer on a synthetic disc: a shorter file replaces its sectors and its directory record, every sector
-//! stays sealed, and a file cannot grow past its last sector.
+//! The patch writer on a synthetic disc: a shorter file replaces its sectors and
+//! its directory record, every sector stays sealed, and a file cannot grow past
+//! its last sector. Whole-disc checks live with the extractor.
 
 mod support;
 
@@ -33,6 +34,7 @@ fn a_synthetic_disc_takes_a_shorter_file_and_every_sector_stays_sealed() {
     let shorter = pattern(1200, 3);
     let summary = apply(&cue_path, &output, &[Replacement { path: "BETA.DAT".into(), bytes: shorter.clone() }])
         .expect("the synthetic disc patches");
+    // Two sectors of BETA.DAT and the root directory sector that holds its record.
     assert_eq!((summary.files, summary.sealed), (1, 3));
 
     let mut image = Image::open(output.join("synthetic.cue")).expect("the patched disc opens");
@@ -65,13 +67,14 @@ fn pattern(len: usize, seed: u8) -> Vec<u8> {
     (0..len).map(|index| (index as u8).wrapping_mul(31).wrapping_add(seed)).collect()
 }
 
-/// A cooked 2048-byte image as Mode 2 Form 1 raw sectors: sync, address, a data sub-header, the user bytes, then the
-/// sealed EDC and parity.
+/// A cooked 2048-byte image as Mode 2 Form 1 raw sectors: sync, address, a data sub-header, the user bytes, then
+/// the sealed EDC and parity.
 fn wrap_raw(cooked: &[u8]) -> Vec<u8> {
     let mut raw = Vec::with_capacity(cooked.len() / 2048 * RAW_SIZE);
     for (lba, user) in cooked.as_chunks::<2048>().0.iter().enumerate() {
         let mut sector = [0_u8; RAW_SIZE];
         sector[1..11].fill(0xFF);
+        // Sector 0 of the disc is at 00:02:00.
         let frame = lba + 150;
         let (minutes, seconds, frames) = (frame / 4500, frame / 75 % 60, frame % 75);
         sector[12..16].copy_from_slice(&[bcd(minutes), bcd(seconds), bcd(frames), 2]);

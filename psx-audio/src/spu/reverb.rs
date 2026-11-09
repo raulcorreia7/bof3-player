@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 //! SPU reverb unit (psx-spx, "SPU Reverb Registers" and "SPU Reverb Formula").
-//! Address registers count 8-byte units (psx-spx: "addresses in SPU memory (divided by 8)").
+//!
+//! The delay lines live in SPU RAM between `base` and the end of RAM. One
+//! output side is computed per 44.1 kHz sample: left on even samples, right on
+//! odd ones, the buffer address advancing after the right side. Address
+//! registers count 8-byte units (psx-spx: "addresses in SPU memory (divided by 8)").
 
 use super::RAM_SIZE;
 use super::tables::ReverbPreset;
@@ -15,17 +19,22 @@ const SAMPLE_BYTES: u32 = 2;
 const VOLUME_BITS: u32 = 15;
 
 /// Which delay-line timing the unit uses.
+///
+/// # Examples
+///
 /// ```
 /// assert_eq!(psx_audio::spu::ReverbModel::default(), psx_audio::spu::ReverbModel::Hardware);
 /// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ReverbModel {
-    /// Hardware timing from psx-spx: address registers count 8-byte units and the buffer address advances once per
-    /// 22.05 kHz cycle.
+    /// Hardware timing from psx-spx: address registers count 8-byte units and
+    /// the buffer address advances once per 22.05 kHz cycle.
     #[default]
     Hardware,
-    /// The timing of the earlier renderer: address registers count 2-byte samples and the buffer advances once per 44.1
-    /// kHz sample, with both sides computed together.
+    /// The timing of the earlier renderer: address registers count 2-byte
+    /// samples and the buffer advances once per 44.1 kHz sample, with both
+    /// sides computed together. Delays come out 8 times shorter than on
+    /// hardware. Kept only so old renders can be reproduced.
     Legacy,
 }
 
@@ -124,8 +133,8 @@ impl Reverb {
         self.regs = *preset;
     }
 
-    /// Move the work area; this also resets the buffer address (psx-spx: writing mBASE sets the current buffer
-    /// address).
+    /// Move the work area; this also resets the buffer address (psx-spx: writing
+    /// mBASE sets the current buffer address).
     pub(crate) fn set_base(&mut self, base: u32) {
         self.base = base.min(RAM_LAST_PAIR);
         self.cursor = self.base;

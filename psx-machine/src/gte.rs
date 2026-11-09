@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
-//! The geometry transformation engine (coprocessor 2): its registers and commands, written from psx-spx "Geometry
-//! Transformation Engine (GTE)".
+//! The geometry transformation engine (coprocessor 2): its registers and commands, written from
+//! psx-spx "Geometry Transformation Engine (GTE)". Commands finish at once; the machine does not
+//! model their cycle counts.
 
 use crate::Halt;
 
@@ -207,6 +208,9 @@ impl Gte {
     }
 
     /// Runs the command in the low 25 bits of a `COP2` instruction.
+    ///
+    /// # Errors
+    ///
     /// [`Halt::Gte`] for an opcode psx-spx lists as having no function.
     pub fn command(&mut self, command: u32) -> Result<(), Halt> {
         let fields = Fields { shift: if command & (1 << 19) != 0 { 12 } else { 0 }, lm: command & (1 << 10) != 0 };
@@ -239,8 +243,8 @@ impl Gte {
         Ok(())
     }
 
-    /// Adds `terms` the way the 44-bit accumulator of `MAC1`–`MAC3` does: each partial sum sets the overflow flags of
-    /// accumulator `index` (0–2) and wraps to 44 bits.
+    /// Adds `terms` the way the 44-bit accumulator of `MAC1`–`MAC3` does: each partial sum sets
+    /// the overflow flags of accumulator `index` (0–2) and wraps to 44 bits.
     fn accumulate(&mut self, index: usize, terms: &[i64]) -> i64 {
         let mut sum = 0i64;
         for term in terms {
@@ -273,8 +277,8 @@ impl Gte {
         value.clamp(min, 0x7FFF) as i16
     }
 
-    /// Stores the three accumulator `sums` shifted by `sf` into `MAC1`–`MAC3`, and from there, saturated, into
-    /// `IR1`–`IR3`.
+    /// Stores the three accumulator `sums` shifted by `sf` into `MAC1`–`MAC3`, and from there,
+    /// saturated, into `IR1`–`IR3`.
     fn store(&mut self, sums: [i64; 3], fields: Fields) {
         for (index, sum) in sums.into_iter().enumerate() {
             self.mac[index + 1] = (sum >> fields.shift) as i32;
@@ -327,7 +331,8 @@ impl Gte {
         self.colours = [self.colours[1], self.colours[2], colour];
     }
 
-    /// The perspective division `H / SZ3` as the hardware's reciprocal approximation computes it, in 16 fraction bits.
+    /// The perspective division `H / SZ3` as the hardware's reciprocal approximation computes
+    /// it, in 16 fraction bits.
     fn divide(&mut self) -> i64 {
         let (h, sz3) = (u64::from(self.h), u64::from(self.sz[3]));
         if h >= sz3 * 2 {

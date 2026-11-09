@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: MIT
 //! Pulling PCM out of a PlayStation stream.
+//!
+//! [`Player`] owns an [`Engine`] and adds gain, stop/play and the float view. The crate ships
+//! XA-stream and CD-DA engines ([`Player::xa`], [`Player::cdda`]); any other decoder implements
+//! [`Engine`] and is played through [`Player::new`].
 
 use alloc::boxed::Box;
 use alloc::format;
@@ -31,6 +35,9 @@ const GAIN_ONE: i32 = 4096;
 const GAIN_BITS: u32 = 12;
 
 /// Loop repetition request.
+///
+/// # Examples
+///
 /// ```
 /// assert_eq!(psx_audio::Loop::default(), psx_audio::Loop::Off);
 /// assert_ne!(psx_audio::Loop::Forever, psx_audio::Loop::Times(1));
@@ -47,6 +54,12 @@ pub enum Loop {
 }
 
 /// A source of interleaved PCM that [`Player`] drives.
+///
+/// Implement it to play your own decoder through the player's gain, stop/play and float views,
+/// or use the built-in [`Player::xa`] and [`Player::cdda`] constructors.
+///
+/// # Examples
+///
 /// ```
 /// use psx_audio::{Engine, Player};
 ///
@@ -68,12 +81,14 @@ pub enum Loop {
 /// ```
 pub trait Engine: Send {
     /// Render up to `out.len()` samples and return the frames written, 0 at the end.
+    ///
+    /// `out` holds whole interleaved frames: a multiple of [`Engine::channels`].
     fn render(&mut self, out: &mut [i16]) -> Result<usize>;
 
     /// Move to `seconds`, clamped to the stream.
     fn seek(&mut self, seconds: f64) -> Result<()>;
 
-    /// Native sample rate in Hz.
+    /// Native sample rate in Hz. The player never resamples.
     fn rate(&self) -> u32;
 
     /// Interleaved channels per frame.
@@ -95,6 +110,9 @@ pub trait Engine: Send {
 }
 
 /// Which sectors of an XA stream to play.
+///
+/// # Examples
+///
 /// ```
 /// let stream = psx_audio::XaStream { channel: 0, first_sector: 0, sector_count: 16, duration: 1.0 };
 /// assert_eq!(stream.sector_count, 16);
@@ -148,6 +166,7 @@ impl<'a> XaEngine<'a> {
             rate: 0,
             scratch: Vec::new(),
         };
+        // Decode up to the channel's first sector so the shape is known before the device opens.
         while !engine.ended && engine.channels == 0 {
             engine.decode_next_sector()?;
         }
@@ -202,6 +221,7 @@ impl<'a> XaEngine<'a> {
                 self.rate = rate;
             }
             self.decoded_sectors += 1;
+            // The EOF bit closes this channel's span: deliver the samples, then stop.
             if (self.piece.sector_count == 0 && eof)
                 || (self.piece.sector_count != 0 && self.decoded_sectors >= self.piece.sector_count)
             {
@@ -361,7 +381,15 @@ impl Engine for CddaEngine<'_> {
     }
 }
 
-/// Plays one stream: pull samples with [`Player::render_i16`] or [`Player::render_f32`] from your audio thread.
+/// Plays one stream: pull samples with [`Player::render_i16`] or
+/// [`Player::render_f32`] from your audio thread.
+///
+/// A player never touches an audio device and never allocates while rendering
+/// (except the first call after a seek). It is `Send`, not `Sync`: use it from
+/// one thread at a time.
+///
+/// # Examples
+///
 /// ```
 /// use psx_audio::{MemorySource, Player, Source, XaStream};
 ///
@@ -396,6 +424,9 @@ impl core::fmt::Debug for Player<'_> {
 
 impl<'a> Player<'a> {
     /// Wrap `engine`.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{Engine, Player};
     ///
@@ -428,6 +459,14 @@ impl<'a> Player<'a> {
     }
 
     /// Play `stream` of an XA file through its channel decoder.
+    ///
+    /// # Errors
+    ///
+    /// Fails when the stream has no audio sector for `stream.channel`, or its sectors are
+    /// malformed.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source, XaStream};
     ///
@@ -450,6 +489,13 @@ impl<'a> Player<'a> {
     }
 
     /// Play a CD-DA track: raw 2352-byte sectors when `raw`, a 16-bit WAVE file otherwise.
+    ///
+    /// # Errors
+    ///
+    /// Fails when the file is not 16-bit PCM, has no complete frame, or is truncated.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -464,8 +510,11 @@ impl<'a> Player<'a> {
         Ok(Self::new(CddaEngine::new(blob, raw)?))
     }
 
-    /// Sample rate of the produced audio, in Hz.
+    /// Sample rate of the produced audio, in Hz. The player never resamples.
     #[must_use]
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -483,6 +532,9 @@ impl<'a> Player<'a> {
 
     /// Interleaved channels per frame (1 or 2).
     #[must_use]
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -500,6 +552,9 @@ impl<'a> Player<'a> {
 
     /// Length of one pass in seconds (music includes its release tail).
     #[must_use]
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -517,6 +572,9 @@ impl<'a> Player<'a> {
 
     /// Current position in seconds.
     #[must_use]
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -534,6 +592,9 @@ impl<'a> Player<'a> {
 
     /// The stream's own loop window `(start, end)` in seconds, when it carries one.
     #[must_use]
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -550,6 +611,10 @@ impl<'a> Player<'a> {
     }
 
     /// Repeat the loop window (or the whole stream when it has none).
+    /// Engines without a loop window ignore this.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -566,6 +631,9 @@ impl<'a> Player<'a> {
     }
 
     /// Output gain, `0.0..=4.0`; 1.0 is a bit-exact bypass.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -583,6 +651,9 @@ impl<'a> Player<'a> {
     }
 
     /// Stop: further renders return 0 frames until [`Player::seek`] or [`Player::play`].
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -600,6 +671,9 @@ impl<'a> Player<'a> {
     }
 
     /// Undo [`Player::stop`] without moving the position.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -616,7 +690,10 @@ impl<'a> Player<'a> {
         self.stopped = false;
     }
 
-    /// Move to `seconds`, clamped to the stream.
+    /// Move to `seconds`, clamped to the stream. Seeking also resumes a stopped player.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -635,6 +712,11 @@ impl<'a> Player<'a> {
     }
 
     /// Render interleaved 16-bit PCM; returns the frames written (0 at the end).
+    ///
+    /// `out.len()` must be a multiple of [`Player::channels`].
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -662,6 +744,9 @@ impl<'a> Player<'a> {
     }
 
     /// Render interleaved 32-bit float PCM in `-1.0..1.0`.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///
@@ -689,7 +774,10 @@ impl<'a> Player<'a> {
         result
     }
 
-    /// Render the rest of the stream.
+    /// Render the rest of the stream. Never call this on a forever-looping player.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_audio::{MemorySource, Player, Source};
     ///

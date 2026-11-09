@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
-//! The GPU as the code sees it: the `GP0` and `GP1` ports, `GPUSTAT`, a 1024×512 16-bit VRAM and a log of every
-//! command. Command formats follow psx-spx "GPU Render Polygon/Line/Rectangle Commands", "GPU Memory Transfer
+//! The GPU as the code sees it: the `GP0` and `GP1` ports, `GPUSTAT`, a 1024×512 16-bit VRAM and a
+//! log of every command. Transfers and fills change VRAM, and draw commands are rasterized into
+//! it unless [`Gpu::set_rasterize`] turns that off; every command is logged either way. Command
+//! formats follow psx-spx "GPU Render Polygon/Line/Rectangle Commands", "GPU Memory Transfer
 //! Commands", "GPU Rendering Attributes" and "GPU Display Control Commands".
 
 mod display;
@@ -274,7 +276,10 @@ pub struct Gpu {
     clut_cache: ClutCache,
 }
 
-/// psx-spx "GPU Texture Caching": the CLUT entries the GPU holds while it draws 4- and 8-bit textures.
+/// psx-spx "GPU Texture Caching": the CLUT entries the GPU holds while it draws 4- and 8-bit
+/// textures. It reloads them when a draw names another CLUT position or needs more entries
+/// than were loaded (16 for 4-bit, 256 for 8-bit), and after `GP0(01h)` or `GP1(01h)`; until
+/// then, VRAM writes over the CLUT do not reach the cache.
 struct ClutCache {
     /// The CLUT position and the entries loaded from it; `None` when invalidated.
     key: Option<(Clut, usize)>,
@@ -299,8 +304,8 @@ impl ClutCache {
     }
 }
 
-/// psx-spx "GP1(00h) - Reset GPU": the horizontal display range after a reset, a 256-pixel line of 10 video clocks per
-/// pixel from clock 200h.
+/// psx-spx "GP1(00h) - Reset GPU": the horizontal display range after a reset, a 256-pixel line
+/// of 10 video clocks per pixel from clock 200h.
 const RESET_HORIZONTAL_RANGE: (u16, u16) = (0x200, 0x200 + 256 * 10);
 /// psx-spx "GP1(00h) - Reset GPU": 240 lines from scanline 10h.
 const RESET_VERTICAL_RANGE: (u16, u16) = (0x10, 0x10 + 240);
@@ -345,7 +350,8 @@ impl Gpu {
         }
     }
 
-    /// Whether draw commands are rasterized into VRAM (the default).
+    /// Whether draw commands are rasterized into VRAM (the default). Without it they are only
+    /// logged, which is faster when only the log is read.
     #[must_use]
     pub fn rasterizes(&self) -> bool {
         self.rasterize
@@ -629,14 +635,14 @@ impl Gpu {
         self.record(Command::Draw(draw));
     }
 
-    /// The `GP0(E1h)` bits of `bits` a write may set: bit 11 only while `GP1(09h)` allows it, as the ps1-tests
-    /// `gpu/gp0-e1` program checks.
+    /// The `GP0(E1h)` bits of `bits` a write may set: bit 11 only while `GP1(09h)` allows it, as
+    /// the ps1-tests `gpu/gp0-e1` program checks.
     fn draw_mode_bits(&self, bits: u32) -> u32 {
         if self.upper_vram { bits } else { bits & !(1 << 11) }
     }
 
-    /// psx-spx "GPU (MISC)", Draw to display enable: in 480-line interlaced mode with `GP0(E1h)` bit 10 clear, rows
-    /// whose parity equals `GPUSTAT` bit 31 are not drawn.
+    /// psx-spx "GPU (MISC)", Draw to display enable: in 480-line interlaced mode with
+    /// `GP0(E1h)` bit 10 clear, rows whose parity equals `GPUSTAT` bit 31 are not drawn.
     fn skipped_parity(&self) -> Option<usize> {
         let interlaced_480 = self.display_mode & 0x24 == 0x24;
         (interlaced_480 && self.draw_mode & (1 << 10) == 0).then_some(usize::from(self.field))
@@ -772,8 +778,8 @@ impl Gpu {
         let from_x = (words[1] & 0x3FF) as u16;
         let from_y = ((words[1] >> 16) & 0x1FF) as u16;
         let size = transfer_rect(words[2], words[3]);
-        // Each row is read before it is written, so a copy onto itself shifted sideways does not smear: the ps1-tests
-        // `gpu/vram-to-vram-overlap` reference (rows up to 16 pixels).
+        // Each row is read before it is written, so a copy onto itself shifted sideways does not
+        // smear: the ps1-tests `gpu/vram-to-vram-overlap` reference (rows up to 16 pixels).
         let mut line = Vec::with_capacity(usize::from(size.width));
         for row in 0..usize::from(size.height) {
             line.clear();
@@ -806,8 +812,8 @@ impl Gpu {
     }
 }
 
-/// psx-spx "GPU Rendering Attributes", TPage Attribute: the `GP0(E1h)` bits a textured polygon's page attribute
-/// replaces (0-8 and 11).
+/// psx-spx "GPU Rendering Attributes", TPage Attribute: the `GP0(E1h)` bits a textured polygon's
+/// page attribute replaces (0-8 and 11).
 const PAGE_ATTRIBUTE_BITS: u32 = 0x09FF;
 
 /// Words a `GP0` command takes, its parameters included; image data follows separately.

@@ -11,12 +11,12 @@ use crate::spu::ReverbModel;
 /// Settings every command shares.
 #[derive(Args, Debug, Clone)]
 pub struct Global {
-    /// Game data: an extracted folder, a .cue sheet or a disc image (default: $BOF3_GAME_DIR, then the working and
-    /// executable directories)
+    /// Game data: an extracted folder, a .cue sheet or a disc image
+    /// (default: $BOF3_GAME_DIR, then the working and executable directories)
     #[arg(short = 'i', long = "input", alias = "dir", global = true, value_name = "PATH")]
     pub dir: Option<PathBuf>,
-    /// Names file (JSON, see docs/player.md); overrides $BOF3_NAMES and the default bof3-names.json in the working and
-    /// executable directories
+    /// Names file (JSON, see docs/player.md); overrides $BOF3_NAMES and the default
+    /// bof3-names.json in the working and executable directories
     #[arg(long, global = true, value_name = "FILE")]
     pub names: Option<PathBuf>,
     /// Machine-readable output where supported (default: off)
@@ -37,11 +37,12 @@ pub struct Global {
     /// Folder `w`, `x` and `X` write into
     #[arg(long, global = true, value_name = "DIR", default_value_os_t = crate::save::default_export_dir())]
     pub export_dir: PathBuf,
-    /// Plays of a looping track's window, counting the first (default 1; FLAC/Ogg music defaults to the intro plus one
-    /// loop)
+    /// Plays of a looping track's window, counting the first (default 1; FLAC/Ogg music
+    /// defaults to the intro plus one loop)
     #[arg(long, global = true, value_name = "N")]
     pub loops: Option<u32>,
-    /// Seconds of fade-out at the end of a saved looping track (default: 10 in the browser, none for render)
+    /// Seconds of fade-out at the end of a saved looping track
+    /// (default: 10 in the browser, none for render)
     #[arg(long, global = true, value_name = "SECONDS")]
     pub fade: Option<f64>,
 }

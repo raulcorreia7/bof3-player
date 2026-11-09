@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: MIT
 //! The window's colors, as semantic tokens that match the terminal player.
+//!
+//! The terminal player (`cli/tui.rs`) names ANSI colors, which each terminal draws its own way.
+//! These tokens use the VS Code "Dark+" terminal values for those names, so the window reads as the
+//! same app: cyan accent, green for playing, yellow for warnings, a navy selection and a gray text
+//! ladder. The surfaces, hover and pressed shades are dark blue-grays on the selection hue. A test
+//! checks that the tokens still match the terminal player's colors. Each color is a 24-bit
+//! `0xRRGGBB` value.
 
 /// The window backdrop and text inputs: the selection hue, nearly black.
 pub const BG: u32 = 0x0d0f14;
@@ -37,7 +44,8 @@ pub const SUCCESS: u32 = 0x0dbc79;
 pub const WARNING: u32 = 0xe5e510;
 /// Errors and a clipping level: ANSI bright red, which reads on dark surfaces.
 pub const DANGER: u32 = 0xf14c4c;
-/// The spectrum's gradient by height, foot to top: cool blue, violet, then a warm pink at full level.
+/// The spectrum's gradient by height, foot to top: cool blue, violet, then a warm pink at full
+/// level. Every stop reads on the dark surfaces and on a light terminal.
 pub const SPECTRUM: [u32; 3] = [0x1e88e5, 0x8e5cf0, 0xf0507f];
 /// The peak caps above the spectrum's bars: a bright amber that stands apart from the gradient.
 pub const SPECTRUM_PEAK: u32 = 0xffa31a;
@@ -106,10 +114,12 @@ mod tests {
                 assert_contrast(text, background, 4.5);
             }
         }
+        // Errors and the plain accent never sit on a selected or hovered row.
         for background in SURFACES {
             assert_contrast(ACCENT, background, 4.5);
             assert_contrast(DANGER, background, 4.5);
         }
+        // Disabled text is exempt from the body limit; it keeps the large-text limit where it sits.
         for background in [BG, SURFACE] {
             assert_contrast(TEXT_DISABLED, background, 3.0);
         }
@@ -133,8 +143,10 @@ mod tests {
             }
         }
         assert_contrast(FOCUS_RING, SELECTION, 3.0);
+        // The markers show on the band and on the bar's empty track.
         assert_contrast(LOOP_MARK, LOOP_BAND, 3.0);
         assert_contrast(LOOP_MARK, SURFACE_RAISED, 3.0);
+        // Over the played fill, the band and the markers still stand out.
         assert_contrast(LOOP_MARK_PLAYED, ACCENT, 2.0);
         assert_contrast(LOOP_MARK_PLAYED, LOOP_BAND_PLAYED, 3.0);
         assert_contrast(LOOP_BAND_PLAYED, ACCENT, 1.5);
@@ -154,6 +166,7 @@ mod tests {
     }
 
     /// The tokens equal the ANSI colors the terminal player names, in the Dark+ terminal scheme.
+    /// `DANGER` is the bright red: the plain red fails the text limit on dark surfaces.
     #[cfg(feature = "cli")]
     #[test]
     fn tokens_match_the_terminal_player() {
@@ -170,6 +183,7 @@ mod tests {
             Color::Rgb(r, g, b) => u32::from(r) << 16 | u32::from(g) << 8 | u32::from(b),
             other => panic!("{other:?} is not a terminal player color"),
         };
+        // Accent, dim, playing, warning, selection, text and badge text, as `cli/tui.rs` draws them.
         assert_eq!(ACCENT, rgb(Color::Cyan));
         assert_eq!(TEXT_DISABLED, rgb(Color::DarkGray));
         assert_eq!(SUCCESS, rgb(Color::Green));

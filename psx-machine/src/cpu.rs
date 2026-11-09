@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-//! The R3000A core: the MIPS I instruction set with its branch and load delay slots, coprocessor 0 (status, cause,
-//! exception PC) and the exceptions the PlayStation uses. Behaviour follows psx-spx "CPU Specifications" and the MIPS I
-//! architecture; see `docs/PROVENANCE.md`.
+//! The R3000A core: the MIPS I instruction set with its branch and load delay slots, coprocessor 0
+//! (status, cause, exception PC) and the exceptions the PlayStation uses. Behaviour follows psx-spx
+//! "CPU Specifications" and the MIPS I architecture; see `docs/PROVENANCE.md`.
 
 use crate::Halt;
 use crate::bus::Bus;
@@ -48,7 +48,8 @@ const SR_BOOT_VECTORS: u32 = 1 << 22;
 const CAUSE_BRANCH_DELAY: u32 = 1 << 31;
 const CAUSE_HARDWARE_IRQ: u32 = 1 << 10;
 
-/// The CPU state: general registers, `HI`/`LO`, the program counters, the pending load and coprocessors 0 and 2.
+/// The CPU state: general registers, `HI`/`LO`, the program counters, the pending load and
+/// coprocessors 0 and 2.
 #[derive(Clone)]
 pub struct Cpu {
     regs: [u32; 32],
@@ -172,6 +173,10 @@ impl Cpu {
     }
 
     /// Runs one instruction, or enters the interrupt handler when an enabled interrupt is pending.
+    ///
+    /// # Errors
+    ///
+    /// [`Halt::Gte`] when the instruction is a GTE command with an opcode that has no function.
     pub fn step(&mut self, bus: &mut Bus) -> Result<(), Halt> {
         if self.take_interrupt(bus) {
             return Ok(());
@@ -218,7 +223,8 @@ impl Cpu {
         true
     }
 
-    /// Whether the instruction at `pc` is a GTE command.
+    /// Whether the instruction at `pc` is a GTE command. Hardware runs a GTE command before it
+    /// takes an interrupt there, so the interrupt waits one instruction.
     fn next_is_gte_command(&self, bus: &mut Bus) -> bool {
         self.pc & 3 == 0 && bus.peek32(self.pc).is_some_and(|word| word >> 25 == 0x25)
     }

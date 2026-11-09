@@ -1,4 +1,6 @@
 //! The CLUT palette codec, on a synthetic bank.
+//!
+//! The bank is built here from constants.
 
 use std::fs;
 

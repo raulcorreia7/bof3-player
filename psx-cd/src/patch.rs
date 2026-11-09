@@ -1,6 +1,16 @@
-//! Patched disc images: files of the data track replaced in place, with every sector they change sealed again.
-//! The data track is Mode 2 Form 1, so each sector's EDC and parity come from `psx_formats::sector` (`psx-spx` "CDROM
-//! Sector Encoding").
+//! Patched disc images: files of the data track replaced in place, with every
+//! sector they change sealed again.
+//!
+//! The data track is Mode 2 Form 1, so each sector's EDC and parity come from
+//! `psx_formats::sector` (`psx-spx` "CDROM Sector Encoding"). A replacement
+//! keeps the file's sectors and can be shorter than the stored file, never
+//! longer: the disc has no room to move the files after it. The directory
+//! record that gives the file's size is updated, and so is the sector that
+//! holds it. Form 2 streams (XA and STR) are not replaced. Every other sector,
+//! the audio track and the cue sheet are copied as stored.
+//!
+//! # Examples
+//!
 //! ```no_run
 //! # fn main() -> Result<(), psx_cd::Error> {
 //! use psx_cd::patch::Replacement;
@@ -34,7 +44,7 @@ const USER_BYTES: usize = 2048;
 const PVD_SECTOR: u32 = 16;
 const ROOT_RECORD_AT: usize = 156;
 const ROOT_RECORD_BYTES: usize = 34;
-/// Offsets inside a directory record.
+/// Offsets inside a directory record. The size is stored twice, little endian then big endian.
 const RECORD_EXTENT_AT: usize = 2;
 const RECORD_SIZE_AT: usize = 10;
 const RECORD_FLAGS_AT: usize = 25;
@@ -42,7 +52,11 @@ const RECORD_NAME_LENGTH_AT: usize = 32;
 const RECORD_NAME_AT: usize = 33;
 const FLAG_DIRECTORY: u8 = 0x02;
 
-/// One file to replace: its path on the disc, such as `DATA.BIN` or `DIR/FILE.BIN`, and its new bytes.
+/// One file to replace: its path on the disc, such as `DATA.BIN` or
+/// `DIR/FILE.BIN`, and its new bytes.
+///
+/// # Examples
+///
 /// ```
 /// let replacement = psx_cd::patch::Replacement { path: "DATA.BIN".into(), bytes: b"new".to_vec() };
 /// assert_eq!(replacement.path, std::path::Path::new("DATA.BIN"));
@@ -56,6 +70,9 @@ pub struct Replacement {
 }
 
 /// What a patch wrote.
+///
+/// # Examples
+///
 /// ```
 /// let summary = psx_cd::patch::Summary { files: 2, sealed: 5 };
 /// assert_eq!(summary.files + summary.sealed as usize, 7);
@@ -68,7 +85,12 @@ pub struct Summary {
     pub sealed: u64,
 }
 
-/// Writes a patched copy of the disc named by `cue_path` into the directory `output`.
+/// Writes a patched copy of the disc named by `cue_path` into the directory
+/// `output`. The copy has the cue sheet and every track file under their own
+/// names, with the replacements applied to the data track.
+///
+/// # Examples
+///
 /// ```no_run
 /// # fn main() -> Result<(), psx_cd::Error> {
 /// use psx_cd::patch::{Replacement, apply};
@@ -118,8 +140,8 @@ pub fn apply(cue_path: &Path, output: &Path, replacements: &[Replacement]) -> Re
     Ok(summary)
 }
 
-/// The file a replacement names, checked against the disc: a regular file, not a Form 2 stream, and no larger than the
-/// sectors it occupies.
+/// The file a replacement names, checked against the disc: a regular file, not a Form 2 stream, and no larger
+/// than the sectors it occupies.
 fn target(entries: &[Entry], replacement: &Replacement) -> Result<Entry> {
     let name = replacement.path.display();
     let entry = entries
@@ -140,7 +162,7 @@ fn target(entries: &[Entry], replacement: &Replacement) -> Result<Entry> {
     Ok(entry.clone())
 }
 
-/// Writes `bytes` over the file's sectors, then its directory records.
+/// Writes `bytes` over the file's sectors, then its directory records. Returns the sectors sealed.
 fn replace(file: &mut File, entry: &Entry, bytes: &[u8]) -> Result<u64> {
     let mut sealed = 0;
     for index in 0..entry.sectors() {
@@ -177,8 +199,8 @@ fn replace(file: &mut File, entry: &Entry, bytes: &[u8]) -> Result<u64> {
     Ok(sealed)
 }
 
-/// Every directory record of a regular file with this extent and size, as the sector that holds it and its byte offset
-/// in that sector's user data.
+/// Every directory record of a regular file with this extent and size, as the sector that holds it and its
+/// byte offset in that sector's user data.
 fn records_of(file: &mut File, lba: u32, size: u32) -> Result<Vec<(u32, usize)>> {
     let pvd = read_raw(file, PVD_SECTOR)?;
     let root = &pvd[USER_AT + ROOT_RECORD_AT..USER_AT + ROOT_RECORD_AT + ROOT_RECORD_BYTES];
@@ -199,6 +221,7 @@ fn records_of(file: &mut File, lba: u32, size: u32) -> Result<Vec<(u32, usize)>>
                 .ok_or_else(|| Error::Patch("a directory record is truncated".into()))?;
             let name_length = usize::from(record[RECORD_NAME_LENGTH_AT]);
             let name = record.get(RECORD_NAME_AT..RECORD_NAME_AT + name_length).unwrap_or_default();
+            // Identifiers 0 and 1 are the directory itself and its parent.
             if name != [0] && name != [1] {
                 let record_extent = u32_le(record, RECORD_EXTENT_AT);
                 if record[RECORD_FLAGS_AT] & FLAG_DIRECTORY != 0 {

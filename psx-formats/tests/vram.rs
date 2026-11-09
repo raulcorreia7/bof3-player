@@ -1,4 +1,6 @@
 //! The VRAM upload codec, on a synthetic upload.
+//!
+//! The upload is built here from constants.
 
 use std::fs;
 

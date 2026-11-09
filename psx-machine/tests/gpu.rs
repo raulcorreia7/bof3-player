@@ -39,6 +39,7 @@ fn linked_list_dma_records_a_textured_rect() {
     program.extend(li(T0, 0x0100_0401));
     program.push(sw(T0, 0x10A8, AT)); // CHCR: from RAM, linked list, start
     let (mut machine, end) = machine_with(&program);
+    // An empty node, then one with a draw-mode word and a 40×24 textured rect.
     machine.write_words(0x8003_0000, &[0x0003_0100]);
     machine.write_words(0x8003_0100, &[0x05FF_FFFF, 0xE100_00DA, 0x6480_8080, 0x0014_000A, 0x7802_2010, 0x0018_0028]);
     machine.run_until_pc(end, 1000).unwrap();

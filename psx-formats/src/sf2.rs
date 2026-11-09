@@ -1,4 +1,21 @@
 //! SoundFont 2 (`.sf2`): the writer for a VAB bank, and the reader that takes a file back to its parts.
+//!
+//! A bank becomes one SoundFont file. Program `p` of the bank is preset `p` of bank 0, with an
+//! instrument of the same program, so a Standard MIDI File that selects program `p` plays the same
+//! sound through the SoundFont. Each usable tone is one zone of its program's instrument. The zone
+//! keeps the tone's key range, its root key (the centre note), its tuning (`shift`), its level
+//! (`vol`), its pan and its loop. Each VAG is decoded to 16-bit PCM at 44,100 Hz, the SPU's rate at
+//! pitch `0x1000`.
+//!
+//! [`write()`] keeps no envelope: each zone takes the SoundFont default. [`write_with`] maps the ADSR registers
+//! through a caller's envelope function. Not mapped by either: the reverb send and the program's own volume
+//! and pan.
+//!
+//! [`read`] takes a file back to its presets, instruments, zones and samples. [`vol_of_attenuation`],
+//! [`shift_of_tuning`] and [`pan_of_tenths`] invert the zone mappings of the writer.
+//!
+//! # Examples
+//!
 //! ```
 //! use psx_formats::sf2;
 //! use psx_formats::vab::{Bank, encode_bank};
@@ -17,7 +34,7 @@ use crate::vab::{Bank, Tone};
 const SAMPLE_RATE: u32 = 44_100;
 /// The sample points SoundFont 2 requires after the last sample.
 const SAMPLE_PADDING: usize = 46;
-/// The root key of every sample header.
+/// The root key of every sample header. Each zone overrides it with its centre note.
 const DEFAULT_ROOT_KEY: u8 = 60;
 /// `shift` counts this many units per semitone.
 const SHIFT_UNITS_PER_SEMITONE: i32 = 128;
@@ -26,11 +43,13 @@ const CENTS_PER_SEMITONE: i32 = 100;
 const FULL_VOLUME: f64 = 127.0;
 /// The largest attenuation SoundFont 2 allows, in centibels.
 const MAX_ATTENUATION: i32 = 1440;
-/// The pan of a tone runs from 0 (left) to 127 (right), with 64 at centre.
+/// The pan of a tone runs from 0 (left) to 127 (right), with 64 at centre. The SoundFont pan runs from
+/// -500 to 500 tenths of a percent.
 const PAN_CENTRE: i32 = 64;
 const PAN_RANGE: i32 = 500;
 
-/// SoundFont 2 generator operators.
+/// SoundFont 2 generator operators. Each zone lists its generators in this order, with `sampleID` (or
+/// `instrument`) last.
 const GEN_PAN: u16 = 17;
 const GEN_ATTACK_VOL_ENV: u16 = 34;
 const GEN_DECAY_VOL_ENV: u16 = 36;
@@ -44,7 +63,7 @@ const GEN_FINE_TUNE: u16 = 52;
 const GEN_SAMPLE_ID: u16 = 53;
 const GEN_SAMPLE_MODES: u16 = 54;
 const GEN_OVERRIDING_ROOT_KEY: u16 = 58;
-/// `sfSampleType`: a mono sample.
+/// `sfSampleType`: a mono sample. `sampleModes`: loop continuously.
 const MONO: u16 = 1;
 const LOOP: u16 = 1;
 
@@ -77,7 +96,11 @@ struct InstrumentData {
     zones: Vec<ZoneData>,
 }
 
-/// Writes the bank as a SoundFont 2 file named `name`, with the SoundFont default volume envelope on every zone.
+/// Writes the bank as a SoundFont 2 file named `name`, with the SoundFont default volume envelope on every
+/// zone. `body` is the VAB body the header describes.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::sf2;
 /// use psx_formats::vab::{Bank, encode_bank};
@@ -91,7 +114,12 @@ pub fn write(vab: &Bank, body: &[u8], name: &str) -> Result<Vec<u8>> {
     write_with(vab, body, name, &|_, _| None)
 }
 
-/// Writes the bank as a SoundFont 2 file named `name`.
+/// Writes the bank as a SoundFont 2 file named `name`. Each tone's volume envelope is `envelope` of its ADSR
+/// registers, or the SoundFont default when `envelope` returns `None`. `body` is the VAB body the header
+/// describes.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::sf2;
 /// use psx_formats::vab::{Bank, encode_bank};
@@ -112,6 +140,8 @@ pub fn write_with(
     let mut sample_of_vag: Vec<Option<u16>> = vec![None; vab.vags.len()];
     let mut instruments = Vec::new();
     for ((program, _), block) in vab.playable_programs().zip(vab.tone_blocks()) {
+        // Every slot of the block is a candidate. The voice manager walks the program's up-to-16 tones and
+        // plays each usable tone whose note range holds, so a slot past the program's tone count still sounds.
         let mut zones = Vec::new();
         for tone in block {
             if !tone.is_usable(vab.vag_count) || tone.vol == 0 || tone.min_note > tone.max_note {
@@ -165,8 +195,11 @@ fn zone_of(tone: &Tone, sample: u16, looped: bool, envelope: Envelope) -> ZoneDa
     }
 }
 
-/// The tone volume a zone's attenuation names: the smallest volume whose attenuation is nearest, so a value [`write()`]
-/// produced returns the volume it came from.
+/// The tone volume a zone's attenuation names: the smallest volume whose attenuation is nearest, so a
+/// value [`write()`] produced returns the volume it came from.
+///
+/// # Examples
+///
 /// ```
 /// assert_eq!(psx_formats::sf2::vol_of_attenuation(0), 127);
 /// ```
@@ -174,8 +207,11 @@ pub fn vol_of_attenuation(centibels: i16) -> u8 {
     (1..=127_u8).min_by_key(|&vol| (i32::from(attenuation(vol)) - i32::from(centibels)).abs()).unwrap_or(127)
 }
 
-/// The tone `shift` a zone's tuning names: the smallest shift whose tuning is nearest, so a tuning [`write()`] produced
-/// returns the shift it came from.
+/// The tone `shift` a zone's tuning names: the smallest shift whose tuning is nearest, so a tuning
+/// [`write()`] produced returns the shift it came from.
+///
+/// # Examples
+///
 /// ```
 /// assert_eq!(psx_formats::sf2::shift_of_tuning(0, 0), 0);
 /// ```
@@ -189,8 +225,11 @@ pub fn shift_of_tuning(coarse: i16, fine: i16) -> u8 {
         .unwrap_or(0)
 }
 
-/// The tone pan a zone's pan names: the pan whose SoundFont pan is nearest, so a value [`write()`] produced returns the
-/// pan it came from.
+/// The tone pan a zone's pan names: the pan whose SoundFont pan is nearest, so a value [`write()`] produced
+/// returns the pan it came from.
+///
+/// # Examples
+///
 /// ```
 /// assert_eq!(psx_formats::sf2::pan_of_tenths(0), 64);
 /// ```
@@ -198,7 +237,12 @@ pub fn pan_of_tenths(tenths: i16) -> u8 {
     (0..=127_u8).min_by_key(|&pan_value| (i32::from(pan(pan_value)) - i32::from(tenths)).abs()).unwrap_or(64)
 }
 
-/// The SoundFont volume envelope of a zone.
+/// The SoundFont volume envelope of a zone. The phase times are timecents, `1200 * log2(seconds)`, kept
+/// between `-12000` and `8000`. The sustain is the level below full scale, in centibels. SoundFont 2 gives the
+/// attack a linear rise and the decay and release a linear fall in decibels.
+///
+/// # Examples
+///
 /// ```
 /// let envelope = psx_formats::sf2::Envelope::new(1.0, 0.5, 0x4000, 2.0);
 /// assert_eq!((envelope.attack, envelope.decay, envelope.sustain), (0, -1200, 60));
@@ -217,9 +261,19 @@ pub struct Envelope {
 
 impl Envelope {
     /// The SoundFont defaults: every phase at its shortest time, and the sustain at full level.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(psx_formats::sf2::Envelope::DEFAULT.sustain, 0);
+    /// ```
     pub const DEFAULT: Self = Self { attack: TIMECENTS_MIN, decay: TIMECENTS_MIN, sustain: 0, release: TIMECENTS_MIN };
 
-    /// An envelope from phase times in seconds and a sustain level on the PS1 scale, where `0x8000` is full scale.
+    /// An envelope from phase times in seconds and a sustain level on the PS1 scale, where `0x8000` is full
+    /// scale.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let envelope = psx_formats::sf2::Envelope::new(0.5, 1.0, 0x8000, 0.25);
     /// assert_eq!(envelope.sustain, 0, "full scale is no attenuation");
@@ -238,7 +292,7 @@ impl Envelope {
 const TIMECENTS_MIN: i16 = -12_000;
 const TIMECENTS_MAX: i16 = 8_000;
 
-/// Timecents for a time in seconds.
+/// Timecents for a time in seconds. A time of zero or less is the shortest.
 fn timecents(seconds: f64) -> i16 {
     (1200.0 * seconds.log2()).round().clamp(f64::from(TIMECENTS_MIN), f64::from(TIMECENTS_MAX)) as i16
 }
@@ -413,7 +467,8 @@ fn name20(text: &str) -> [u8; 20] {
     name
 }
 
-/// A string for an INFO chunk: NUL-terminated and of even length.
+/// A string for an INFO chunk: NUL-terminated and of even length. SoundFont 2 counts the padding of its
+/// strings in the chunk size, and fluidsynth rejects an odd size.
 fn nul_terminated(text: &str) -> Vec<u8> {
     let mut bytes = text.as_bytes().to_vec();
     bytes.push(0);
@@ -423,7 +478,7 @@ fn nul_terminated(text: &str) -> Vec<u8> {
     bytes
 }
 
-/// A RIFF chunk.
+/// A RIFF chunk. Odd bodies get one padding byte, which the size does not count.
 fn chunk(id: &[u8; 4], body: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(body.len() + 9);
     out.extend_from_slice(id);
@@ -444,7 +499,11 @@ fn list(kind: &[u8; 4], chunks: &[Vec<u8>]) -> Vec<u8> {
     chunk(b"LIST", &body)
 }
 
-/// A SoundFont 2 file read back to the parts a VAB bank is made of.
+/// A SoundFont 2 file read back to the parts a VAB bank is made of. The reader takes what the writer
+/// writes, and any file whose index tables hold together.
+///
+/// # Examples
+///
 /// ```
 /// let font = psx_formats::sf2::SoundFont { presets: vec![], instruments: vec![], samples: vec![] };
 /// assert!(font.samples.is_empty());
@@ -460,6 +519,9 @@ pub struct SoundFont {
 }
 
 /// A preset: the program it plays, in its bank, and the instrument it uses.
+///
+/// # Examples
+///
 /// ```
 /// let preset = psx_formats::sf2::Preset { number: 3, bank: 0, instrument: 3 };
 /// assert_eq!(preset.number, preset.instrument);
@@ -474,7 +536,10 @@ pub struct Preset {
     pub instrument: u16,
 }
 
-/// An instrument: its zones in file order.
+/// An instrument: its zones in file order. A global zone, which names no sample, is not kept.
+///
+/// # Examples
+///
 /// ```
 /// let instrument = psx_formats::sf2::Instrument { zones: vec![] };
 /// assert!(instrument.zones.is_empty());
@@ -486,6 +551,9 @@ pub struct Instrument {
 }
 
 /// One zone: the keys it answers, its tuning, level, pan and volume envelope, and the sample it plays.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::sf2::{Envelope, Zone};
 ///
@@ -525,6 +593,9 @@ pub struct Zone {
 }
 
 /// A sample: its PCM and its loop points, in frames from the first frame.
+///
+/// # Examples
+///
 /// ```
 /// let sample = psx_formats::sf2::Sample {
 ///     name: "VAG001".into(),
@@ -561,7 +632,11 @@ const INST_BAG_AT: usize = 20;
 const BAG_GEN_AT: usize = 0;
 const GEN_DEFAULT_TIME: i16 = TIMECENTS_MIN;
 
-/// Reads a SoundFont 2 file.
+/// Reads a SoundFont 2 file. Fails when it is not an `sfbk` RIFF file, when a chunk it needs is missing, or when an
+/// index points past its table.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::sf2;
 /// use psx_formats::vab::{Bank, encode_bank};
@@ -592,7 +667,7 @@ pub fn read(bytes: &[u8]) -> Result<SoundFont> {
     Ok(SoundFont { presets, instruments, samples })
 }
 
-/// The RIFF chunks in `bytes`: each identifier and body.
+/// The RIFF chunks in `bytes`: each identifier and body. A chunk is padded to an even length.
 fn chunks(bytes: &[u8]) -> Result<Vec<([u8; 4], &[u8])>> {
     let mut found = Vec::new();
     let mut at = 0;
@@ -622,7 +697,7 @@ fn find<'a>(parts: &[([u8; 4], &'a [u8])], id: &[u8; 4]) -> Result<&'a [u8]> {
     parts.iter().find(|(found, _)| found == id).map(|(_, body)| *body).ok_or(Error::SoundFont("a chunk is missing"))
 }
 
-/// The records of a table, `size` bytes each.
+/// The records of a table, `size` bytes each. The last record is the sentinel that ends the table.
 fn records(bytes: &[u8], size: usize) -> Result<Vec<&[u8]>> {
     if bytes.len() < size || !bytes.len().is_multiple_of(size) {
         return Err(Error::SoundFont("an index table is not a whole number of records"));
@@ -635,7 +710,7 @@ fn count(table: &[&[u8]]) -> usize {
     table.len().saturating_sub(1)
 }
 
-/// The `u16` at byte `at` of record `index`.
+/// The `u16` at byte `at` of record `index`. An index past its table fails.
 fn index_at(table: &[&[u8]], index: usize, at: usize) -> Result<usize> {
     let record = table.get(index).ok_or(Error::SoundFont("an index is past its table"))?;
     Ok(usize::from(u16_le(record, at)))

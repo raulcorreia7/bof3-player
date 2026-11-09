@@ -4,7 +4,8 @@ const ISO_SECTOR_SIZE: usize = 2048;
 const RAW_SECTOR_SIZE: usize = 2352;
 const RAW_USER_DATA_OFFSET: usize = 24;
 const RAW_XA_SIZE: usize = 2336;
-/// Sectors in the XA fixture file.
+/// Sectors in the XA fixture file. Nine or more make a size read as
+/// `ceil(size / 2336)` come up short, so the fixture catches that mistake.
 pub const XA_SECTORS: usize = 10;
 
 fn record(extent: u32, size: u32, flags: u8, name: &[u8]) -> Vec<u8> {

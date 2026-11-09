@@ -1,7 +1,23 @@
 //! The standard PS1 TIM file: a CLUT and an image, ready for the GPU.
-//! The layout is the one in Sony's *File Formats* manual, chapter 3 ("TIM: Screen Image Data"): every item is a 32-bit
-//! word in little endian, the 4-bit mode holds four pixels per word with the leftmost pixel in the low nibble, and the
-//! 8-bit mode holds two.
+//!
+//! A TIM file is a header of two words and up to two blocks of frame buffer
+//! data. The header's ID word is `0x10` with a version of zero, and the flag
+//! word names the pixel mode (4-bit, 8-bit or 15-bit direct color) and
+//! whether a CLUT block follows. Each block is a length, the frame buffer
+//! position, the size and the words themselves; the words are the frame
+//! buffer's own 16-bit units, so a texture's VRAM words are a TIM's image data
+//! unchanged.
+//!
+//! The layout is the one in Sony's *File Formats* manual, chapter 3 ("TIM:
+//! Screen Image Data"): every item is a 32-bit word in little endian, the
+//! 4-bit mode holds four pixels per word with the leftmost pixel in the low
+//! nibble, and the 8-bit mode holds two.
+//!
+//! A TIM is what a raw VRAM upload and a raw CLUT block make when they are
+//! read together; [`write`] builds that file.
+//!
+//! # Examples
+//!
 //! ```
 //! use psx_formats::gfx::tim::{Block, File, Mode};
 //!
@@ -16,9 +32,18 @@
 use crate::error::{Error, Result};
 
 /// The ID word of a TIM file: `0x10` with a version of zero.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(psx_formats::gfx::tim::ID, 0x10);
+/// ```
 pub const ID: u32 = 0x10;
 
 /// The pixel mode of a TIM file.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::gfx::tim::Mode;
 ///
@@ -37,6 +62,9 @@ pub enum Mode {
 
 impl Mode {
     /// The mode's value in the flag word.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// assert_eq!(psx_formats::gfx::tim::Mode::Fifteen.value(), 2);
     /// ```
@@ -49,6 +77,9 @@ impl Mode {
     }
 
     /// The mode the flag word names.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_formats::gfx::tim::Mode;
     ///
@@ -65,6 +96,9 @@ impl Mode {
     }
 
     /// The pixels one word holds.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// assert_eq!(psx_formats::gfx::tim::Mode::Eight.pixels_per_word(), 2);
     /// ```
@@ -78,6 +112,9 @@ impl Mode {
 }
 
 /// A block of frame buffer words: a CLUT or an image.
+///
+/// # Examples
+///
 /// ```
 /// let block = psx_formats::gfx::tim::Block { x: 0, y: 0, width: 2, height: 1, words: vec![1, 2] };
 /// assert_eq!(block.words.len(), 2);
@@ -133,6 +170,9 @@ impl Block {
 }
 
 /// A TIM file: a CLUT and an image.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::gfx::tim::{Block, File, Mode};
 ///
@@ -155,6 +195,9 @@ pub struct File {
 
 impl File {
     /// The TIM file's bytes.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_formats::gfx::tim::{Block, File, Mode};
     ///
@@ -174,6 +217,9 @@ impl File {
     }
 
     /// Reads a TIM file: the magic, the flags, the block sizes and the words.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_formats::gfx::tim::{Block, File, Mode};
     ///
