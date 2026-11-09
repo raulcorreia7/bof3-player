@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: MIT
-//! The kernel the machine stands in for the BIOS: the `A0`, `B0` and `C0` function tables, the exception and interrupt
-//! dispatch, events, threads, the controller buffers and `Exec`. Each function behaves as psx-spx "BIOS Function
-//! Summary", "BIOS Interrupt/Exception Handling", "BIOS Event Functions", "BIOS Thread Functions", "BIOS Joypad
-//! Functions" and "BIOS Memory Map" describe it.
+//! The kernel the machine stands in for the BIOS: the `A0`, `B0` and `C0` function tables, the
+//! exception and interrupt dispatch, events, threads, the controller buffers and `Exec`. Each
+//! function behaves as psx-spx "BIOS Function Summary", "BIOS Interrupt/Exception Handling",
+//! "BIOS Event Functions", "BIOS Thread Functions", "BIOS Joypad Functions" and "BIOS Memory Map"
+//! describe it. A function the machine lacks stops the run with [`Halt::Bios`].
+//!
+//! The kernel data the code may read lives in RAM where the BIOS keeps it: the function tables at
+//! 0x200, 0x674 and 0x874, the table of tables at 0x100, the process control block and the thread
+//! control blocks. Code addresses inside the kernel are traps the machine handles.
 
 use crate::Halt;
 use crate::bus::physical;
@@ -18,8 +23,8 @@ const EXEC_RETURN_TRAP: u32 = 0x0F10;
 const A0_STUBS: u32 = 0x2000;
 const B0_STUBS: u32 = 0x3000;
 const C0_STUBS: u32 = 0x4000;
-/// `_patch_pad` (PsyQ) derives the pad enable and disable routines from the `ChangeClearPAD` entry: entry + 0x884 and +
-/// 0x894 (psx-spx "BIOS Patches").
+/// `_patch_pad` (PsyQ) derives the pad enable and disable routines from the `ChangeClearPAD`
+/// entry: entry + 0x884 and + 0x894 (psx-spx "BIOS Patches").
 const PAD_ENABLE_TRAP: u32 = B0_STUBS + 4 * 0x5B + 0x884;
 const PAD_DISABLE_TRAP: u32 = B0_STUBS + 4 * 0x5B + 0x894;
 const TABLE_OF_TABLES: u32 = 0x100;
@@ -71,7 +76,8 @@ pub struct Kernel {
     pad_word: Option<u32>,
     pad_started: bool,
     pad_enabled: bool,
-    /// Buttons held on port 1, in the controller's bit order (bit 3 Start, bit 14 Cross), set bits pressed.
+    /// Buttons held on port 1, in the controller's bit order (bit 3 Start, bit 14 Cross), set bits
+    /// pressed.
     pub buttons: u16,
     rand: u32,
     heap: (u32, u32),

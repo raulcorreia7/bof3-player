@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT
-//! The game's sound driver, re-created over the SPU model: SEP sequences scheduled on the driver's 60 Hz clock, VAB
-//! tones keyed onto voices, and the start-up state the game gives libsnd (master volume, ROOM reverb).
+//! The game's sound driver, re-created over the SPU model: SEP sequences
+//! scheduled on the driver's 60 Hz clock, VAB tones keyed onto voices, and the
+//! start-up state the game gives libsnd (master volume, ROOM reverb).
+//!
+//! The driver semantics (how a note selects tones, the volume and pan law, the
+//! pitch table walk, voice stealing) come from the project's analysis of the
+//! retail game (wiki: formats/audio); the hardware underneath is [`crate::spu`].
 
 use alloc::format;
 use alloc::vec::Vec;
@@ -34,8 +39,9 @@ const PRIMER_REVERB_DEPTH: u8 = 0x28;
 /// Frames of one seek pass.
 const SEEK_CHUNK_FRAMES: usize = 2048;
 
-/// The seek both engines share: reset when the target lies behind the cursor, then render up to it in
-/// [`SEEK_CHUNK_FRAMES`] slices.
+/// The seek both engines share: reset when the target lies behind the cursor,
+/// then render up to it in [`SEEK_CHUNK_FRAMES`] slices. Each engine supplies
+/// its own reset (`rewind` or `start`).
 macro_rules! seek_body {
     ($reset:ident) => {
         pub fn seek(&mut self, seconds: f64) -> Result<()> {
@@ -77,6 +83,9 @@ const DEFAULT_ADSR1: u16 = 0x000F;
 const DEFAULT_ADSR2: u16 = 0x000F;
 
 /// `VxPitch` for a note (PsyQ `libsnd` note walk over the pitch table).
+///
+/// `center` is the sample's centre note, `shift` the tone's fine tune, `fine`
+/// is in 1/128 semitone. Clamped to [`PITCH_MAX`].
 pub(crate) fn pitch_from_note(note: i32, fine: i32, center: i32, shift: i32) -> u16 {
     let mut fine_index = i32::from(fine as u16) + shift;
     let mut semitone = 0;
@@ -488,8 +497,8 @@ impl MusicEngine {
         Ok(written)
     }
 
-    /// The driver's loop is a jump of its tick clock, not a restart: only the event cursor moves, the SPU keeps playing
-    /// the voices sounding at the seam.
+    /// The driver's loop is a jump of its tick clock, not a restart: only the
+    /// event cursor moves, the SPU keeps playing the voices sounding at the seam.
     fn jump_to_loop_start(&mut self) {
         if self.window.exists() {
             let end = self.window.end_event;
@@ -508,6 +517,7 @@ impl MusicEngine {
         let mut written = 0;
         while written < frames {
             self.apply_events(usize::MAX);
+            // Render up to the next event so a control change lands on its frame.
             let boundary =
                 self.events.get(self.next_event).map_or(self.total_frames, |e| e.frame).min(self.total_frames);
             let chunk = (boundary - self.frame).max(1).min((frames - written) as i64) as usize;
@@ -646,8 +656,8 @@ impl MusicEngine {
         let (mut lowest, mut smallest, mut oldest) = (priority, 0xFFFFu16, u64::MAX);
         for (slot, voice) in self.voices.iter().enumerate() {
             let Some(voice) = voice else { continue };
-            // A freshly keyed voice has a zero attack envelope; it must survive the other note-ons scheduled in this
-            // frame.
+            // A freshly keyed voice has a zero attack envelope; it must survive the
+            // other note-ons scheduled in this frame.
             if voice.started_frame == self.frame {
                 continue;
             }
@@ -742,6 +752,7 @@ impl SampleEngine {
         self.frame = 0;
         configure_spu(&mut self.spu, &self.bank.body)?;
         let vag = self.bank.vags[self.vag_index as usize];
+        // The tone that names this sample supplies envelope, volume and pitch.
         let named =
             self.bank.tones.iter().find(|t| {
                 t.vag == self.vag_index as i16 && t.vol != 0 && t.program_vol != 0 && t.min_note <= t.max_note
@@ -762,6 +773,7 @@ impl SampleEngine {
         if pitch == 0 {
             return Err(Error::format("sample pitch is zero"));
         }
+        // Audition placement is centred: both sides get the full voice.
         let register = fixed_voice_volume(volume);
         self.pass_frames = (i64::from(vag.frames) * i64::from(PITCH_ONE) + i64::from(pitch) - 1) / i64::from(pitch);
         let setup = VoiceSetup {

@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT
-//! A spectrum analyzer for the output of a [`Deck`](crate::deck::Deck): the last samples go through a Hann window and
-//! an FFT and become near-log-spaced bands in decibels.
+//! A spectrum analyzer for the output of a [`Deck`](crate::deck::Deck): the last samples go
+//! through a Hann window and an FFT and become near-log-spaced bands in decibels. The band count
+//! follows the display (one band per terminal column, a fixed count in the window); the frequency
+//! mapping and the motion are the same for every count. Bands rise fast, jump past their recent
+//! average on an onset, fall at a steady rate and carry falling peak caps; the motion follows the time between updates, so it looks the
+//! same at any refresh rate. A [`Tint`] follows the music too: where its energy sits, how loud
+//! it is and its onsets, for the displays to color the bars with.
 
 use core::f32::consts::PI;
 use core::ops::Range;
@@ -8,34 +13,42 @@ use std::time::Instant;
 
 use crate::theme;
 
-/// Samples analyzed per update; a power of two. 4096 samples give bins about 11 Hz wide at 44.1 kHz: finer bass, at the
-/// cost of a window about 90 ms long.
+/// Samples analyzed per update; a power of two. 4096 samples give bins about 11 Hz wide at
+/// 44.1 kHz: finer bass, at the cost of a window about 90 ms long.
 const WINDOW: usize = 4096;
-/// The quietest level shown, in decibels below full scale: the foot of a bar.
+/// The quietest level shown, in decibels below full scale: the foot of a bar. Lower shows
+/// quieter detail but lifts the noise.
 const FLOOR_DB: f32 = -70.0;
-/// Lowest and highest band edges in hertz.
+/// Lowest and highest band edges in hertz. The top edge drops to the Nyquist frequency at low
+/// sample rates.
 const LOW_HZ: f32 = 40.0;
 const HIGH_HZ: f32 = 16_000.0;
-/// Hertz added before the log spacing: bands are log-spaced in `f + KNEE_HZ`, so they stop narrowing below about this
-/// frequency and the bass takes less of the width (about 12% below 150 Hz, against 25% for pure log spacing).
+/// Hertz added before the log spacing: bands are log-spaced in `f + KNEE_HZ`, so they stop
+/// narrowing below about this frequency and the bass takes less of the width (about 12% below
+/// 150 Hz, against 25% for pure log spacing). `0.0` is pure log spacing.
 const KNEE_HZ: f32 = 100.0;
-/// Lift per octave above `LOW_HZ`, in decibels.
+/// Lift per octave above `LOW_HZ`, in decibels. Music has less energy high up; the lift keeps
+/// the treble visible.
 const TILT_DB_PER_OCTAVE: f32 = 1.0;
-/// Seconds a band takes to close 63% of the way to a louder level.
+/// Seconds a band takes to close 63% of the way to a louder level. Smaller is snappier, larger
+/// is smoother.
 const ATTACK_SECONDS: f32 = 0.008;
-/// Seconds a band's recent average takes to follow 63% of a change in its level.
+/// Seconds a band's recent average takes to follow 63% of a change in its level. Onsets are
+/// measured against it, so longer keeps an onset's lift for longer.
 const AVERAGE_SECONDS: f32 = 0.25;
-/// Share of a band's rise above its recent average added on top: drum hits and note attacks jump out, steady tones do
-/// not.
+/// Share of a band's rise above its recent average added on top: drum hits and note attacks jump
+/// out, steady tones do not. `0.0` turns the lift off.
 const ONSET_BOOST: f32 = 0.5;
-/// Full heights per second a band falls toward a quieter level.
+/// Full heights per second a band falls toward a quieter level. Larger is more responsive,
+/// smaller lingers.
 const FALL_PER_SECOND: f32 = 1.8;
-/// Full heights per second a peak cap falls once its band drops below it.
+/// Full heights per second a peak cap falls once its band drops below it. Smaller holds the
+/// peaks longer.
 const CAP_FALL_PER_SECOND: f32 = 0.4;
-/// Seconds the tint takes to follow 63% of a change in the music.
+/// Seconds the tint takes to follow 63% of a change in the music. Longer is calmer.
 const TINT_SECONDS: f32 = 0.4;
-/// The band position, from `0.0` (lowest) to `1.0` (highest), of a balanced mix's energy: the tint is neutral there,
-/// warmer below and cooler above.
+/// The band position, from `0.0` (lowest) to `1.0` (highest), of a balanced mix's energy: the
+/// tint is neutral there, warmer below and cooler above.
 const BALANCE: f32 = 0.45;
 /// Warmth per unit of distance from `BALANCE`; larger swings the hue further for the same mix.
 const WARMTH_GAIN: f32 = 4.0;
@@ -81,16 +94,16 @@ struct Band {
 
 #[derive(Debug, Clone, PartialEq)]
 enum Bins {
-    /// A band narrower than one bin: the magnitude interpolated at this fractional bin, so neighboring bass bands
-    /// differ instead of repeating one bin.
+    /// A band narrower than one bin: the magnitude interpolated at this fractional bin, so
+    /// neighboring bass bands differ instead of repeating one bin.
     At(f32),
     /// A band one bin wide or more: the loudest bin of the range.
     Peak(Range<usize>),
 }
 
 impl Band {
-    /// The band's level from `0.0` (at `FLOOR_DB` or below) to `1.0` (full scale), from bin magnitudes where a
-    /// full-scale sine reads `1.0`.
+    /// The band's level from `0.0` (at `FLOOR_DB` or below) to `1.0` (full scale), from bin
+    /// magnitudes where a full-scale sine reads `1.0`.
     fn level(&self, magnitudes: &[f32]) -> f32 {
         let magnitude = match &self.bins {
             Bins::At(at) => {
@@ -104,7 +117,8 @@ impl Band {
     }
 }
 
-/// The frequency `at` of the way (`0.0` to `1.0`) across bands that run from `LOW_HZ` to `top` hertz.
+/// The frequency `at` of the way (`0.0` to `1.0`) across bands that run from `LOW_HZ` to `top`
+/// hertz.
 fn edge_hz(at: f32, top: f32) -> f32 {
     let (low, high) = (LOW_HZ + KNEE_HZ, top + KNEE_HZ);
     low * (high / low).powf(at) - KNEE_HZ
@@ -144,7 +158,8 @@ impl Spectrum {
         }
     }
 
-    /// Use `bands` bands from now on.
+    /// Use `bands` bands from now on. The current levels, caps and averages stretch to the new count, so a
+    /// resized display does not flash.
     pub fn resize(&mut self, bands: usize) {
         let old = self.levels.len();
         if bands == old {
@@ -164,7 +179,8 @@ impl Spectrum {
         seconds.clamp(0.001, 0.1)
     }
 
-    /// Analyze the newest samples of `scope`, a mono mix at `rate` hertz.
+    /// Analyze the newest samples of `scope`, a mono mix at `rate` hertz. Fewer than a window of
+    /// samples count as silence before them.
     pub fn update(&mut self, scope: &[f32], rate: u32) {
         let step = self.step();
         self.advance(scope, rate, step);
@@ -207,8 +223,8 @@ impl Spectrum {
         self.tint.follow(goal, step);
     }
 
-    /// Window the newest `WINDOW` samples of `scope` and leave the magnitude of each bin up to the Nyquist bin in `re`,
-    /// scaled so a full-scale sine reads `1.0`.
+    /// Window the newest `WINDOW` samples of `scope` and leave the magnitude of each bin up to
+    /// the Nyquist bin in `re`, scaled so a full-scale sine reads `1.0`.
     fn transform(&mut self, scope: &[f32]) {
         let take = scope.len().min(WINDOW);
         let start = WINDOW - take;
@@ -220,6 +236,7 @@ impl Spectrum {
         }
         self.im.fill(0.0);
         fft(&mut self.re, &mut self.im);
+        // A full-scale sine peaks at `WINDOW / 4` through a Hann window.
         let scale = 4.0 / WINDOW as f32;
         for (re, &im) in self.re[..=WINDOW / 2].iter_mut().zip(&self.im) {
             *re = (*re * *re + im * im).sqrt() * scale;
@@ -239,7 +256,9 @@ impl Spectrum {
     }
 }
 
-/// How the music colors the spectrum: three values, smoothed over time so the colors never flicker.
+/// How the music colors the spectrum: three values, smoothed over time so the colors never
+/// flicker. The default tint leaves the theme's colors as they are; a paused deck settles back to
+/// it.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Tint {
     /// From `-1.0` (the energy sits in the treble: cooler) to `1.0` (in the bass: warmer).
@@ -251,8 +270,8 @@ pub struct Tint {
 }
 
 impl Tint {
-    /// `rgb`, one of the spectrum's theme colors, tinted: moved toward the warm or the cool tint, then lightened by the
-    /// glow and the flash.
+    /// `rgb`, one of the spectrum's theme colors, tinted: moved toward the warm or the cool tint,
+    /// then lightened by the glow and the flash.
     #[must_use]
     pub fn apply(self, rgb: u32) -> u32 {
         let toward = if self.warmth > 0.0 { theme::SPECTRUM_WARM } else { theme::SPECTRUM_COOL };
@@ -260,7 +279,7 @@ impl Tint {
         theme::mix(tinted, 0xffffff, self.glow * GLOW_MIX + self.flash * FLASH_MIX)
     }
 
-    /// Ease toward `goal` over `TINT_SECONDS`.
+    /// Ease toward `goal` over `TINT_SECONDS`. The flash rises at once and falls at a steady rate.
     fn follow(&mut self, goal: Tint, step: f32) {
         let t = 1.0 - (-step / TINT_SECONDS).exp();
         self.warmth += (goal.warmth - self.warmth) * t;
@@ -362,6 +381,7 @@ mod tests {
                 let band = loudest(&sine(hz, 0.1), count);
                 let (low, high) =
                     (edge_hz(band as f32 / count as f32, HIGH_HZ), edge_hz((band + 1) as f32 / count as f32, HIGH_HZ));
+                // The band that holds the pitch, or a neighbor where the pitch sits near an edge.
                 assert!(low / 1.1 <= hz && hz <= high * 1.1, "{hz} Hz lit band {band} of {count}, {low}-{high} Hz");
             }
         }
@@ -440,6 +460,7 @@ mod tests {
         let base = theme::SPECTRUM[1];
         assert!(red(bass.tint.apply(base)) > red(base) && red(treble.tint.apply(base)) < red(base));
         assert_eq!(Tint::default().apply(base), base);
+        // Two seconds of first-update steps.
         for _ in 0..120 {
             bass.last = None;
             bass.fade();

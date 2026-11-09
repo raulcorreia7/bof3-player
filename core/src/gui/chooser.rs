@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-//! A folder and file chooser for the game data and the export folder, so the window needs no switches.
+//! A folder and file chooser for the game data and the export folder, so the window needs no
+//! switches.
 
 use std::path::{Path, PathBuf};
 

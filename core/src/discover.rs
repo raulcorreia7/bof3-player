@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: MIT
 //! Finding the game data.
+//!
+//! Probes, in order: the explicit hint and `$BOF3_GAME_DIR` (each as itself
+//! and as `<value>/out/extracted`), the working directory and
+//! its parents, then the executable's directory and its parents; each of those folders is probed
+//! as itself and as `out/extracted`, `decomp/build/disc` (the monorepo's disc), `BIN` and
+//! `inputs/external` below it. A candidate is
+//! accepted when it is an extracted tree whose `BIN/BGM` holds an `.EMI`
+//! archive (also when the path names `BIN`, an asset directory or one archive:
+//! discovery walks up to three levels to the root), or a `.cue`/disc image whose
+//! ISO 9660 root has a `BIN` directory.
 
 use std::path::{Path, PathBuf};
 
@@ -157,7 +167,8 @@ fn probes(hint: Option<&Path>) -> Vec<(String, PathBuf)> {
     out
 }
 
-/// Probe for game data.
+/// Probe for game data. An explicit `hint` that does not exist is an error: no
+/// automatic probes run then, so a typo is never silently replaced.
 #[must_use]
 pub fn discover(hint: Option<&Path>) -> Discovery {
     let mut candidates = Vec::new();
@@ -182,7 +193,7 @@ pub struct Entry {
     pub name: String,
     /// The full path.
     pub path: PathBuf,
-    /// Whether the entry is a folder.
+    /// Whether the entry is a folder. Files are disc images or cue sheets.
     pub is_dir: bool,
 }
 
@@ -193,7 +204,8 @@ pub fn start_dir() -> PathBuf {
     home.map(PathBuf::from).or_else(|| std::env::current_dir().ok()).unwrap_or_else(|| PathBuf::from("."))
 }
 
-/// The folders and the supported files (`.cue`, `.bin`, `.iso`, `.img`) in `dir`, folders first, each group by name.
+/// The folders and the supported files (`.cue`, `.bin`, `.iso`, `.img`) in `dir`, folders first,
+/// each group by name. Hidden entries are left out.
 pub fn browse(dir: &Path) -> std::io::Result<Vec<Entry>> {
     let mut entries: Vec<Entry> = std::fs::read_dir(dir)?
         .filter_map(std::result::Result::ok)

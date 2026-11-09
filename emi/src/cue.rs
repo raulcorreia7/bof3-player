@@ -1,7 +1,13 @@
 //! EMI type-8 cue records: one VAB bank's sound-effect cue table.
-//! A payload is a whole number of 4-byte records; the loader copies it into one 124-byte chunk (`0x801486A0 + 124 *
-//! bank`, 31 records) and the cue dispatcher `0x8015DF18` turns record `index` of bank `bank` — cue id `(bank << 8) |
-//! index` — into linked `SsUtKeyOnV`/`SsUtSetDetVVol` calls.
+//!
+//! A payload is a whole number of 4-byte records; the loader copies it into one
+//! 124-byte chunk (`0x801486A0 + 124 * bank`, 31 records) and the cue
+//! dispatcher `0x8015DF18` turns record `index` of bank `bank` — cue id
+//! `(bank << 8) | index` — into linked `SsUtKeyOnV`/`SsUtSetDetVVol` calls.
+//! [`CueTable::decode`] reads the records and rejects the shapes the loader and
+//! the dispatcher cannot handle: a partial record, more records than the chunk
+//! holds, and the bits the format reserves. [`CueTable::encode`] writes the
+//! records back.
 
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
@@ -26,17 +32,18 @@ const VOICE_MASK: u8 = 0x1f;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct Cue {
-    /// Bank whose record supplies the voice index: `0` = this bank, `1`-`4` = that bank.
+    /// Bank whose record supplies the voice index: `0` = this bank, `1`-`4` =
+    /// that bank. Zero in all 8,608 records; the readers handle `1`-`4`.
     pub alias_bank: u8,
-    /// Keep the tone's own volume (`false`) or follow each key-on with `SsUtSetDetVVol` using the cue's volume
-    /// (`true`).
+    /// Keep the tone's own volume (`false`) or follow each key-on with
+    /// `SsUtSetDetVVol` using the cue's volume (`true`).
     pub use_cue_volume: bool,
     /// VAB program (tone block), `SsUtKeyOnV` argument 3.
     pub program: u8,
     /// Tone slot in that program's 16-slot block, `SsUtKeyOnV` argument 4.
     pub tone: u8,
-    /// Four bits the dispatcher copies to voice state and compares with the previous cue's value; the shipped records
-    /// hold 10, 11 and 27 other values.
+    /// Four bits the dispatcher copies to voice state and compares with the
+    /// previous cue's value; the shipped records hold 10, 11 and 27 other values.
     pub group: u8,
     /// Extra voices keyed on this cue, after the base voice.
     pub layers: u8,

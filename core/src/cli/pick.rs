@@ -99,7 +99,8 @@ impl Picker {
     }
 }
 
-/// Let the user walk the folders and pick a disc image, a cue sheet or a game folder.
+/// Let the user walk the folders and pick a disc image, a cue sheet or a game folder. `message`
+/// says why. Returns `None` when the user quits.
 pub fn pick_data(message: &str) -> Result<Option<PathBuf>, String> {
     let mut terminal = ratatui::init();
     let result = run(&mut terminal, message, discover::start_dir(), false);

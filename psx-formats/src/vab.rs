@@ -1,6 +1,15 @@
 //! VAB sample banks: the header tables, their validator and their encoder.
-//! The sample data follows psx-spx "SPU ADPCM Samples"; the header layout follows Sony's PlayStation sound library VAB
-//! format.
+//!
+//! A bank is a header (`.vh`) with fixed tables, and a body (`.vb`) of SPU
+//! ADPCM samples. [`Bank::parse`] keeps every reserved byte, so
+//! [`Bank::encode_header`] of the result is the input again;
+//! [`Bank::problems`] reports what the format rules out, and [`encode_bank`]
+//! builds a fresh header and body pair. The sample data follows psx-spx
+//! "SPU ADPCM Samples"; the header layout follows Sony's PlayStation sound
+//! library VAB format.
+//!
+//! # Examples
+//!
 //! ```
 //! use psx_formats::vab::{Bank, encode_bank};
 //!
@@ -21,11 +30,24 @@ use crate::adpcm::{self, BLOCK_BYTES, BLOCK_SAMPLES, FLAG_END, FLAG_LOOP_START, 
 use crate::bytes::{i16_le, push_i16_le, push_u16_le, push_u32_le, u16_le, u32_le};
 use crate::error::{Error, Result};
 
-/// Bank magic: `"VABp"` read as a little-endian `u32`, so the bytes are the other way round.
+/// Bank magic: `"VABp"` read as a little-endian `u32`, so the bytes are the
+/// other way round.
 const VAB_MAGIC: &[u8; 4] = b"pBAV";
 /// Container entry type of a VAB header.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(psx_formats::vab::HEADER_TYPE, 6);
+/// ```
 pub const HEADER_TYPE: u16 = 6;
 /// Container entry type of a VAB body.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(psx_formats::vab::BODY_TYPE, 7);
+/// ```
 pub const BODY_TYPE: u16 = 7;
 /// Position of the program table.
 const PROGRAM_TABLE: usize = 0x20;
@@ -35,6 +57,12 @@ const PROGRAM_SIZE: usize = 16;
 /// Position of the first tone slot.
 const TONE_TABLE: usize = 0x820;
 /// Tone slots one program block holds.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(psx_formats::vab::TONES_PER_PROGRAM, 16);
+/// ```
 pub const TONES_PER_PROGRAM: usize = 16;
 /// Bytes of one tone slot.
 const TONE_SIZE: usize = 32;
@@ -46,6 +74,9 @@ const VAG_SIZE_UNIT: u32 = 8;
 const PROGRAM_LIMIT: i16 = 128;
 
 /// One tone slot: the [`TONES_PER_PROGRAM`] slots of every program block.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::vab::Tone;
 ///
@@ -110,6 +141,9 @@ pub struct Tone {
 
 impl Tone {
     /// Mode bit 2: the keyed voice also goes to the reverb unit.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let tone = psx_formats::vab::Tone { mode: psx_formats::vab::Tone::MODE_REVERB, ..Default::default() };
     /// assert!(tone.reverb_send());
@@ -117,6 +151,9 @@ impl Tone {
     pub const MODE_REVERB: u8 = 0x04;
 
     /// Whether the voice is sent to the reverb.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let tone = psx_formats::vab::Tone { mode: 0x04, ..Default::default() };
     /// assert!(tone.reverb_send());
@@ -126,6 +163,9 @@ impl Tone {
     }
 
     /// A slot that names a sample.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let tone = psx_formats::vab::Tone { vag: 2, ..Default::default() };
     /// assert!(tone.is_live());
@@ -134,8 +174,11 @@ impl Tone {
         self.vag != 0
     }
 
-    /// A tone the library's parser keeps: live, inside the size table's range, and naming a program within the driver's
-    /// limit.
+    /// A tone the library's parser keeps: live, inside the size table's range,
+    /// and naming a program within the driver's limit.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let tone = psx_formats::vab::Tone { vag: 2, program: 1, ..Default::default() };
     /// assert!(tone.is_usable(2));
@@ -151,6 +194,9 @@ impl Tone {
 }
 
 /// One program record; slot 0 is the bank's dummy program.
+///
+/// # Examples
+///
 /// ```
 /// let program = psx_formats::vab::Program { tones: 2, ..Default::default() };
 /// assert!(program.is_playable());
@@ -179,6 +225,9 @@ pub struct Program {
 
 impl Program {
     /// A slot the bank plays: one that declares tones.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let program = psx_formats::vab::Program::default();
     /// assert!(!program.is_playable());
@@ -189,6 +238,9 @@ impl Program {
 }
 
 /// One VAG: its range in the body, and what the body's block flags say of it.
+///
+/// # Examples
+///
 /// ```
 /// let vag = psx_formats::vab::Vag { size: 16, ..Default::default() };
 /// assert!(!vag.is_empty());
@@ -215,6 +267,9 @@ pub struct Vag {
 
 impl Vag {
     /// A range shorter than one ADPCM block: the null sample.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// assert!(psx_formats::vab::Vag::default().is_empty());
     /// ```
@@ -223,6 +278,9 @@ impl Vag {
     }
 
     /// Byte address the loop restarts from: the loop-start block, else the start.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let vag = psx_formats::vab::Vag { offset: 0, size: 32, has_loop: true, loop_start_frame: 28, ..Default::default() };
     /// assert_eq!(vag.repeat_offset(), 16);
@@ -237,6 +295,9 @@ impl Vag {
 }
 
 /// A parsed bank: the header tables and the body they describe.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::vab::{Bank, encode_bank};
 ///
@@ -278,13 +339,17 @@ pub struct Bank {
     pub tones: Vec<Tone>,
     /// Index 0 is the null sample; the rest follow the size table.
     pub vags: Vec<Vag>,
-    /// The size-table region as stored, 256 units: stale units past `vag_count` included, because the encoder writes
-    /// them back.
+    /// The size-table region as stored, 256 units: stale units
+    /// past `vag_count` included, because the encoder writes them back. The
+    /// `vags` sizes view this table.
     pub size_table: Vec<u16>,
     body_len: usize,
 }
 
 /// What a bank breaks of the format.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::vab::{Bank, Problem, encode_bank};
 ///
@@ -384,6 +449,13 @@ impl fmt::Display for Problem {
 
 impl Bank {
     /// Parses a header and its body.
+    ///
+    /// The fixed tables give one header size per `program_count`, and the body
+    /// is kept as it stands, so [`Bank::encode_header`] of the result is the
+    /// input again.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_formats::vab::{Bank, encode_bank};
     ///
@@ -438,6 +510,9 @@ impl Bank {
     }
 
     /// The bytes of this model's header; [`Bank::parse`] of them gives it back.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use psx_formats::vab::{Bank, encode_bank};
     ///
@@ -469,8 +544,11 @@ impl Bank {
         out
     }
 
-    /// The tones the sequencer can play: live, naming a sample the size table covers and a program below the driver's
-    /// limit.
+    /// The tones the sequencer can play: live, naming a sample the size table covers and a program
+    /// below the driver's limit. The parser's tone list, in block and slot order.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let (header, body) = psx_formats::vab::encode_bank(0, &[], &[]).unwrap();
     /// assert_eq!(psx_formats::vab::Bank::parse(&header, &body).unwrap().usable_tones().count(), 0);
@@ -480,6 +558,9 @@ impl Bank {
     }
 
     /// Programs that at least one usable tone answers, one bit each.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let (header, body) = psx_formats::vab::encode_bank(0, &[], &[]).unwrap();
     /// assert_eq!(psx_formats::vab::Bank::parse(&header, &body).unwrap().program_mask(), 0);
@@ -489,6 +570,9 @@ impl Bank {
     }
 
     /// The sample with 1-based number `index`.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let (header, body) = psx_formats::vab::encode_bank(0, &[], &[vec![0u8; 16]]).unwrap();
     /// let bank = psx_formats::vab::Bank::parse(&header, &body).unwrap();
@@ -503,6 +587,9 @@ impl Bank {
     }
 
     /// The raw ADPCM blocks of sample `index` inside `body`, the body this bank was parsed with.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let (header, body) = psx_formats::vab::encode_bank(0, &[], &[vec![0u8; 16]]).unwrap();
     /// let bank = psx_formats::vab::Bank::parse(&header, &body).unwrap();
@@ -521,6 +608,9 @@ impl Bank {
     }
 
     /// Decodes one pass of sample `index` to mono PCM.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let (header, body) = psx_formats::vab::encode_bank(0, &[], &[vec![0u8; 16]]).unwrap();
     /// let bank = psx_formats::vab::Bank::parse(&header, &body).unwrap();
@@ -538,6 +628,9 @@ impl Bank {
     }
 
     /// Bytes of the body this bank was parsed with.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let (header, body) = psx_formats::vab::encode_bank(0, &[], &[vec![0u8; 16]]).unwrap();
     /// assert_eq!(psx_formats::vab::Bank::parse(&header, &body).unwrap().body_len(), 16);
@@ -547,6 +640,9 @@ impl Bank {
     }
 
     /// Bytes [`Bank::encode_header`] produces for this model.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let (header, body) = psx_formats::vab::encode_bank(0, &[], &[]).unwrap();
     /// assert_eq!(psx_formats::vab::Bank::parse(&header, &body).unwrap().header_size(), header.len());
@@ -555,7 +651,11 @@ impl Bank {
         TONE_TABLE + self.tones.len() * TONE_SIZE + SIZE_ENTRIES * 2
     }
 
-    /// The records that declare tones, in table order: the `n`th of them owns tone block `n`.
+    /// The records that declare tones, in table order: the `n`th of them owns
+    /// tone block `n`.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let (header, body) = psx_formats::vab::encode_bank(0, &[], &[]).unwrap();
     /// assert_eq!(psx_formats::vab::Bank::parse(&header, &body).unwrap().playable_programs().count(), 0);
@@ -565,6 +665,9 @@ impl Bank {
     }
 
     /// One slice per program block, [`TONES_PER_PROGRAM`] slots each.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let (header, body) = psx_formats::vab::encode_bank(0, &[], &[]).unwrap();
     /// assert_eq!(psx_formats::vab::Bank::parse(&header, &body).unwrap().tone_blocks().count(), 0);
@@ -574,6 +677,9 @@ impl Bank {
     }
 
     /// What the bank breaks of the format; empty for a well-formed bank.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let (header, body) = psx_formats::vab::encode_bank(0, &[], &[]).unwrap();
     /// assert!(psx_formats::vab::Bank::parse(&header, &body).unwrap().problems().is_empty());
@@ -626,7 +732,11 @@ impl Bank {
         problems
     }
 
-    /// The bank as one line per fact: the header counts, then every program record, tone slot and VAG.
+    /// The bank as one line per fact: the header counts, then every program
+    /// record, tone slot and VAG. Useful to diff two parses of the same bytes.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let (header, body) = psx_formats::vab::encode_bank(0, &[], &[]).unwrap();
     /// let dump = psx_formats::vab::Bank::parse(&header, &body).unwrap().dump();
@@ -708,6 +818,9 @@ impl Bank {
 }
 
 /// One program of a bank for [`encode_bank`]: its record and the tone slots its block holds, in order.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::vab::{BankProgram, Program, Tone};
 ///
@@ -720,11 +833,11 @@ impl Bank {
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BankProgram {
-    /// The program number.
+    /// The program number. Numbers ascend across the bank's programs.
     pub number: u8,
-    /// The program record.
+    /// The program record. Its `tones` count is the number of tone slots the block fills.
     pub record: Program,
-    /// The filled tone slots, in order: at most [`TONES_PER_PROGRAM`].
+    /// The filled tone slots, in order: at most [`TONES_PER_PROGRAM`]. The rest of the block is empty.
     pub tones: Vec<Tone>,
 }
 
@@ -735,6 +848,14 @@ const BANK_VOLUME: u8 = 127;
 const BANK_PAN: u8 = 64;
 
 /// Writes a bank: the header (`.vh`) and the body (`.vb`) that the header describes.
+///
+/// `programs` are the playable programs in ascending program number. Program block `i` holds `programs[i]`,
+/// the order in which [`Bank::playable_programs`] pairs with [`Bank::tone_blocks`]. `vags[i]` is the ADPCM of
+/// VAG `i + 1`, a whole number of 16-byte blocks, and the body holds the VAGs in order. The header and body
+/// parse back with [`Bank::parse`] to the same records, tones and VAG ranges.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::vab::{Bank, encode_bank};
 ///
@@ -797,6 +918,7 @@ pub fn encode_bank(id: u32, programs: &[BankProgram], vags: &[Vec<u8>]) -> Resul
         let unit = if entry == 0 { 0 } else { units.get(entry - 1).copied().unwrap_or(0) };
         push_u16_le(&mut header, unit);
     }
+    // The header declares the size of the whole bank: header and body.
     let file_size = u32::try_from(header.len() + body.len()).map_err(|_| Error::VabEncode("the bank is over 4 GiB"))?;
     header[0x0c..0x10].copy_from_slice(&file_size.to_le_bytes());
     Ok((header, body))
@@ -862,7 +984,8 @@ fn read_program(vh: &[u8], slot: usize) -> Program {
     }
 }
 
-/// Every tone slot of every block the header declares, with the attributes of the program each slot names folded in.
+/// Every tone slot of every block the header declares, with the attributes of
+/// the program each slot names folded in.
 fn read_tones(vh: &[u8], program_count: u16, programs: &[Program]) -> Vec<Tone> {
     let mut tones = Vec::with_capacity(tone_bytes(program_count) / TONE_SIZE);
     for block in 0..usize::from(program_count) {
@@ -923,8 +1046,8 @@ fn read_vag_ranges(size_table: &[u16], vag_count: u16) -> Vec<Vag> {
     vags
 }
 
-/// Block flags give each range its end, its loop points, and the length a one-pass decode produces; a range outside the
-/// body keeps zeroes.
+/// Block flags give each range its end, its loop points, and the length a
+/// one-pass decode produces; a range outside the body keeps zeroes.
 fn scan_vag_blocks(vb: &[u8], vags: &mut [Vag]) {
     for vag in vags.iter_mut() {
         let start = vag.offset as usize;

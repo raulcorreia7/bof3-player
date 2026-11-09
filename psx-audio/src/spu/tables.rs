@@ -1,15 +1,24 @@
 // SPDX-License-Identifier: MIT
 //! Fixed SPU tables.
 
-/// The 32 reverb registers of one preset, in psx-spx order (`dAPF1` ..
+/// The 32 reverb registers of one preset, in psx-spx order (`dAPF1` .. `vRIN`).
+///
+/// # Examples
+///
 /// ```
 /// let preset: psx_audio::spu::ReverbPreset = [0; 32];
 /// assert_eq!(preset.len(), 32);
 /// ```
 pub type ReverbPreset = [u16; 32];
 
-/// Reverb presets from psx-spx "SPU Reverb Examples", numbered 0..=9 in the order off, room, studio small/medium/large,
-/// hall, half echo, space echo, chaos echo, delay.
+/// Reverb presets from psx-spx "SPU Reverb Examples", numbered 0..=9 in the order
+/// off, room, studio small/medium/large, hall, half echo, space echo, chaos echo, delay.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(psx_audio::spu::REVERB_PRESETS.len(), 10);
+/// ```
 pub const REVERB_PRESETS: [ReverbPreset; 10] = [
     // Reverb off
     [
@@ -74,4 +83,10 @@ pub const REVERB_PRESETS: [ReverbPreset; 10] = [
 ];
 
 /// Index of the Room preset in [`REVERB_PRESETS`].
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(psx_audio::spu::PRESET_ROOM, 1);
+/// ```
 pub const PRESET_ROOM: usize = 1;

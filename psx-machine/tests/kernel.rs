@@ -142,8 +142,8 @@ fn critical_sections_mask_interrupts() {
     assert_eq!(reg(&machine, S2) & 0x401, 0x401);
 }
 
-/// An interrupt runs the priority chain, then the HookEntryInt buffer, whose handler returns through
-/// ReturnFromException to the interrupted loop.
+/// An interrupt runs the priority chain, then the HookEntryInt buffer, whose handler returns
+/// through ReturnFromException to the interrupted loop.
 #[test]
 fn interrupt_runs_chain_hook_and_returns() {
     const CHAIN: u32 = DATA + 0x100;
@@ -161,12 +161,15 @@ fn interrupt_runs_chain_hook_and_returns() {
     program.push(sw(T0, 0x1074, AT)); // I_MASK: VBlank
     program.push(addiu(T0, 0, 0x401));
     program.push(mtc0(T0, 12));
+    // Spin until the hook handler has counted one interrupt in s2.
     let spin = CODE + 4 * program.len() as u32;
     program.push(beq(S2, 0, -1));
     program.push(addiu(S1, S1, 1));
     let (mut machine, _) = kernel_with(&program);
+    // The chain node: next, second function, first function.
     machine.write_words(CHAIN, &[0, 0, FIRST, 0]);
     machine.write_words(FIRST, &[jr(RA), addiu(S0, S0, 1)]);
+    // The hook buffer: ra = HANDLER, sp, fp, s0..s7, gp.
     machine.write_words(JMPBUF, &[HANDLER, 0x801F_E000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     let mut handler = Vec::new();
     handler.extend(li(AT, 0x1F80_0000));
@@ -175,6 +178,7 @@ fn interrupt_runs_chain_hook_and_returns() {
     machine.write_words(HANDLER, &handler);
     machine.run_until_pc(spin, 100).unwrap();
     machine.bus_mut().irq.raise(Line::VBlank);
+    // ReturnFromException restores every register the handler touched, so stop on the call.
     machine.run_until(|m| m.kernel().calls.get(&(0xB0, 0x17)).copied() == Some(1), 10_000).unwrap();
     assert_eq!(machine.cpu().pc(), spin, "back in the interrupted loop");
     assert_eq!(reg(&machine, S0), 0, "the chain ran with saved registers, restored after");
@@ -204,6 +208,7 @@ fn chain_first_function_runs_on_interrupt() {
     machine.write_words(FIRST, &first);
     machine.run_until_pc(spin, 100).unwrap();
     machine.run_frames(3, 10_000_000).unwrap();
+    // The third vertical blank is raised; let the CPU take it.
     machine.run_until(|_| false, 1000).unwrap();
     assert_eq!(machine.bus().peek32(DATA), Some(3), "one call per vertical blank");
     assert_eq!(machine.frame(), 3);
@@ -250,6 +255,7 @@ fn exec_runs_a_child_and_returns_one() {
     program.push(or(S0, V0, 0));
     program.push(or(S1, SP, 0));
     let (mut machine, end) = kernel_with(&program);
+    // pc0, gp0, t_addr, t_size, d_addr, d_size, b_addr, b_size, s_addr, s_size
     machine.write_words(HEADER, &[CHILD, 0, CHILD, 8, 0, 0, 0, 0, 0x801F_8000, 0x100]);
     machine.write_words(CHILD, &[jr(RA), or(S2, SP, 0)]);
     finish(&mut machine, end);

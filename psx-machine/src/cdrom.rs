@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
-//! The CD-ROM controller at 0x1F801800: its four indexed ports, the command set the PsyQ library uses, the response and
-//! interrupt sequence, and sector reads into the data FIFO for the CPU or DMA channel 3 (psx-spx "CDROM Controller I/O
-//! Ports", "CDROM Controller Command Summary", "CDROM - Response Timings").
+//! The CD-ROM controller at 0x1F801800: its four indexed ports, the command set the PsyQ library
+//! uses, the response and interrupt sequence, and sector reads into the data FIFO for the CPU or
+//! DMA channel 3 (psx-spx "CDROM Controller I/O Ports", "CDROM Controller Command Summary",
+//! "CDROM - Response Timings"). CD-DA play and XA audio sectors are tracked but make no sound.
 
 use std::collections::VecDeque;
 
@@ -102,7 +103,8 @@ impl Cdrom {
             parameters: VecDeque::new(),
             response: VecDeque::new(),
             data: VecDeque::new(),
-            // The BIOS boot leaves every interrupt enabled; libcd writes the register only to clear flags left pending.
+            // The BIOS boot leaves every interrupt enabled; libcd writes the register only to clear
+            // flags left pending.
             enable: 0x1F,
             flags: 0,
             pending: VecDeque::new(),
