@@ -12,9 +12,17 @@ use psx_machine::gpu::{Command, VramRect};
 /// Instructions the boot gets to reach its first texture upload: about 2000 frames.
 const BUDGET: u64 = 600_000_000;
 
+/// The disc image `BOF3_DISC_DIR` names, or `None` when it is unset. A folder without an image (an
+/// extracted disc, for example) fails the test instead of skipping it.
 fn disc_image() -> Option<PathBuf> {
-    let path = PathBuf::from(std::env::var_os("BOF3_DISC_DIR")?);
-    if path.is_dir() { psx_cd::discover_image(&path).ok() } else { Some(path) }
+    let path = PathBuf::from(std::env::var_os("BOF3_DISC_DIR").filter(|value| !value.is_empty())?);
+    if !path.is_dir() {
+        return Some(path);
+    }
+    match psx_cd::discover_image(&path) {
+        Ok(image) => Some(image),
+        Err(error) => panic!("BOF3_DISC_DIR {} holds no disc image: {error}", path.display()),
+    }
 }
 
 /// The first 32×32 upload, the size of one type-3 EMI chunk, in the GPU log from `from` on.
