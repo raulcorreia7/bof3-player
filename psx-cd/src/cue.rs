@@ -1,11 +1,6 @@
 //! CUE sheet parsing and CD-DA track extraction.
-//!
-//! A sheet names its `FILE`s, their `TRACK`s and each track's `INDEX` points.
-//! Positions are stored in sectors (75 per second); an audio track is a run of
-//! 2352-byte CD-DA frames (`psx-spx` "CDROM Disk Format").
-//!
-//! # Examples
-//!
+//! Positions are stored in sectors (75 per second); an audio track is a run of 2352-byte CD-DA frames (`psx-spx` "CDROM
+//! Disk Format").
 //! ```
 //! use std::path::Path;
 //!
@@ -28,9 +23,6 @@ use crate::error::{Error, Result};
 const AUDIO_READ_BUFFER: usize = 1 << 20;
 
 /// A parsed CUE sheet: its tracks in the order the sheet lists them.
-///
-/// # Examples
-///
 /// ```
 /// let sheet = psx_cd::cue::parse(
 ///     "FILE \"disc.bin\" BINARY\nTRACK 01 MODE2/2352\nINDEX 01 00:00:00",
@@ -46,9 +38,6 @@ pub struct Sheet {
 }
 
 /// One track of a CUE sheet.
-///
-/// # Examples
-///
 /// ```
 /// let track = psx_cd::cue::Track {
 ///     number: 2,
@@ -77,9 +66,6 @@ pub struct Track {
 }
 
 /// How a CUE track stores its sectors.
-///
-/// # Examples
-///
 /// ```
 /// let mode = psx_cd::cue::TrackMode::Mode2_2352;
 /// assert_ne!(mode, psx_cd::cue::TrackMode::Audio);
@@ -98,11 +84,7 @@ pub enum TrackMode {
     Mode2_2352,
 }
 
-/// Reads and parses a CUE sheet from `path`; relative `FILE` names resolve
-/// against its directory.
-///
-/// # Examples
-///
+/// Reads and parses a CUE sheet from `path`; relative `FILE` names resolve against its directory.
 /// ```no_run
 /// # fn main() -> Result<(), psx_cd::Error> {
 /// let sheet = psx_cd::cue::read(std::path::Path::new("disc.cue"))?;
@@ -115,20 +97,9 @@ pub fn read(path: &Path) -> Result<Sheet, Error> {
 }
 
 /// Bytes in one CD-DA sector: 588 stereo frames of 16-bit samples.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_cd::cue::AUDIO_SECTOR_SIZE, 2352);
-/// ```
 pub const AUDIO_SECTOR_SIZE: u64 = 2352;
 
-/// The sectors `[start, end)` of the audio track at `position` in its file. A
-/// track ends where the next track of the same file starts (its pregap, when it
-/// has one), or at the end of the file.
-///
-/// # Examples
-///
+/// The sectors `[start, end)` of the audio track at `position` in its file.
 /// ```
 /// let dir = tempfile::tempdir().unwrap();
 /// std::fs::write(dir.path().join("track.bin"), vec![0_u8; 2 * 2352]).unwrap();
@@ -154,9 +125,6 @@ pub fn audio_track_range(sheet: &Sheet, position: usize) -> Result<(u64, u64)> {
 }
 
 /// Writes every audio track as a 44.1 kHz stereo 16-bit WAV file `trackNN.wav`.
-///
-/// # Examples
-///
 /// ```
 /// let dir = tempfile::tempdir().unwrap();
 /// std::fs::write(dir.path().join("track.bin"), vec![0_u8; 2352]).unwrap();
@@ -196,12 +164,8 @@ pub fn extract_audio_tracks(sheet: &Sheet, output: &Path) -> Result<Vec<PathBuf>
     Ok(written)
 }
 
-/// Writes every audio track's sectors as the disc stores them, `trackNN.pcm`:
-/// little-endian 16-bit stereo samples at 44.1 kHz, 2352 bytes a sector, with
-/// no header.
-///
-/// # Examples
-///
+/// Writes every audio track's sectors as the disc stores them, `trackNN.pcm`: little-endian 16-bit stereo samples at
+/// 44.1 kHz, 2352 bytes a sector, with no header.
 /// ```
 /// let dir = tempfile::tempdir().unwrap();
 /// std::fs::write(dir.path().join("track.bin"), vec![0_u8; 2352]).unwrap();
@@ -236,12 +200,6 @@ pub fn extract_raw_audio_tracks(sheet: &Sheet, output: &Path) -> Result<Vec<Path
 }
 
 /// Parses CUE text; relative `FILE` names resolve against `root`.
-///
-/// Unknown commands are ignored, `INDEX 00` and `INDEX 01` are kept, and a
-/// track without `INDEX 01` is an error.
-///
-/// # Examples
-///
 /// ```
 /// let sheet = psx_cd::cue::parse(
 ///     "FILE \"data.bin\" BINARY\nTRACK 01 MODE2/2352\nINDEX 01 00:00:00",
