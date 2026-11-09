@@ -7,6 +7,7 @@ use crate::cdrom::Cdrom;
 use crate::dma::{Dma, channel};
 use crate::gpu::Gpu;
 use crate::irq::{Irq, Line};
+use crate::mdec::Mdec;
 use crate::spu::Spu;
 use crate::timers::Timers;
 
@@ -58,6 +59,8 @@ pub struct Bus {
     pub spu: Spu,
     /// The CD-ROM controller.
     pub cdrom: Cdrom,
+    /// The motion decoder.
+    pub mdec: Mdec,
     /// GPU linked lists cut short because they did not end.
     pub dma_list_overruns: u64,
     io: Vec<u8>,
@@ -85,6 +88,7 @@ impl Bus {
             timers: Timers::default(),
             spu: Spu::new(),
             cdrom: Cdrom::new(),
+            mdec: Mdec::default(),
             dma_list_overruns: 0,
             io: vec![0; (IO_END - IO) as usize],
             cache_control: 0,
@@ -236,6 +240,8 @@ impl Bus {
             0x1F80_1080..=0x1F80_10FF => self.dma.read((p & !3) - 0x1F80_1080) >> shift,
             0x1F80_1810 => self.gpu.read() >> shift,
             0x1F80_1814 => self.gpu.status() >> shift,
+            0x1F80_1820 => self.mdec.read() >> shift,
+            0x1F80_1824 => self.mdec.status() >> shift,
             _ => read_slice(&self.io, (p - IO) as usize, width),
         }
     }
@@ -279,6 +285,11 @@ impl Bus {
                 }
             }
             0x1F80_1814 => self.gpu.gp1(value),
+            0x1F80_1820 => {
+                self.mdec.write(value);
+                self.start_dma(channel::MDEC_OUT);
+            }
+            0x1F80_1824 => self.mdec.write_control(value),
             _ => write_slice(&mut self.io, (p - IO) as usize, value >> shift, width),
         }
     }
@@ -293,6 +304,7 @@ impl Bus {
                 }
             }
             channel::SPU => self.spu.write_ram(&value.to_le_bytes()),
+            channel::MDEC_IN => self.mdec.write(value),
             _ => {}
         }
     }
@@ -303,6 +315,7 @@ impl Bus {
             channel::GPU => self.gpu.read(),
             channel::CDROM => self.cdrom.read_data_word(),
             channel::SPU => self.spu.read_word(),
+            channel::MDEC_OUT => self.mdec.read(),
             _ => 0,
         }
     }

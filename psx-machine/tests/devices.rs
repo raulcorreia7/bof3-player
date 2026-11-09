@@ -175,3 +175,68 @@ fn system_config_names_the_boot_file_and_stack() {
     assert_eq!(config.boot, "SLUS_000.01");
     assert_eq!(config.stack, Some(0x801F_FF00));
 }
+
+const MDEC_DATA: u32 = 0x1F80_1820;
+const MDEC_STATUS: u32 = 0x1F80_1824;
+
+/// Loads a luma quantization table whose DC step is 2 and a scale table whose first row is the
+/// DC basis, 0x5A82, so a DC-only block decodes to one flat value.
+fn mdec_tables(machine: &mut Machine) {
+    let bus = machine.bus_mut();
+    bus.write32(MDEC_STATUS, 0x8000_0000);
+    bus.write32(MDEC_DATA, 0x4000_0000);
+    bus.write32(MDEC_DATA, 2);
+    for _ in 1..16 {
+        bus.write32(MDEC_DATA, 0);
+    }
+    bus.write32(MDEC_DATA, 0x6000_0000);
+    for word in 0..32 {
+        bus.write32(MDEC_DATA, if word < 4 { 0x5A82_5A82 } else { 0 });
+    }
+}
+
+#[test]
+fn mdec_decodes_a_flat_monochrome_block() {
+    let mut machine = Machine::new();
+    mdec_tables(&mut machine);
+    let bus = machine.bus_mut();
+    assert_eq!(bus.read32(MDEC_STATUS) >> 29, 0b100, "idle: output empty, not busy");
+    // Decode, 8-bit unsigned, one parameter word: DC 64 at quantizer scale 1, then end of block.
+    bus.write32(MDEC_DATA, (1 << 29) | (1 << 27) | 1);
+    assert_ne!(bus.read32(MDEC_STATUS) & (1 << 29), 0, "busy while parameters remain");
+    bus.write32(MDEC_DATA, 0xFE00_0440);
+    let output: Vec<u32> = (0..16).map(|_| bus.read32(MDEC_DATA)).collect();
+    // 64 × (2 × 0x5A82 >> 3) >> 13, twice, is 16; unsigned output adds 0x80.
+    assert_eq!(output, vec![0x9090_9090; 16]);
+    assert_eq!(bus.read32(MDEC_STATUS) >> 29, 0b100);
+}
+
+#[test]
+fn mdec_output_dma_waits_for_the_decoded_macroblock() {
+    let mut machine = Machine::new();
+    mdec_tables(&mut machine);
+    // A 15-bit macroblock of six empty blocks: Cr, Cb, Y1–Y4.
+    let input = [0xFE00_0400u32; 6];
+    machine.write_words(0x8002_0000, &input);
+    let bus = machine.bus_mut();
+    bus.write32(0x1F80_10F0, 0x0765_43A9); // DPCR: enable channels 0 and 1
+    bus.write32(MDEC_STATUS, 0x6000_0000); // both DMA requests
+    // Channel 1 first, as movie players start it: 128 words to 0x30000.
+    bus.write32(0x1F80_1090, 0x0003_0000);
+    bus.write32(0x1F80_1094, (4 << 16) | 32);
+    bus.write32(0x1F80_1098, 0x0100_0200);
+    assert_ne!(bus.read32(0x1F80_1098) & (1 << 24), 0, "output waits for data");
+    bus.write32(MDEC_DATA, (1 << 29) | (3 << 27) | (1 << 25) | 6);
+    bus.write32(0x1F80_1080, 0x0002_0000);
+    bus.write32(0x1F80_1084, (1 << 16) | 6);
+    bus.write32(0x1F80_1088, 0x0100_0201);
+    assert_eq!(bus.read32(0x1F80_1088) & (1 << 24), 0, "input done");
+    assert_eq!(bus.read32(0x1F80_1098) & (1 << 24), 0, "output done");
+    assert_eq!(bus.mdec.macroblocks, 1);
+    // An empty macroblock is mid-grey: unsigned 0x80 per channel, 16 in five bits, bit 15 set.
+    let pixel = 0x8000 | (16 << 10) | (16 << 5) | 16;
+    let ram = machine.ram();
+    for at in (0x30000..0x30000 + 128 * 4).step_by(2) {
+        assert_eq!(u16::from_le_bytes([ram[at], ram[at + 1]]), pixel, "pixel at {at:#x}");
+    }
+}

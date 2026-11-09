@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 //! The DMA controller: seven channels, `DPCR` and `DICR` (psx-spx "DMA Channels"). A transfer runs
-//! to its end as soon as it starts.
+//! to its end as soon as it starts, except that MDEC output waits until the decoder holds the
+//! whole transfer.
 
 use crate::bus::Bus;
 use crate::irq::Line;
@@ -79,6 +80,19 @@ impl Dma {
         master && !before
     }
 
+    /// Words a block transfer on `index` moves.
+    fn words(&self, index: usize) -> u32 {
+        let channel = &self.channels[index];
+        if (channel.control >> 9) & 3 == 0 {
+            match channel.block & 0xFFFF {
+                0 => 0x1_0000,
+                count => count,
+            }
+        } else {
+            (channel.block & 0xFFFF) * (channel.block >> 16)
+        }
+    }
+
     fn ready(&self, index: usize) -> bool {
         let control = self.channels[index].control;
         let sync = (control >> 9) & 3;
@@ -127,8 +141,11 @@ impl Bus {
         }
     }
 
-    fn start_dma(&mut self, index: usize) {
+    pub(crate) fn start_dma(&mut self, index: usize) {
         if !self.dma.ready(index) {
+            return;
+        }
+        if index == channel::MDEC_OUT && self.mdec.output_len() < self.dma.words(index) as usize {
             return;
         }
         self.dma.transfers[index] += 1;
@@ -145,18 +162,14 @@ impl Bus {
         if self.dma.update_master_flag() {
             self.irq.raise(Line::Dma);
         }
+        if index == channel::MDEC_IN {
+            self.start_dma(channel::MDEC_OUT);
+        }
     }
 
     fn dma_block(&mut self, index: usize, sync: u32) {
         let channel = self.dma.channels[index];
-        let words = if sync == 0 {
-            match channel.block & 0xFFFF {
-                0 => 0x1_0000,
-                count => count,
-            }
-        } else {
-            (channel.block & 0xFFFF) * (channel.block >> 16)
-        };
+        let words = self.dma.words(index);
         let from_ram = channel.control & 1 != 0;
         let step: u32 = if channel.control & 2 != 0 { 4u32.wrapping_neg() } else { 4 };
         let mut address = channel.address & 0x1F_FFFC;

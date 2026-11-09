@@ -23,6 +23,7 @@ Guide: [psx-machine](../docs/crates.md#psx-machine). The hardware sources are in
 | DMA  | seven channels in block, request and linked-list modes, `DPCR`, `DICR` and its interrupt                     |
 | Timers | the NTSC beam (263 lines, vertical blank at line 240, `IRQ0`) and the three root counters                 |
 | CD-ROM | the controller ports, the commands libcd sends, responses and interrupts, sectors to the CPU or DMA 3     |
+| MDEC | quantization and scale tables, macroblock decoding to 4-, 8-, 15- and 24-bit pixels, DMA 0 in and DMA 1 out |
 | SPU  | registers, 512 KB sound RAM through the transfer port and DMA 4, a log of key-ons and sound RAM writes        |
 | Kernel | stand-ins for the `A0`, `B0` and `C0` functions the game calls, exceptions, events, threads, pads, `Exec`  |
 
@@ -30,8 +31,9 @@ The GPU log is the point of the crate. Each draw records its shape, vertices (be
 offset), colours, UVs, texture page, CLUT, depth, texture window, the drawing offset and the
 drawing area. Uploads record their rectangle and pixels; fills, copies, downloads and display
 commands are logged too. Uploads, fills and copies change VRAM; draws are recorded but not
-rasterized, so VRAM holds what the game loaded, not what it drew. A renderer can come later behind
-a feature; the log and VRAM do not depend on one.
+rasterized, so VRAM holds what the game loaded, not what it drew. A renderer, if one is added,
+goes behind a cargo feature (OpenGL ES through `glow` is the preferred backend), so the log, VRAM
+readback, headless tests and CI never need a GPU.
 
 The SPU log records each key-on with the voice's start address, loop address, pitch, ADSR and
 volume, the fields `psx_audio::spu::VoiceSetup` takes; together with `Spu::ram` it is enough to
@@ -39,7 +41,8 @@ render the sounds with `psx-audio`. The machine itself mixes no audio, and CD-DA
 counted, not played.
 
 Unmapped reads return 0 and unmapped writes are dropped; the machine raises no bus errors. A DMA
-transfer runs to its end the moment it starts.
+transfer runs to its end the moment it starts; MDEC output waits until the decoder holds the whole
+transfer. The MDEC decodes a command as soon as its last parameter arrives.
 
 ## Running code
 
@@ -48,6 +51,14 @@ points the CPU at its entry. `run_frames`, `run_until_pc` and `run_until` (any c
 machine) run it; a `Halt` names what stopped it, such as a kernel function with no stand-in.
 `gpu_log`, `vram`, `ram`, `key_ons` and `kernel().tty` read the results.
 `Machine::new` gives a bare machine with no kernel, for tests on synthetic programs.
+
+With `BOF3_DISC_DIR` naming a *Breath of Fire III* (USA) image, `cargo run --release -p
+psx-machine --example boot -- 600` prints the frames run, GPU command counts and the VRAM
+rectangles written, and `tests/retail.rs` checks that the game's first 32×32 texture upload equals
+the type-3 EMI entry it came from. The game boots through its logo movie to the title screen and,
+with Start pressed, to the title menu. The tty shows one `VSync: timeout`, at frame 481 just after
+the logo returns: `VSync` gives its wait for the next vertical blank 32768 polls, about one frame
+at the machine's flat two cycles per instruction, and the run carries on.
 
 ## No BIOS image
 

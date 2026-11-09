@@ -14,6 +14,7 @@ pub mod gpu;
 pub mod gte;
 pub mod irq;
 mod machine;
+pub mod mdec;
 pub mod spu;
 pub mod timers;
 

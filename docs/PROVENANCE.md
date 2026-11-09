@@ -43,6 +43,7 @@ Avocado, DuckStation) and rustation, whose licence is unclear, were not used as 
 | DMA modes, `DPCR`, `DICR` | DMA Channels                                           |
 | Beam and root counters    | Timers; GPU Timings (263 lines of 3413 video cycles at 53.693175 MHz) |
 | CD-ROM ports and commands | CDROM Controller I/O Ports; CDROM Controller Command Summary; CDROM - Response Timings |
+| MDEC commands, decoding   | MDEC I/O Ports; MDEC Commands; MDEC Decompression (zigzag order, run-length blocks, reference IDCT, YUV to RGB) |
 | SPU registers, transfers  | SPU Voice Registers; SPU Control and Status Register; SPU Memory Access |
 | Kernel functions          | BIOS Function Summary; BIOS Event, Thread and Joypad Functions |
 | Exception dispatch, chains | BIOS Interrupt/Exception Handling                     |

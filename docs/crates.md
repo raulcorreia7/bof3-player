@@ -99,6 +99,7 @@ needs no BIOS image.
 | `timers`  | the NTSC beam, vertical blank and the three root counters                 |
 | `cdrom`   | the CD-ROM controller and its command set                                 |
 | `disc`    | raw sectors and tracks from a `psx-cd` image or from memory               |
+| `mdec`    | the motion decoder: tables, macroblocks, output queue                     |
 | `spu`     | SPU registers, sound RAM and the key-on log                               |
 | `exe`     | PS-X EXE headers and `SYSTEM.CNF`                                         |
 
@@ -110,6 +111,7 @@ needs no BIOS image.
 | DMA  | psx-spx "DMA Channels"                                            |
 | Timers | psx-spx "Timers", "GPU Timings"                                 |
 | CD-ROM | psx-spx "CDROM Controller I/O Ports", "CDROM Controller Command Summary", "CDROM - Response Timings" |
+| MDEC | psx-spx "MDEC I/O Ports", "MDEC Commands", "MDEC Decompression"   |
 | SPU  | psx-spx "SPU Voice Registers", "SPU Control and Status Register", "SPU Memory Access" |
 | Kernel | psx-spx "BIOS Function Summary", "BIOS Interrupt/Exception Handling", "BIOS Memory Map", "BIOS Patches" |
 
