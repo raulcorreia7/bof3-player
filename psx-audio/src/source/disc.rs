@@ -10,8 +10,7 @@ use super::folder::file_blob;
 use super::{Blob, Source};
 use crate::error::{Error, Result};
 
-/// A lone image smaller than this is not taken for a disc image: it is more
-/// likely the CD-DA track next to one.
+/// A lone image smaller than this is not taken for a disc image: it is more likely the CD-DA track next to one.
 const MIN_DISC_IMAGE_BYTES: u64 = 400 * 1024 * 1024;
 
 struct AudioTrack {
@@ -19,15 +18,7 @@ struct AudioTrack {
     blob: Arc<dyn Blob>,
 }
 
-/// A disc image (`.bin`/`.iso`, optionally described by a `.cue`) read through
-/// its ISO 9660 volume.
-///
-/// Raw 2352-byte and plain 2048-byte images are understood. XA streams
-/// (`*.STR`) are exposed as 2336-byte sectors; the audio track, when known, is
-/// the pseudo file `CDDA/TRACKnn.RAW` of raw 2352-byte sectors.
-///
-/// # Examples
-///
+/// A disc image (`.bin`/`.iso`, optionally described by a `.cue`) read through its ISO 9660 volume.
 /// ```
 /// use psx_audio::{DiscSource, Source};
 ///
@@ -61,13 +52,6 @@ fn cd_error(error: psx_cd::Error) -> Error {
 
 impl DiscSource {
     /// Open a disc from a `.cue` file, an image file, or a directory that holds one.
-    ///
-    /// # Errors
-    ///
-    /// Fails when the path names no readable image, or its ISO 9660 volume is malformed.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let dir = tempfile::tempdir().unwrap();
     /// let input = dir.path().join("input");
@@ -102,13 +86,6 @@ impl DiscSource {
     }
 
     /// Read a disc image from any `Read + Seek` (an engine's VFS handle).
-    ///
-    /// # Errors
-    ///
-    /// Fails when the image is not a cooked or raw disc image.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let dir = tempfile::tempdir().unwrap();
     /// let input = dir.path().join("input");

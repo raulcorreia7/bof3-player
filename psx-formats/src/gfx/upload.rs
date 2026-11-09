@@ -1,15 +1,6 @@
 //! Conversion between a TIM file and a type-3 VRAM upload.
-//!
-//! A TIM image block holds frame buffer words at a frame buffer position, and a type-3 upload is
-//! whole 32-by-32-word rectangles that a loader copies into the frame buffer at the position its
-//! load argument names (see [`super::vram`]). The words are the same, so an upload and the CLUT row
-//! it is drawn with make a TIM exactly ([`tim_with_clut`]), an upload alone makes a 15-bit TIM
-//! ([`tim_direct`]), and a TIM that one of them wrote returns the upload byte for byte
-//! ([`from_tim`]). The TIM layout is Sony's *File Formats* manual, chapter 3 ("TIM"); the frame
-//! buffer is psx-spx "GPU Video Memory (VRAM)".
-//!
-//! # Examples
-//!
+//! The TIM layout is Sony's *File Formats* manual, chapter 3 ("TIM"); the frame buffer is psx-spx "GPU Video Memory
+//! (VRAM)".
 //! ```
 //! use psx_formats::gfx::upload::{from_tim, tim_direct};
 //! use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES};
@@ -34,9 +25,6 @@ const MAX_ROW: usize = 0x1f;
 const MAX_PER_ROW: usize = 0x3f;
 
 /// A TIM read as a type-3 upload: the payload its image makes and the placement its header states.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::upload::{Upload, from_tim, tim_direct};
 /// use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES};
@@ -59,12 +47,8 @@ pub struct Upload {
     pub clut: Option<Block>,
 }
 
-/// The TIM of an upload drawn with one CLUT row: the upload's words as the image and `clut_words` as a
-/// one-row CLUT at (`clut_x`, `clut_y`) in the frame buffer. `depth` is the texel depth the upload's
-/// texture page selects; the TIM is exact because its words are the words the payload holds.
-///
-/// # Examples
-///
+/// The TIM of an upload drawn with one CLUT row: the upload's words as the image and `clut_words` as a one-row CLUT at
+/// (`clut_x`, `clut_y`) in the frame buffer.
 /// ```
 /// use psx_formats::gfx::texture::Depth;
 /// use psx_formats::gfx::upload::tim_with_clut;
@@ -92,11 +76,8 @@ pub fn tim_with_clut(
     Ok(File { mode, clut: Some(clut), image: image_block(descriptor, payload)? })
 }
 
-/// The TIM of an upload with no CLUT: its words as a 15-bit image at the place its descriptor gives
-/// (the pixel mode `2` has no CLUT block).
-///
-/// # Examples
-///
+/// The TIM of an upload with no CLUT: its words as a 15-bit image at the place its descriptor gives (the pixel mode `2`
+/// has no CLUT block).
 /// ```
 /// use psx_formats::gfx::tim::Mode;
 /// use psx_formats::gfx::upload::tim_direct;
@@ -125,16 +106,7 @@ fn image_block(descriptor: Descriptor, payload: &[u8]) -> Result<Block> {
     })
 }
 
-/// Reads a TIM as an upload: the image block's words are the payload, and its position and width are
-/// the placement.
-///
-/// The loader copies whole 32-by-32-word rectangles on a 32-word, 32-row grid, so a TIM whose image is
-/// not that shape is refused with its size; padding it would put words in the upload that the TIM does
-/// not hold. An image past the 1024-by-512 frame buffer is kept, because a loader skips those
-/// rectangles ([`vram::Plane::blit`]); only a place or width a load argument cannot name is refused.
-///
-/// # Examples
-///
+/// Reads a TIM as an upload: the image block's words are the payload, and its position and width are the placement.
 /// ```
 /// use psx_formats::gfx::tim::{Block, File, Mode};
 /// use psx_formats::gfx::upload::from_tim;

@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! The DMA controller: seven channels, `DPCR` and `DICR` (psx-spx "DMA Channels"). A transfer runs
-//! to its end as soon as it starts, except that MDEC output waits until the decoder holds the
-//! whole transfer.
+//! The DMA controller: seven channels, `DPCR` and `DICR` (psx-spx "DMA Channels").
 
 use crate::bus::Bus;
 use crate::irq::Line;
@@ -102,8 +100,7 @@ impl Dma {
 }
 
 impl Bus {
-    /// A write to the DMA register at `offset` from 0x1F801080, merged into the word for narrow
-    /// writes.
+    /// A write to the DMA register at `offset` from 0x1F801080, merged into the word for narrow writes.
     pub(crate) fn dma_write(&mut self, offset: u32, value: u32, mask: u32) {
         let word = offset & !3;
         let merged = (self.dma.read(word) & !mask) | (value & mask);

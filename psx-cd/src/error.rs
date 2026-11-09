@@ -1,9 +1,4 @@
 //! The crate's one error type.
-//!
-//! Every operation reports [`Error`]; there is no second error enum.
-//!
-//! # Examples
-//!
 //! ```
 //! let error = psx_cd::Error::InvalidImage("missing primary volume descriptor");
 //! assert_eq!(error.to_string(), "invalid disc image: missing primary volume descriptor");
@@ -13,9 +8,6 @@
 use std::fmt;
 
 /// Every failure one of this crate's operations can report.
-///
-/// # Examples
-///
 /// ```
 /// let error = psx_cd::Error::NoImage("no image in the folder".into());
 /// assert_eq!(error.to_string(), "no image in the folder");
@@ -32,8 +24,7 @@ pub enum Error {
     InvalidInput(&'static str),
     /// No image to extract could be found or chosen; the message is complete.
     NoImage(String),
-    /// A patch the disc cannot take: a missing file, a file that would grow, or
-    /// a sector that is not a file sector. The message is complete.
+    /// A patch the disc cannot take: a missing file, a file that would grow, or a sector that is not a file sector.
     Patch(String),
 }
 
@@ -65,9 +56,6 @@ impl From<std::io::Error> for Error {
 }
 
 /// The crate's result type.
-///
-/// # Examples
-///
 /// ```
 /// fn parse(value: &str) -> psx_cd::Result<u8> {
 ///     value.parse().map_err(|_| psx_cd::Error::InvalidImage("not a number"))

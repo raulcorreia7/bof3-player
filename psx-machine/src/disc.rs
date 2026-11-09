@@ -40,10 +40,6 @@ pub struct ImageDisc {
 
 impl ImageDisc {
     /// Opens the image at `path`.
-    ///
-    /// # Errors
-    ///
-    /// The `psx-cd` error when the image cannot be opened or its CUE sheet read.
     pub fn open(path: impl AsRef<Path>) -> psx_cd::Result<Self> {
         let image = psx_cd::Image::open(path.as_ref())?;
         let mut tracks = Vec::new();

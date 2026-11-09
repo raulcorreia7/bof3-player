@@ -1,19 +1,4 @@
 //! PSX CLUT (palette) codec.
-//!
-//! A palette payload is raw little-endian PSX color words
-//! (`STP | B5 | G5 | R5`; bit 15 is STP). [`Palette::decode`] turns payload
-//! bytes into words and [`Palette::encode`] turns words back into the same
-//! bytes. The bank rule is [`validate_words`]: a whole number of 16-color
-//! (4bpp) CLUT rows; a bank whose word count also divides by 256 is a whole
-//! number of 8bpp rows. Texture mode and the texture-to-palette association are
-//! draw-state data, so the codec never asks for them.
-//!
-//! The RGBA view ([`word_to_rgba`], [`Palette::json`], [`Palette::png_strip`])
-//! is for inspection: STP is not alpha, so it survives in the words and in the
-//! JSON `stp` flag, not in the RGBA tuple.
-//!
-//! # Examples
-//!
 //! ```
 //! use psx_formats::gfx::clut::Palette;
 //!
@@ -28,29 +13,14 @@ use serde::Serialize;
 use crate::error::{Error, Result};
 
 /// Colors in one 4bpp CLUT row: 16 words, `0x20` bytes.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::gfx::clut::ROW_WORDS_4BPP, 16);
-/// ```
 pub const ROW_WORDS_4BPP: usize = 16;
 /// Colors in one 8bpp CLUT row: 256 words, `0x200` bytes.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::gfx::clut::ROW_WORDS_8BPP, 256);
-/// ```
 pub const ROW_WORDS_8BPP: usize = 256;
 /// PSX color words that set STP (semi-transparency) in bit 15.
 const STP: u16 = 0x8000;
 /// Swatch edge of the PNG strip, in pixels.
 const SWATCH_PIXELS: u32 = 16;
-/// Rejects a color-word count that cannot be a CLUT bank.
-///
-/// # Examples
-///
+/// Rejects a color-word count that cannot be a CLUT block.
 /// ```
 /// use psx_formats::gfx::clut::validate_words;
 ///
@@ -69,11 +39,7 @@ fn expand_channel(channel: u16) -> u8 {
     ((channel << 3) | (channel >> 2)) as u8
 }
 
-/// Expands a PSX color word to an opaque RGBA color: alpha is always 255. The
-/// lossless view is [`word_to_view`].
-///
-/// # Examples
-///
+/// Expands a PSX color word to an opaque RGBA color: alpha is always 255.
 /// ```
 /// assert_eq!(psx_formats::gfx::clut::word_to_rgba(0x001f), [255, 0, 0, 255]);
 /// ```
@@ -88,13 +54,8 @@ const VIEW_STP: u8 = 0x80;
 /// The view alpha of every other word.
 const VIEW_OPAQUE: u8 = 0xff;
 
-/// Expands a PSX color word to RGBA, with alpha carrying what the channels
-/// cannot: `0x0000` is transparent, a word with STP set is half transparent, and
-/// every other word is opaque. [`view_to_word`] inverts it exactly for all
-/// 65,536 words, so a view PNG holds the whole word.
-///
-/// # Examples
-///
+/// Expands a PSX color word to RGBA, with alpha carrying what the channels cannot: `0x0000` is transparent, a word with
+/// STP set is half transparent, and every other word is opaque.
 /// ```
 /// use psx_formats::gfx::clut::{view_to_word, word_to_view};
 ///
@@ -111,12 +72,7 @@ pub fn word_to_view(word: u16) -> [u8; 4] {
     [red, green, blue, alpha]
 }
 
-/// The color word of a view pixel, the inverse of [`word_to_view`]. Alpha below
-/// 64 is `0x0000` and its channels do not count; alpha from 64 to 191 sets STP;
-/// anything higher is opaque. An edited pixel falls into the same bands.
-///
-/// # Examples
-///
+/// The color word of a view pixel, the inverse of [`word_to_view`].
 /// ```
 /// assert_eq!(psx_formats::gfx::clut::view_to_word([255, 0, 0, 255]), 0x001f);
 /// assert_eq!(psx_formats::gfx::clut::view_to_word([0, 0, 0, 0]), 0);
@@ -129,11 +85,7 @@ pub fn view_to_word(rgba: [u8; 4]) -> u16 {
     rgba_to_word(rgba) | stp
 }
 
-/// Packs RGBA into a PSX color word with the top 5 bits of each channel. The
-/// low 3 bits and alpha are not representable and are dropped.
-///
-/// # Examples
-///
+/// Packs RGBA into a PSX color word with the top 5 bits of each channel.
 /// ```
 /// assert_eq!(psx_formats::gfx::clut::rgba_to_word([255, 0, 0, 255]), 0x001f);
 /// ```
@@ -142,10 +94,7 @@ pub fn rgba_to_word(rgba: [u8; 4]) -> u16 {
     channel(rgba[0]) | (channel(rgba[1]) << 5) | (channel(rgba[2]) << 10)
 }
 
-/// A CLUT bank: raw little-endian PSX color words.
-///
-/// # Examples
-///
+/// A CLUT block: raw little-endian PSX color words.
 /// ```
 /// use psx_formats::gfx::clut::Palette;
 ///
@@ -175,10 +124,7 @@ struct ColorJson {
 }
 
 impl Palette {
-    /// Decodes payload bytes, rejecting shapes that are not a CLUT bank.
-    ///
-    /// # Examples
-    ///
+    /// Decodes payload bytes, rejecting shapes that are not a CLUT block.
     /// ```
     /// let bytes: Vec<u8> = (0..32).collect();
     /// assert!(psx_formats::gfx::clut::Palette::decode(&bytes).is_ok());
@@ -193,9 +139,6 @@ impl Palette {
     }
 
     /// Validates color words with [`validate_words`] and keeps them.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let palette = psx_formats::gfx::clut::Palette::from_words(vec![0x8000; 32]).unwrap();
     /// assert_eq!(palette.words().len(), 32);
@@ -205,10 +148,7 @@ impl Palette {
         Ok(Self { words })
     }
 
-    /// Encodes the bank back to payload bytes; the inverse of [`Self::decode`].
-    ///
-    /// # Examples
-    ///
+    /// Encodes the block back to payload bytes; the inverse of [`Self::decode`].
     /// ```
     /// let bytes: Vec<u8> = (0..32).collect();
     /// let palette = psx_formats::gfx::clut::Palette::decode(&bytes).unwrap();
@@ -223,9 +163,6 @@ impl Palette {
     }
 
     /// The color words in payload order.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let palette = psx_formats::gfx::clut::Palette::from_words(vec![0x001f; 16]).unwrap();
     /// assert_eq!(palette.words()[0], 0x001f);
@@ -235,9 +172,6 @@ impl Palette {
     }
 
     /// Number of 4bpp CLUT rows; exact, because every constructor validates.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let palette = psx_formats::gfx::clut::Palette::from_words(vec![0; 32]).unwrap();
     /// assert_eq!(palette.rows_4bpp(), 2);
@@ -246,10 +180,7 @@ impl Palette {
         self.words.len() / ROW_WORDS_4BPP
     }
 
-    /// Number of 8bpp CLUT rows, or `None` when the bank is not 256-word aligned.
-    ///
-    /// # Examples
-    ///
+    /// Number of 8bpp CLUT rows, or `None` when the block is not 256-word aligned.
     /// ```
     /// let palette = psx_formats::gfx::clut::Palette::from_words(vec![0; 256]).unwrap();
     /// assert_eq!(palette.rows_8bpp(), Some(1));
@@ -258,10 +189,7 @@ impl Palette {
         self.words.len().is_multiple_of(ROW_WORDS_8BPP).then_some(self.words.len() / ROW_WORDS_8BPP)
     }
 
-    /// The bank as JSON: geometry plus one record per color word.
-    ///
-    /// # Examples
-    ///
+    /// The block as JSON: geometry plus one record per color word.
     /// ```
     /// let palette = psx_formats::gfx::clut::Palette::from_words(vec![0; 16]).unwrap();
     /// assert!(palette.json().contains("\"format\": \"psx-clut\""));
@@ -282,11 +210,8 @@ impl Palette {
         serde_json::to_string_pretty(&document).expect("palette model is serializable")
     }
 
-    /// Renders the bank as an 8-bit RGBA PNG swatch strip: 16 colors per row,
-    /// one 4bpp CLUT row per image row, `SWATCH_PIXELS` pixels per swatch.
-    ///
-    /// # Examples
-    ///
+    /// Renders the block as an 8-bit RGBA PNG swatch strip: 16 colors per row, one 4bpp CLUT row per image row,
+    /// `SWATCH_PIXELS` pixels per swatch.
     /// ```
     /// let palette = psx_formats::gfx::clut::Palette::from_words(vec![0; 16]).unwrap();
     /// assert_eq!(&palette.png_strip()[..8], &psx_formats::gfx::png::SIGNATURE);

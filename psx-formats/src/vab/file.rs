@@ -1,14 +1,6 @@
 //! The standard VAB file: header and body in one file.
-//!
-//! Sony's *File Formats* manual (chapter 4, "VAB") defines the bank as a header (`.vh`) and a body
-//! (`.vb`) of SPU ADPCM samples, and the sound tools also exchange them as one `.vab` file, the
-//! header followed by the body. The header's length is fixed by its program count (the 16-bit field at
-//! offset `0x12`): the 32-byte header, 128 program records, 16 tones of 32 bytes for each program, and
-//! the 256-entry sample size table (see [`super::Bank::header_size`]). The file therefore needs no
-//! separator, and [`split`] finds the body by reading that count.
-//!
-//! # Examples
-//!
+//! Sony's *File Formats* manual (chapter 4, "VAB") defines the bank as a header (`.vh`) and a body (`.vb`) of SPU ADPCM
+//! samples, and the sound tools also exchange them as one `.vab` file, the header followed by the body.
 //! ```
 //! use psx_formats::vab::{encode_bank, file};
 //!
@@ -27,9 +19,6 @@ use crate::error::{Error, Result};
 const PROGRAM_COUNT_AT: usize = 0x12;
 
 /// The bank as one VAB file: the header followed by the body.
-///
-/// # Examples
-///
 /// ```
 /// assert_eq!(psx_formats::vab::file::join(b"ab", b"cd"), b"abcd");
 /// ```
@@ -40,12 +29,8 @@ pub fn join(header: &[u8], body: &[u8]) -> Vec<u8> {
     whole
 }
 
-/// A VAB file split into its header (`.vh`) and body (`.vb`) at the header's own length, and
-/// checked with [`check`]: both halves must parse as a bank and the header must encode to the bytes
-/// it holds.
-///
-/// # Examples
-///
+/// A VAB file split into its header (`.vh`) and body (`.vb`) at the header's own length, and checked with [`check`]:
+/// both halves must parse as a bank and the header must encode to the bytes it holds.
 /// ```
 /// use psx_formats::{Error, vab::file};
 ///
@@ -66,11 +51,8 @@ pub fn split(file: &[u8]) -> Result<(&[u8], &[u8])> {
     Ok((header, body))
 }
 
-/// The parsed bank when `header` and `body` are a bank: the header parses against the body,
-/// encodes back to its own bytes, and the samples it sizes fit the body.
-///
-/// # Examples
-///
+/// The parsed bank when `header` and `body` are a bank: the header parses against the body, encodes back to its own
+/// bytes, and the samples it sizes fit the body.
 /// ```
 /// use psx_formats::vab::{encode_bank, file};
 ///

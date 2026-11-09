@@ -77,9 +77,8 @@ pub fn render_item(
     Ok(())
 }
 
-/// Render every item that matches `query` and `filter` into `dir`, one file per item named after
-/// its id; returns how many items failed. Unless `with_duplicates`, an item that repeats another
-/// one's audio is skipped and only the canonical copy is written.
+/// Render every item that matches `query` and `filter` into `dir`, one file per item named after its id; returns how
+/// many items failed.
 pub fn render(
     library: &'static Library<'static>,
     query: &str,

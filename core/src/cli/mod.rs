@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-//! `player`: browse, search, play, render, export and verify the audio of a
-//! *Breath of Fire III* disc or extracted tree.
+//! `player`: browse, search, play, render, export and verify the audio of a *Breath of Fire III* disc or extracted
+//! tree.
 
 mod audio;
 mod commands;
@@ -138,8 +138,7 @@ FLAC/Ogg music without --loops renders the intro plus one loop and tags it."
         #[command(flatten)]
         filters: Filters,
     },
-    /// Export a sequence as MIDI or as its package, a sample as raw VAG blocks,
-    /// or a bank as one VAB file
+    /// Export a sequence as MIDI or as its package, a sample as raw VAG blocks, or a bank as one VAB file
     #[command(
         after_help = "Examples:\n  bof3player export midi \"music:BGMOPN#0\" -o song.mid\n  bof3player export vag \"sample:BOSS001#3\" -o sample.vag\n  bof3player export vab \"bank:BOSS001\" -o bank.vab"
     )]
@@ -185,8 +184,8 @@ FLAC/Ogg music without --loops renders the intro plus one loop and tags it."
     Query(Vec<OsString>),
 }
 
-/// Render every playable item that matches `query` as WAV files into `out_dir`, reading `disc`
-/// (a .cue sheet or an extracted folder); returns the count of items that failed.
+/// Render every playable item that matches `query` as WAV files into `out_dir`, reading `disc` (a .cue sheet or an
+/// extracted folder); returns the count of items that failed.
 pub fn render_matching(disc: &Path, query: &str, out_dir: &Path, naming: &dyn Naming) -> Result<usize, String> {
     let cli = Cli::try_parse_from([OsString::from("bof3player"), "--input".into(), disc.into()])
         .map_err(|error| error.to_string())?;
@@ -246,7 +245,6 @@ pub fn tui_main(program: &str, args: Vec<OsString>, naming: &dyn Naming) -> Exit
 }
 
 /// Run the player command line; `naming` supplies the catalog's names.
-/// `program` is the name the user typed (`bof3player`, or a command that wraps it); help and errors show it.
 pub fn main(program: &str, args: Vec<OsString>, naming: &dyn Naming) -> ExitCode {
     let command = named(Cli::command(), program);
     let matches = command.get_matches_from(std::iter::once(OsString::from(program)).chain(args));

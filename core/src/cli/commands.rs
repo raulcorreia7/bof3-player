@@ -19,8 +19,7 @@ use crate::cli::{Filters, Global};
 
 type Outcome = Result<ExitCode, String>;
 
-/// Print one line to standard output. A closed pipe (`bof3player list | head`) ends the program
-/// quietly; any other write error is reported and ends it with status 2.
+/// Print one line to standard output.
 macro_rules! say {
     () => { say!("") };
     ($($arg:tt)*) => { write_line(format_args!($($arg)*)) };
@@ -216,8 +215,6 @@ pub fn search_with(
     let library = open_library(global, naming)?;
     let filter = filter_of(filters)?;
     let hits = library.catalog().search(query, &filter);
-    // If not showing all, we still need to find matches - but search should match any member; our current search looks up by item properties
-    // The requirement says "Search matches any member" - so ensure we find items if any member matches; our existing search does substring matching on item fields, should be fine
     let shown = &hits[..limit.min(hits.len())];
     print_rows(global, library.catalog(), shown, hits.len(), show_all);
     Ok(if hits.is_empty() { ExitCode::from(1) } else { ExitCode::SUCCESS })
@@ -228,7 +225,6 @@ pub fn info(global: &Global, query: &str, naming: &dyn Naming) -> Outcome {
     let item = resolve(library, query)?;
     if global.json {
         let mut val = item_json(item);
-        // add duplicates info
         if let Some(members) = library.catalog().groups().group_members(&item.id) {
             val["duplicates"] = json!(members);
         }

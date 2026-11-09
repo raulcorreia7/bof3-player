@@ -1,20 +1,5 @@
 // SPDX-License-Identifier: MIT
 //! Where the bytes come from.
-//!
-//! A [`Source`] is a read-only volume of files addressed by slash separated
-//! paths (`ASSETS/DATA.BIN`, `STREAMS/TRACK01.STR`, `CDDA/TRACK02.RAW`). A
-//! [`Blob`] is one file's random-access bytes. Three families of source cover
-//! how an engine hands data over:
-//!
-//! * **Memory**: [`MemorySource`] borrows (zero-copy) or owns byte slices the
-//!   engine already loaded, or any [`Blob`].
-//! * **Callbacks and readers**: [`CallbackSource`] forwards to the engine's own
-//!   VFS; [`ReaderBlob`] wraps any `Read + Seek`.
-//! * **Paths**: [`FolderSource`] (an extracted tree) and [`DiscSource`] (a
-//!   `.cue`/`.bin` image), available with the `std` feature.
-//!
-//! # Examples
-//!
 //! ```
 //! use psx_audio::{MemorySource, Source};
 //!
@@ -49,12 +34,6 @@ pub use folder::FolderSource;
 pub use reader::ReaderBlob;
 
 /// Random-access bytes of one file.
-///
-/// Implementations must be thread-safe; the library may read from the thread
-/// that renders audio.
-///
-/// # Examples
-///
 /// ```
 /// use psx_audio::{Blob, MemorySource, Source};
 ///
@@ -69,9 +48,6 @@ pub use reader::ReaderBlob;
 /// ```
 pub trait Blob: Send + Sync {
     /// Total size in bytes.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -83,9 +59,6 @@ pub trait Blob: Send + Sync {
     fn len(&self) -> u64;
 
     /// Whether the blob is empty.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -98,11 +71,7 @@ pub trait Blob: Send + Sync {
         self.len() == 0
     }
 
-    /// Read up to `buf.len()` bytes at `offset`; returns how many were read
-    /// (0 at or past the end).
-    ///
-    /// # Examples
-    ///
+    /// Read up to `buf.len()` bytes at `offset`; returns how many were read (0 at or past the end).
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -117,9 +86,6 @@ pub trait Blob: Send + Sync {
     fn read_at(&self, offset: u64, buf: &mut [u8]) -> Result<usize>;
 
     /// The whole content when it is already in memory, so callers can avoid a copy.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -135,13 +101,6 @@ pub trait Blob: Send + Sync {
 
 impl dyn Blob + '_ {
     /// The whole file: borrowed when in memory, read otherwise.
-    ///
-    /// # Errors
-    ///
-    /// Fails when a read fails; a short final read ends the data instead.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -168,13 +127,6 @@ impl dyn Blob + '_ {
     }
 
     /// Fill `buf` exactly from `offset`.
-    ///
-    /// # Errors
-    ///
-    /// Fails with an i/o error when the file ends before `buf` is full.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -201,9 +153,6 @@ impl dyn Blob + '_ {
 }
 
 /// A read-only volume of files.
-///
-/// # Examples
-///
 /// ```
 /// use psx_audio::{MemorySource, Source};
 ///
@@ -215,9 +164,6 @@ impl dyn Blob + '_ {
 /// ```
 pub trait Source: Send + Sync {
     /// Every file path, `/`-separated, relative to the volume root.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -229,9 +175,6 @@ pub trait Source: Send + Sync {
     fn list(&self) -> Result<Vec<String>>;
 
     /// Open one file by path (ASCII case-insensitive).
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -243,9 +186,6 @@ pub trait Source: Send + Sync {
     fn open<'a>(&'a self, path: &str) -> Result<Arc<dyn Blob + 'a>>;
 
     /// A short description for diagnostics (`folder /path`, `disc image ...`).
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -294,11 +234,6 @@ fn normalize(path: &str) -> String {
 }
 
 /// Files the engine already holds in memory, or any other [`Blob`].
-///
-/// Slices are borrowed, not copied: the source cannot outlive them.
-///
-/// # Examples
-///
 /// ```
 /// use psx_audio::{MemorySource, Source};
 ///
@@ -319,9 +254,6 @@ impl core::fmt::Debug for MemorySource<'_> {
 
 impl<'a> MemorySource<'a> {
     /// An empty source.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -333,9 +265,6 @@ impl<'a> MemorySource<'a> {
     }
 
     /// Add a file backed by borrowed bytes (zero-copy).
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -348,9 +277,6 @@ impl<'a> MemorySource<'a> {
     }
 
     /// Add a file that owns its bytes.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{MemorySource, Source};
     ///
@@ -363,9 +289,6 @@ impl<'a> MemorySource<'a> {
     }
 
     /// Add a file backed by any blob (a streaming reader, an engine VFS handle).
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{Blob, MemorySource, Source};
     ///
@@ -420,13 +343,6 @@ type SizeFn<'a> = dyn Fn(&str) -> Result<u64> + Send + Sync + 'a;
 type ReadFn<'a> = dyn Fn(&str, u64, &mut [u8]) -> Result<usize> + Send + Sync + 'a;
 
 /// The engine's own virtual file system, reached through three callbacks.
-///
-/// `list` returns every path, `size` the byte size of one path, and `read`
-/// fills a buffer from a byte offset and returns how many bytes it wrote
-/// (0 at the end of the file).
-///
-/// # Examples
-///
 /// ```
 /// use psx_audio::{CallbackSource, Source};
 ///
@@ -458,9 +374,6 @@ impl core::fmt::Debug for CallbackSource<'_> {
 
 impl<'a> CallbackSource<'a> {
     /// Build a source from the three callbacks.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{CallbackSource, Source};
     ///
