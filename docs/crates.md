@@ -1,6 +1,6 @@
 # Crates
 
-The generic PlayStation crates and the EMI reader. The PlayStation crates know no game. `emi` reads the container format of *Breath of Fire III*.
+The generic PlayStation crates, the machine and the EMI reader. The PlayStation crates know no game. `emi` reads the container format of *Breath of Fire III*.
 
 ## psx-audio
 
@@ -80,6 +80,44 @@ sector 16.
 | `metadata`       | project XML and `disc_lba.json`                                        |
 | `patch`          | a patched copy of the data track                                       |
 | `rebuild`        | a deterministic cooked ISO from a folder of files                      |
+
+## psx-machine
+
+A PlayStation machine that runs a game's own code and records what it tells the GPU and the SPU,
+so a tool can show textures, sprites and sounds as the game uses them instead of from a per-asset
+table. It has an R3000A interpreter, the memory map and the devices below the PsyQ libraries; it
+needs no BIOS image.
+
+| Module    | Contents                                                                  |
+| --------- | ------------------------------------------------------------------------- |
+| `cpu`     | R3000A interpreter: MIPS I, delay slots, coprocessor 0 and exceptions      |
+| `gte`     | coprocessor 2 registers                                                   |
+| `bus`     | RAM and its mirrors, scratchpad, I/O ports, KUSEG/KSEG0/KSEG1             |
+| `irq`     | `I_STAT` and `I_MASK`                                                     |
+| `gpu`     | `GP0`/`GP1`, VRAM, and the command log: draws with page, CLUT and UVs, uploads |
+| `dma`     | the seven DMA channels, `DPCR` and `DICR`                                 |
+| `timers`  | the NTSC beam, vertical blank and the three root counters                 |
+| `cdrom`   | the CD-ROM controller and its command set                                 |
+| `disc`    | raw sectors and tracks from a `psx-cd` image or from memory               |
+| `mdec`    | the motion decoder: tables, macroblocks, output queue                     |
+| `spu`     | SPU registers, sound RAM and the key-on log                               |
+| `exe`     | PS-X EXE headers and `SYSTEM.CNF`                                         |
+
+| Part | Reference                                                         |
+| ---- | ----------------------------------------------------------------- |
+| CPU  | psx-spx "CPU Specifications", "COP0 - Exception Handling"; MIPS I |
+| Bus  | psx-spx "Memory Map", "Interrupts"                                |
+| GPU  | psx-spx "GPU Render Polygon/Line/Rectangle Commands", "GPU Memory Transfer Commands", "GPU Rendering Attributes", "GPU Display Control Commands", "GPU Status Register" |
+| DMA  | psx-spx "DMA Channels"                                            |
+| Timers | psx-spx "Timers", "GPU Timings"                                 |
+| CD-ROM | psx-spx "CDROM Controller I/O Ports", "CDROM Controller Command Summary", "CDROM - Response Timings" |
+| MDEC | psx-spx "MDEC I/O Ports", "MDEC Commands", "MDEC Decompression"   |
+| SPU  | psx-spx "SPU Voice Registers", "SPU Control and Status Register", "SPU Memory Access" |
+| Kernel | psx-spx "BIOS Function Summary", "BIOS Interrupt/Exception Handling", "BIOS Memory Map", "BIOS Patches" |
+
+`Machine::boot_image` boots a disc image; the run API reads back the GPU log, VRAM, RAM and the
+SPU key-on log. The crate README says why it writes its own core instead of depending on an
+emulator crate, and why the CD drive is modelled as hardware.
 
 ## psx-formats
 
