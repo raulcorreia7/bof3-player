@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: MIT
-//! Draw commands rasterized into VRAM on the CPU, written from psx-spx "GPU Render Polygon Commands", "GPU Render Line
-//! Commands", "GPU Render Rectangle Commands", "GPU Rendering Attributes" and "GPU (MISC)" (dithering,
-//! semi-transparency, modulation, draw to display).
-//! A pixel is inside a triangle when its edge functions say so, with the lower-right edges excluded. psx-spx does not
-//! give the hardware's interpolation and line-stepping precision; the fixed-point forms below are the ones the
-//! `ps1-tests` reference images agree with (see the crate README).
+//! Draw commands rasterized into VRAM on the CPU, written from psx-spx "GPU Render Polygon
+//! Commands", "GPU Render Line Commands", "GPU Render Rectangle Commands", "GPU Rendering
+//! Attributes" and "GPU (MISC)" (dithering, semi-transparency, modulation, draw to display).
+//!
+//! Everything is integer arithmetic. A pixel is inside a triangle when its edge functions say
+//! so, with the lower-right edges excluded. psx-spx does not give the hardware's interpolation
+//! and line-stepping precision; the fixed-point forms below are the ones the `ps1-tests`
+//! reference images agree with (see the crate README).
 
 use super::{Depth, Draw, DrawArea, Shape, Texture, VRAM_HEIGHT, VRAM_WIDTH, Vertex};
 
-/// psx-spx "GPU Rendering Attributes", Size Restriction: the largest distance between two vertices of a drawn polygon
-/// or line.
+/// psx-spx "GPU Rendering Attributes", Size Restriction: the largest distance between two
+/// vertices of a drawn polygon or line.
 const MAX_WIDTH: i32 = 1023;
 /// The same restriction, vertically.
 const MAX_HEIGHT: i32 = 511;
 
-/// psx-spx "GPU (MISC)", 24bit RGB to 15bit RGB Dithering: the offset added to each 8-bit channel, by `[y & 3][x & 3]`.
+/// psx-spx "GPU (MISC)", 24bit RGB to 15bit RGB Dithering: the offset added to each 8-bit
+/// channel, by `[y & 3][x & 3]`.
 const DITHER: [[i32; 4]; 4] = [[-4, 0, -3, 1], [2, -2, 3, -1], [-3, 1, -4, 0], [3, -1, 2, -2]];
 
 /// Bit 15 of a VRAM pixel or texel: the mask bit, or the texel's semi-transparency flag.
@@ -22,14 +25,15 @@ const MASK_BIT: u16 = 0x8000;
 
 /// Fraction bits of a triangle's colour and texture coordinate planes.
 const PLANE_FRACTION: u32 = 12;
-/// Fraction bits of a line's colour, which starts half a step up and steps by the colour change per pixel truncated
-/// toward zero.
+/// Fraction bits of a line's colour, which starts half a step up and steps by the colour change
+/// per pixel truncated toward zero. The ps1-tests `gpu/lines` reference needs at least 12.
 const SHADE_FRACTION: u32 = 12;
 /// Fraction bits of a line's position.
 const LINE_FRACTION: u32 = 32;
 /// Half a pixel, where a line's position starts within its first pixel.
 const LINE_HALF: i64 = 1 << (LINE_FRACTION - 1);
-/// The start of a line sits this far before the pixel centre on the x axis, and on the y axis when the line goes up.
+/// The start of a line sits this far before the pixel centre on the x axis, and on the y axis
+/// when the line goes up. Fitted to the ps1-tests `gpu/lines` reference image.
 const LINE_BIAS: i64 = 1 << 10;
 
 /// The drawing state a rasterized command uses that its log entry does not carry.
@@ -47,7 +51,8 @@ pub(super) struct Mode {
     pub skip_parity: Option<usize>,
 }
 
-/// Rasterizes `draw` into `vram`; a 4- or 8-bit texture looks its texels up in `palette`, the CLUT cache.
+/// Rasterizes `draw` into `vram`; a 4- or 8-bit texture looks its texels up in `palette`, the
+/// CLUT cache.
 pub(super) fn draw(vram: &mut [u16], palette: &[u16; 256], draw: &Draw, mode: Mode) {
     let textured = draw.texture.is_some_and(|texture| !texture.raw);
     let mut painter = Painter {
@@ -135,9 +140,11 @@ impl<'a> Sampler<'a> {
     }
 }
 
-/// One attribute across a triangle: the plane through its three vertex values in fixed point, with [`PLANE_FRACTION`]
-/// fraction bits, its gradients truncated toward zero, based at the leftmost vertex and rounded to the nearest whole
-/// value there.
+/// One attribute across a triangle: the plane through its three vertex values in fixed point,
+/// with [`PLANE_FRACTION`] fraction bits, its gradients truncated toward zero, based at the
+/// leftmost vertex and rounded to the nearest whole value there. Fitted to the ps1-tests
+/// `gpu/triangle` and `gpu/uv-interpolation` reference images, which every other choice tried
+/// (more fraction bits, other roundings, the top vertex as base) misses by one in places.
 #[derive(Clone, Copy, Default)]
 struct Plane {
     /// The value at the current pixel, in fixed point.
@@ -153,8 +160,8 @@ struct Plane {
 }
 
 impl Plane {
-    /// The plane through `values` at the triangle `points`, whose doubled signed area is `area` (positive), based at
-    /// the vertex `origin` indexes.
+    /// The plane through `values` at the triangle `points`, whose doubled signed area is `area`
+    /// (positive), based at the vertex `origin` indexes.
     fn new(points: [(i64, i64); 3], values: [i64; 3], area: i64, origin: usize) -> Self {
         let [(x0, y0), (x1, y1), (x2, y2)] = points;
         let (d1, d2) = (values[1] - values[0], values[2] - values[0]);
@@ -194,9 +201,9 @@ struct Edge {
 }
 
 impl Edge {
-    /// The edge from `from` to `to` of a triangle whose inside is on its left in VRAM order (positive area). Pixels on
-    /// a left or top edge are inside; on a right or bottom edge they are not, so the lower-right edges are excluded as
-    /// psx-spx describes.
+    /// The edge from `from` to `to` of a triangle whose inside is on its left in VRAM order
+    /// (positive area). Pixels on a left or top edge are inside; on a right or bottom edge they
+    /// are not, so the lower-right edges are excluded as psx-spx describes.
     fn new(from: (i64, i64), to: (i64, i64)) -> Self {
         let (dx, dy) = (to.0 - from.0, to.1 - from.1);
         let left_or_top = dy < 0 || (dy == 0 && dx > 0);
@@ -357,7 +364,9 @@ impl Painter<'_> {
         }
     }
 
-    /// A line with both end points drawn, psx-spx "GPU Render Line Commands".
+    /// A line with both end points drawn, psx-spx "GPU Render Line Commands". The position steps
+    /// along the longer axis in 32-bit fixed point (see [`line_step`]), which decides where a
+    /// pixel falls when the line passes exactly between two.
     fn line(&mut self, from: Vertex, to: Vertex, offset: (i32, i32)) {
         if too_far(from, to) {
             return;
@@ -392,8 +401,8 @@ impl Painter<'_> {
         }
     }
 
-    /// A rectangle from its top-left corner, psx-spx "GPU Render Rectangle Commands": texture coordinates step by one
-    /// texel per pixel, backwards along a flipped axis.
+    /// A rectangle from its top-left corner, psx-spx "GPU Render Rectangle Commands": texture
+    /// coordinates step by one texel per pixel, backwards along a flipped axis.
     fn rect(&mut self, corner: Vertex, offset: (i32, i32), size: (i32, i32)) {
         let left = i64::from(i32::from(corner.x) + offset.0);
         let top = i64::from(i32::from(corner.y) + offset.1);
@@ -412,8 +421,8 @@ impl Painter<'_> {
             for column in columns.clone() {
                 let x = left + column;
                 let u = if flips.0 {
-                    // One texel to the right of the corner's U, as the ps1-tests `gpu/texture-flip` reference image
-                    // shows (measured with an even U only).
+                    // One texel to the right of the corner's U, as the ps1-tests `gpu/texture-flip`
+                    // reference image shows (measured with an even U only).
                     corner.u.wrapping_add(1).wrapping_sub(column as u8)
                 } else {
                     corner.u.wrapping_add(column as u8)
@@ -424,8 +433,8 @@ impl Painter<'_> {
     }
 }
 
-/// psx-spx "GPU (MISC)", Semi-transparency: the back pixel `back` and the front colour `front`, per 5-bit channel,
-/// saturated.
+/// psx-spx "GPU (MISC)", Semi-transparency: the back pixel `back` and the front colour `front`,
+/// per 5-bit channel, saturated.
 fn mix(mode: u8, back: u16, front: u16) -> u16 {
     (0..3).fold(0, |color, channel| {
         let shift = 5 * channel;
@@ -441,7 +450,8 @@ fn mix(mode: u8, back: u16, front: u16) -> u16 {
     })
 }
 
-/// The per-step advance of a line's position along one axis: `delta / steps` in fixed point, rounded away from zero.
+/// The per-step advance of a line's position along one axis: `delta / steps` in fixed point,
+/// rounded away from zero.
 fn line_step(delta: i64, steps: i64) -> i64 {
     if steps == 0 {
         return 0;

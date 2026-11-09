@@ -1,5 +1,19 @@
 // SPDX-License-Identifier: MIT
 //! The catalog: every item a source holds, with stable ids and ranked search.
+//!
+//! Ids are stable and human-typable. A consumer never parses them; it passes
+//! them back to [`Catalog::find`].
+//!
+//! | Id | What it is |
+//! |---|---|
+//! | `music:BGM000#0` | sequence 0 of `BIN/BGM/BGM000.EMI`, played with that archive's bank |
+//! | `bank:BOSS001`, `bank:X@2` | a VAB soundfont (the second bank of an archive is `@2`) |
+//! | `bank:BOSS001#cue3` | record 3 of the archive's own cue list |
+//! | `sample:BOSS001#3`, `sample:X@2#3` | one VAG inside a bank |
+//! | `xa:S_XA00#ch3` | a whole channel of an XA stream |
+//! | `xa:MAGIC00#ch9@12665` | one cue of that channel: the game's own cue 0x1211 |
+//! | `xa:S_XA00#ch3@6192` | the EOF-delimited span of a stream with no cue table |
+//! | `cdda:track02` | the CD-DA track |
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -109,7 +123,8 @@ pub struct Item {
     pub sub_index: u32,
     /// Length in seconds when known without rendering.
     pub duration: Option<f64>,
-    /// Whether the item has audio to play.
+    /// Whether the item has audio to play. Unused sequence slots, silent samples
+    /// and empty channels are not playable.
     pub playable: bool,
     /// For banks, cues and samples: the archive's 0-based bank number.
     pub bank: u32,
@@ -168,6 +183,14 @@ pub struct Filter<'a> {
 }
 
 /// The game names and titles the catalog shows for its items.
+///
+/// The catalog itself knows ids, paths and formats only. Its builder asks this
+/// adapter for names. [`Library::open`](crate::Library::open) supplies none;
+/// [`Library::open_with`](crate::Library::open_with) takes any implementation,
+/// including [`NoNaming`].
+///
+/// # Examples
+///
 /// ```
 /// use bof3player::catalog::Naming;
 ///
@@ -219,7 +242,8 @@ pub trait Naming {
     }
 }
 
-/// A [`Naming`] that supplies no game names: ids, archive names and details only.
+/// A [`Naming`] that supplies no game names: ids, archive names and details
+/// only.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct NoNaming;
 
@@ -291,7 +315,8 @@ fn starts_with_ci(text: &str, prefix: &str) -> bool {
 }
 
 impl Catalog {
-    /// Enumerate every item of `source`.
+    /// Enumerate every item of `source`. A file that announces itself as media
+    /// but cannot be parsed fails the build with its path in the message.
     pub(crate) fn build(source: &dyn Source, naming: &dyn Naming) -> Result<Self> {
         let mut items = Vec::with_capacity(24 * 1024);
         let cues = CueTable::new(source, naming);
@@ -346,8 +371,8 @@ impl Catalog {
         self.items.get(index)
     }
 
-    /// What `item` repeats, for display apart from its title: the other item's id without the kind prefix
-    /// (`BGMBAT00#0`), then its title in parentheses when that differs from the item's own.
+    /// What `item` repeats, for display apart from its title: the other item's id without the kind
+    /// prefix (`BGMBAT00#0`), then its title in parentheses when that differs from the item's own.
     #[must_use]
     pub fn same_as_text(&self, item: &Item) -> Option<String> {
         let other = item.same_as.as_deref()?;
@@ -400,7 +425,8 @@ impl Catalog {
         }
     }
 
-    /// Ranked search: exact id, then name prefix, then substring, then subsequence; equal ranks keep catalog order.
+    /// Ranked search: exact id, then name prefix, then substring, then
+    /// subsequence; equal ranks keep catalog order. An empty query matches everything.
     #[must_use]
     pub fn search(&self, query: &str, filter: &Filter<'_>) -> Vec<&Item> {
         let mut hits: Vec<(Rank, usize)> = self
@@ -636,6 +662,7 @@ fn add_bank(
     );
     items.push(bank);
 
+    // One sample item per non-empty VAG.
     for vag in vab.vags.iter().filter(|v| !v.is_empty()) {
         let frames = vag.size / BLOCK_BYTES as u32 * BLOCK_SAMPLES as u32;
         let seconds = f64::from(frames) / f64::from(crate::format::VAB_SAMPLE_RATE);
@@ -666,6 +693,7 @@ fn add_bank(
         items.push(sample);
     }
 
+    // The archive's own cue list.
     for (i, cue) in BankCues::decode(cues).map_err(emi_format::error)?.records().iter().enumerate() {
         let raw = cue.encode();
         let mut item = Item::new(Kind::Bank);
@@ -780,7 +808,10 @@ fn add_xa(items: &mut Vec<Item>, source: &dyn Source, cues: &CueTable, path: &st
     Ok(())
 }
 
-/// One cue from the game's pair list, clamped to the sectors the stream copy actually holds.
+/// One cue from the game's pair list, clamped to the sectors the stream copy
+/// actually holds. The game's own stop margin is `150` sectors before the
+/// window end; the catalog plays the whole window so a clip reaches its own
+/// boundary.
 #[allow(clippy::too_many_arguments)]
 fn add_xa_cue(
     items: &mut Vec<Item>,
@@ -797,6 +828,7 @@ fn add_xa_cue(
     let Some(&coding) = coding.get(&cue.channel) else { return };
     let first = u64::from(cue.first_sector());
     let wanted = cue.wanted_sectors();
+    // Channel sectors are at `channel + period*j`; the copy holds j up to the last one.
     let available = if first < total {
         let last = (total - 1 - u64::from(cue.channel)) / u64::from(cue.period);
         (last + 1).saturating_sub(u64::from(cue.start)) as u32
@@ -976,6 +1008,7 @@ mod tests {
             |query: &str| catalog.search(query, &Filter::default()).iter().map(|i| i.id.clone()).collect::<Vec<_>>();
         assert_eq!(hits("music:BGM10#0"), ["music:BGM10#0"]);
         assert_eq!(hits("battle"), ["music:BGM10#0"]);
+        // Prefix of the name beats a match inside the id.
         assert_eq!(hits("bgm2")[..2], ["music:BGM2#0", "music:BGM2#1"]);
         assert_eq!(hits("bss"), ["sample:BOSS001#3"]);
         assert!(hits("zzz").is_empty());

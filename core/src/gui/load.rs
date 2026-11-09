@@ -10,7 +10,7 @@ use crate::names;
 
 /// Game data that opened.
 pub struct Loaded {
-    /// The catalog and its source.
+    /// The catalog and its source. Leaked: players borrow it for `'static`.
     pub library: &'static Library<'static>,
     /// Whether the data is a disc image or a folder.
     pub kind: SourceKind,
@@ -28,16 +28,18 @@ pub struct Failed {
     pub probes: Vec<String>,
 }
 
-/// A load in progress.
+/// A load in progress. Poll it every frame.
 pub struct Loading(Receiver<Result<Loaded, Failed>>);
 
 impl Loading {
-    /// Start probing `hint`, or the default places when there is none.
+    /// Start probing `hint`, or the default places when there is none. `names` is an optional
+    /// titles file.
     pub fn start(hint: Option<&Path>, names: Option<&Path>) -> Self {
         let hint = hint.map(Path::to_path_buf);
         let names = names.map(Path::to_path_buf);
         let (tx, rx) = mpsc::channel();
         std::thread::spawn(move || {
+            // A closed receiver means a newer load replaced this one.
             let _ = tx.send(open(hint.as_deref(), names.as_deref()));
         });
         Self(rx)

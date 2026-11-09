@@ -1,5 +1,8 @@
-//! Graphics: VRAM uploads, CLUT blocks, texture-page words, the standard TIM file, the conversion between a TIM and an
-//! upload, and the PNG output they share.
+//! Graphics: VRAM uploads, CLUT blocks, texture-page words, the standard TIM
+//! file, the conversion between a TIM and an upload, and the PNG output they share.
+//!
+//! # Examples
+//!
 //! ```
 //! use psx_formats::gfx::clut;
 //!

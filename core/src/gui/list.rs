@@ -53,7 +53,7 @@ pub struct Tree {
 }
 
 impl Tree {
-    /// Group the catalog of `library`.
+    /// Group the catalog of `library`. Music and its families start open.
     pub fn new(library: &'static Library<'static>) -> Self {
         let mut groups: BTreeMap<Kind, BTreeMap<&str, Vec<&Item>>> = BTreeMap::new();
         for item in library.catalog().items() {
@@ -77,7 +77,7 @@ impl Tree {
         self.expanded.contains(&row.key())
     }
 
-    /// Open or close the group `row` names; `open` forces the state.
+    /// Open or close the group `row` names; `open` forces the state. Items do not toggle.
     pub fn set_open(&mut self, row: &Row, open: Option<bool>) {
         if matches!(row, Row::Item(_)) {
             return;
@@ -91,7 +91,8 @@ impl Tree {
         }
     }
 
-    /// The visible rows.
+    /// The visible rows. A non-empty `query` lists the ranked hits under their kinds instead of
+    /// the families.
     pub fn rows(&self, query: &str, playable_only: bool) -> Vec<Row> {
         let query = query.trim();
         let mut rows = Vec::new();

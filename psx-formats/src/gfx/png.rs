@@ -1,4 +1,13 @@
 //! PNG output and input for graphics, over the `png` crate.
+//!
+//! The writers take unfiltered, tightly packed scanlines and return the file
+//! bytes. The bytes depend on the `png` crate's deflate encoder, so a pixel
+//! comparison, not a byte comparison, is the stable check across crate
+//! versions. [`read`] takes back the pictures the writers produce, and any
+//! 8-bit RGB or RGBA PNG and any 4- or 8-bit indexed PNG.
+//!
+//! # Examples
+//!
 //! ```
 //! use psx_formats::gfx::png::{self, Picture};
 //!
@@ -14,6 +23,9 @@ use png::{BitDepth, ColorType, Encoder};
 use crate::error::Error;
 
 /// The eight bytes every PNG starts with.
+///
+/// # Examples
+///
 /// ```
 /// let png = psx_formats::gfx::png::rgba_png(1, 1, &[0, 0, 0, 255]);
 /// assert_eq!(&png[..8], &psx_formats::gfx::png::SIGNATURE);
@@ -21,6 +33,9 @@ use crate::error::Error;
 pub const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
 
 /// An 8-bit RGBA picture: four bytes per pixel, row-major.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::gfx::png::{self, Picture};
 ///
@@ -39,6 +54,9 @@ pub struct Rgba {
 }
 
 /// A palette-indexed picture: one index per pixel, and the palette's colors.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::gfx::png::{self, Picture};
 ///
@@ -55,13 +73,16 @@ pub struct Indexed {
     pub height: u32,
     /// Bits per index in the file: 4 or 8.
     pub bits: u8,
-    /// The palette in file order.
+    /// The palette in file order. Alpha is 255 where the file gives none.
     pub colors: Vec<[u8; 4]>,
     /// One unpacked index per pixel, row-major.
     pub indices: Vec<u8>,
 }
 
 /// A PNG read back: an RGB or RGBA picture, or an indexed one.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::gfx::png::{self, Picture};
 ///
@@ -73,13 +94,16 @@ pub struct Indexed {
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Picture {
-    /// An 8-bit RGBA picture.
+    /// An 8-bit RGBA picture. RGB files read as opaque RGBA.
     Rgba(Rgba),
     /// A 4- or 8-bit indexed picture.
     Indexed(Indexed),
 }
 
 /// Encodes `data` as one `color`/`depth` image.
+///
+/// The writer is a `Vec`, and `data` is sized from `width`, `height` and the
+/// pixel format by every caller in this crate, so encoding cannot fail.
 fn encode(
     width: u32,
     height: u32,
@@ -103,6 +127,9 @@ fn encode(
 }
 
 /// An 8-bit RGBA PNG over `width * height` pixels of four bytes each.
+///
+/// # Examples
+///
 /// ```
 /// let png = psx_formats::gfx::png::rgba_png(2, 1, &[255, 0, 0, 255, 0, 255, 0, 255]);
 /// assert_eq!(&png[..8], &psx_formats::gfx::png::SIGNATURE);
@@ -112,6 +139,9 @@ pub fn rgba_png(width: u32, height: u32, pixels: &[u8]) -> Vec<u8> {
 }
 
 /// A 16-bit grayscale PNG over `width * height` big-endian samples.
+///
+/// # Examples
+///
 /// ```
 /// let png = psx_formats::gfx::png::gray16_png(1, 2, &[0, 0, 255, 255]);
 /// assert_eq!(&png[..8], &psx_formats::gfx::png::SIGNATURE);
@@ -120,8 +150,17 @@ pub fn gray16_png(width: u32, height: u32, samples: &[u8]) -> Vec<u8> {
     encode(width, height, ColorType::Grayscale, BitDepth::Sixteen, None, samples)
 }
 
-/// An indexed PNG over `width * height` pixels: one palette index per pixel in `indices`, packed to `bits` per pixel (4
-/// or 8), and up to `2^bits` RGBA colors.
+/// An indexed PNG over `width * height` pixels: one palette index per pixel in
+/// `indices`, packed to `bits` per pixel (4 or 8), and up to `2^bits` RGBA
+/// colors. Alpha goes in the transparency table.
+///
+/// # Panics
+///
+/// Panics if `bits` is not 4 or 8, or if `indices` is not `width * height` long.
+/// Callers size both.
+///
+/// # Examples
+///
 /// ```
 /// let colors = [[255, 0, 0, 255], [0, 255, 0, 255]];
 /// let png = psx_formats::gfx::png::indexed_png(2, 1, 4, &colors, &[1, 0]);
@@ -141,6 +180,10 @@ pub fn indexed_png(width: u32, height: u32, bits: u8, colors: &[[u8; 4]], indice
 }
 
 /// Reads a PNG as a [`Picture`]: 8-bit RGB or RGBA, or 4- or 8-bit indexed.
+/// Any other PNG is an error.
+///
+/// # Examples
+///
 /// ```
 /// use psx_formats::gfx::png::{self, Picture};
 ///
@@ -188,8 +231,8 @@ fn decode_error(error: png::DecodingError) -> Error {
     Error::PngPicture(error.to_string())
 }
 
-/// Packs one index per pixel into PNG scanlines: `bits` per pixel, the first pixel in the high bits, each row padded
-/// with zero bits to a whole byte.
+/// Packs one index per pixel into PNG scanlines: `bits` per pixel, the first
+/// pixel in the high bits, each row padded with zero bits to a whole byte.
 fn pack_rows(width: usize, bits: u8, indices: &[u8]) -> Vec<u8> {
     if width == 0 {
         return Vec::new();
@@ -207,7 +250,8 @@ fn pack_rows(width: usize, bits: u8, indices: &[u8]) -> Vec<u8> {
     packed
 }
 
-/// Unpacks PNG scanlines of `bits` per pixel, `line` bytes each, into one index per pixel.
+/// Unpacks PNG scanlines of `bits` per pixel, `line` bytes each, into one index
+/// per pixel.
 fn unpack_rows(width: usize, height: usize, bits: u8, line: usize, data: &[u8]) -> Vec<u8> {
     let per_byte = usize::from(8 / bits);
     let mask = ((1u16 << bits) - 1) as u8;

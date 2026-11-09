@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
-//! The SPU as the code sees it: its registers, 512 KB of sound RAM filled by the transfer port and DMA channel 4, and a
-//! log of key-on events (psx-spx "SPU Voice Registers", "SPU Control and Status Register", "SPU Memory Access").
+//! The SPU as the code sees it: its registers, 512 KB of sound RAM filled by the transfer port and
+//! DMA channel 4, and a log of key-on events (psx-spx "SPU Voice Registers", "SPU Control and
+//! Status Register", "SPU Memory Access"). The machine does not mix audio; a [`KeyOn`] carries the
+//! registers `psx_audio::spu::VoiceSetup` takes, so `psx-audio` can render the log.
 
 /// Bytes of sound RAM.
 pub const SPU_RAM_SIZE: usize = 512 * 1024;

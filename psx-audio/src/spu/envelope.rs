@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 //! ADSR envelope generator (psx-spx, "SPU Volume and ADSR Generator").
+//!
+//! The 32-bit ADSR word is split over two 16-bit registers, `adsr1` (low) and
+//! `adsr2` (high). The generator runs once per 44.1 kHz output sample.
 
 /// Highest envelope level (`+7FFFh`).
 pub(crate) const LEVEL_MAX: i32 = 0x7FFF;
@@ -131,6 +134,7 @@ impl Envelope {
         let before = self.phase;
         self.advance_phase();
         if self.phase == before {
+            // The knee and the exponential scaling depend on the new level.
             self.reload();
         }
     }
@@ -153,7 +157,8 @@ impl Envelope {
         }
     }
 
-    /// Runs whole steps, as [`Envelope::tick`] does, until `done` holds.
+    /// Runs whole steps, as [`Envelope::tick`] does, until `done` holds. Returns the output samples those
+    /// steps took, or `None` when the level stops moving or the phase does not end within [`MAX_STEPS`].
     fn run_until(&mut self, done: impl Fn(&Envelope) -> bool) -> Option<u64> {
         let mut samples = 0u64;
         for _ in 0..MAX_STEPS {
@@ -172,25 +177,30 @@ impl Envelope {
     }
 }
 
-/// How long each phase of a voice's envelope takes, in output samples at 44.1 kHz.
+/// How long each phase of a voice's envelope takes, in output samples at 44.1 kHz. Phases that
+/// depend on the level, such as an exponential decay, are timed step by step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Timing {
     /// From key on until the level reaches full scale.
     pub(crate) attack: u64,
     /// From full scale until the level reaches the sustain level.
     pub(crate) decay: u64,
-    /// The sustain level, `(N + 1) * 800h`, from the decay register.
+    /// The sustain level, `(N + 1) * 800h`, from the decay register. Sustain holds this level; a sustain
+    /// that decreases after its start is not part of the timing.
     pub(crate) sustain_level: i32,
     /// From the level the decay ends at until the level reaches zero after key off.
     pub(crate) release: u64,
 }
 
 /// The phase timing of an envelope with the given ADSR registers, or `None` when a phase does not end.
+/// The steps are those of [`Envelope::tick`]: one step after each wait, with the wait of the level the
+/// step leaves. The timing is computed step by step, so it is fast even for the slowest rates.
 pub(crate) fn timing_of(adsr1: u16, adsr2: u16) -> Option<Timing> {
     let mut envelope = Envelope::start(adsr1, adsr2);
     let attack = envelope.run_until(|envelope| envelope.phase != Phase::Attack)?;
     let decay = envelope.run_until(|envelope| envelope.phase != Phase::Decay)?;
     let sustain_level = (i32::from(adsr1 & 0x0F) + 1) * SUSTAIN_LEVEL_UNIT;
+    // Key off starts the release at the level the decay ended on, as `Envelope::release` does.
     let mut release = Envelope { level: envelope.level, phase: Phase::Release, wait: 0, adsr1, adsr2 };
     release.reload();
     let release = release.run_until(|envelope| envelope.phase == Phase::Off)?;

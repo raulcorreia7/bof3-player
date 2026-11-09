@@ -24,13 +24,19 @@ const XA_BLOCK_LENGTH: usize = 14;
 const XA_SIGNATURE: &[u8; 2] = b"XA";
 const XA_SIGNATURE_OFFSET: usize = 6;
 const XA_FILE_NUMBER_OFFSET: usize = 8;
-/// CD-XA attribute bits, in the high byte of the attribute word: Form 1 data and Form 2 data.
+/// CD-XA attribute bits, in the high byte of the attribute word: Form 1 data
+/// and Form 2 data. A Form 2 file is read as raw 2336-byte sectors.
 const XA_FORM1: u8 = 0x08;
 const XA_FORM2: u8 = 0x10;
 
 /// CD-XA attributes of a directory record.
-/// The 14-byte system-use block follows the file identifier; its first bytes are the group and user IDs and its sixth
-/// and seventh bytes are the `XA` signature (`psx-spx` "CDROM XA Subheader, File, Channel, Interleave").
+///
+/// The 14-byte system-use block follows the file identifier; its first bytes
+/// are the group and user IDs and its sixth and seventh bytes are the `XA`
+/// signature (`psx-spx` "CDROM XA Subheader, File, Channel, Interleave").
+///
+/// # Examples
+///
 /// ```
 /// let attributes = psx_cd::XaAttributes {
 ///     group_id: 0x1234,
@@ -46,7 +52,8 @@ pub struct XaAttributes {
     pub group_id: u16,
     /// Owner user ID, stored big-endian in the record.
     pub user_id: u16,
-    /// Attribute word; the high byte holds the Form 1 (`0x08`) and Form 2 (`0x10`) data bits.
+    /// Attribute word; the high byte holds the Form 1 (`0x08`) and Form 2
+    /// (`0x10`) data bits.
     pub attributes: u16,
     /// File number; a nonzero value marks an interleaved XA stream.
     pub file_number: u8,
