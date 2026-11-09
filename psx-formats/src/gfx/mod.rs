@@ -1,5 +1,5 @@
 //! Graphics: VRAM uploads, CLUT banks, texture-page words, the standard TIM
-//! file and the PNG output they share.
+//! file, the conversion between a TIM and an upload, and the PNG output they share.
 //!
 //! # Examples
 //!
@@ -13,4 +13,5 @@ pub mod clut;
 pub mod png;
 pub mod texture;
 pub mod tim;
+pub mod upload;
 pub mod vram;

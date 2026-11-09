@@ -30,6 +30,8 @@ use core::fmt;
 use crate::bytes::{push_u16_be, push_u24_be, push_u32_be, u16_be, u24_be, u32_be};
 use crate::error::{Error, Result};
 
+pub mod seq;
+
 /// Magic a package opens with, in file order.
 const SEP_MAGIC: &[u8; 4] = b"pQES";
 /// Container entry type of a sequence package.
@@ -571,6 +573,41 @@ impl Package {
         push_u32_be(&mut out, track.len() as u32);
         out.extend_from_slice(&track);
         Ok(out)
+    }
+
+    /// `Ok` when [`Package::problems`] is empty, else the first rule the package breaks.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let package = psx_formats::sep::Package { sequences: vec![Default::default()] };
+    /// assert!(package.check().is_err(), "the sequence has no end-of-track event");
+    /// ```
+    pub fn check(&self) -> Result<()> {
+        match self.problems().first() {
+            Some(&problem) => Err(Error::SepRule(problem)),
+            None => Ok(()),
+        }
+    }
+
+    /// Parses `bytes` and checks the result: the validation a SEP file needs before it is stored.
+    /// The bytes round-trip through [`Package::encode`] because the parser takes only what the
+    /// encoder writes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use psx_formats::sep::{Event, Package, Sequence};
+    ///
+    /// let end = Event { status: 0xff, meta_type: 0x2f, status_byte: true, ..Event::default() };
+    /// let bytes = Package { sequences: vec![Sequence { events: vec![end], ..Sequence::default() }] }.encode();
+    /// assert_eq!(Package::validate(&bytes).unwrap().encode(), bytes);
+    /// assert!(Package::validate(b"pQES").is_err());
+    /// ```
+    pub fn validate(bytes: &[u8]) -> Result<Self> {
+        let package = Self::parse(bytes)?;
+        package.check()?;
+        Ok(package)
     }
 
     /// What the package breaks of the format; empty for a well-formed package.

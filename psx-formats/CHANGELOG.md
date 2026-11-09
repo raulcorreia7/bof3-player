@@ -3,6 +3,14 @@
 All notable changes to `psx-formats` are recorded here. The crate follows
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- gfx: `upload` converts a type-3 upload to a TIM and back; `vram::Placement` and the
+  `Descriptor` placement methods (`x`, `y`, `load_argument`, `moved`).
+- VAB: `vab::file` joins, splits and checks the one-file `.vab`.
+- SEP: `sep::seq` reads and writes SEQ files; `Package::check` and `Package::validate`.
+- Errors: `SepRule`, `SeqFile`, `VabFile`, `VabSamplesPastBody`.
+
 ## 0.1.2
 
 - Maintenance release.

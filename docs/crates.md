@@ -84,8 +84,8 @@ sector 16.
 ## psx-machine
 
 A PlayStation machine that runs a game's own code and records what it tells the GPU and the SPU,
-so a tool can show textures, sprites and sounds as the game uses them instead of from a per-asset
-table. It has an R3000A interpreter, the memory map and the devices below the PsyQ libraries; it
+so a tool can show textures, sprites, sounds and whole frames as the game uses them instead of
+from a per-asset table. It has an R3000A interpreter, the memory map and the devices below the PsyQ libraries; it
 needs no BIOS image.
 
 | Module    | Contents                                                                  |
@@ -94,7 +94,7 @@ needs no BIOS image.
 | `gte`     | the geometry transformation engine: registers and commands               |
 | `bus`     | RAM and its mirrors, scratchpad, I/O ports, KUSEG/KSEG0/KSEG1             |
 | `irq`     | `I_STAT` and `I_MASK`                                                     |
-| `gpu`     | `GP0`/`GP1`, VRAM, and the command log: draws with page, CLUT and UVs, uploads |
+| `gpu`     | `GP0`/`GP1`, VRAM, the command log (draws with page, CLUT and UVs, uploads), the rasterizer that draws into VRAM, and the displayed frame as RGBA |
 | `dma`     | the seven DMA channels, `DPCR` and `DICR`                                 |
 | `timers`  | the NTSC beam, vertical blank and the three root counters                 |
 | `cdrom`   | the CD-ROM controller and its command set                                 |
@@ -108,7 +108,7 @@ needs no BIOS image.
 | CPU  | psx-spx "CPU Specifications", "COP0 - Exception Handling"; MIPS I |
 | GTE  | psx-spx "Geometry Transformation Engine (GTE)"                    |
 | Bus  | psx-spx "Memory Map", "Interrupts"                                |
-| GPU  | psx-spx "GPU Render Polygon/Line/Rectangle Commands", "GPU Memory Transfer Commands", "GPU Rendering Attributes", "GPU Display Control Commands", "GPU Status Register" |
+| GPU  | psx-spx "GPU Render Polygon/Line/Rectangle Commands", "GPU Memory Transfer Commands", "GPU Rendering Attributes", "GPU (MISC)", "GPU Texture Caching", "GPU Video Memory (VRAM)", "GPU Display Control Commands", "GPU Status Register", "GPU Timings" |
 | DMA  | psx-spx "DMA Channels"                                            |
 | Timers | psx-spx "Timers", "GPU Timings"                                 |
 | CD-ROM | psx-spx "CDROM Controller I/O Ports", "CDROM Controller Command Summary", "CDROM - Response Timings" |
@@ -116,8 +116,10 @@ needs no BIOS image.
 | SPU  | psx-spx "SPU Voice Registers", "SPU Control and Status Register", "SPU Memory Access" |
 | Kernel | psx-spx "BIOS Function Summary", "BIOS Interrupt/Exception Handling", "BIOS Memory Map", "BIOS Patches" |
 
-`Machine::boot_image` boots a disc image; the run API reads back the GPU log, VRAM, RAM and the
-SPU key-on log. The crate README says why it writes its own core instead of depending on an
+`Machine::boot_image` boots a disc image; the run API reads back the GPU log, VRAM, the displayed
+frame (`Machine::display`), RAM and the SPU key-on log. Draws are rasterized into VRAM on the CPU
+unless `Machine::set_rasterize(false)` turns it off; showing the frame on screen is a front end's
+job, which uploads it as a texture. The crate README says why it writes its own core instead of depending on an
 emulator crate, and why the CD drive is modelled as hardware.
 
 ## psx-formats
@@ -132,10 +134,19 @@ it knows nothing about voices, players, archive containers or a particular game.
 | `adpcm`  | 16-byte SPU ADPCM blocks, XA filter | psx-spx "SPU ADPCM Samples", "CDROM XA Audio ADPCM Compression"                                   |
 | `xa`     | CD-ROM XA streams                   | psx-spx "CDROM XA Subheader, File, Channel, Interleave"                                           |
 | `sector` | Mode 2 Form 1 sectors               | psx-spx "CDROM Sector Encoding", ECMA-130 Annex B                                                 |
-| `vab`    | VAB sound banks                     | Sony PlayStation sound-library VAB layout; sample data as "SPU ADPCM Samples"                     |
-| `sep`    | SEP sequence packages               | Sequence events and running status as in the Standard MIDI File specification (format 0)          |
+| `vab`    | VAB sound banks, the one-file `.vab` | Sony PlayStation sound-library VAB layout; *File Formats* ch. 4 "VAB"; samples as "SPU ADPCM Samples" |
+| `sep`    | SEP packages, SEQ files             | Events and running status as in the Standard MIDI File specification (format 0); *File Formats* ch. 4 "SEQ" |
 | `wav`    | RIFF/WAVE 16-bit PCM                | RIFF and WAVE specifications                                                                      |
 | `gfx`    | VRAM uploads, CLUTs, TIM, PNG       | psx-spx "GPU Video Memory (VRAM)", "GPU Render Polygon Commands"; Sony *File Formats* ch. 3 (TIM) |
+
+Conversions between the container-free parts:
+
+| Path                                        | What it does                                                                             |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `gfx::vram::Placement` (`Descriptor`)       | where an upload lands: `x`, `y`, `load_argument(base)`, `moved(column, row, rectangles)` |
+| `gfx::upload`                               | an upload to a TIM (`tim_with_clut`, `tim_direct`) and a TIM back (`from_tim`)          |
+| `vab::file`                                 | the one-file `.vab`: `join`, `split` (checked), `check` a header and body pair           |
+| `sep::seq`                                  | the SEQ file: `encode`, `export`, `read`, `package`; `sep::Package::validate` for a SEP  |
 
 `gfx` and `sf2` need the `std` feature. The `fixtures` feature adds small generated banks,
 sequences and sectors for dependents' tests.
