@@ -36,3 +36,12 @@ fn ordering_table_clear_suite_passes() {
 fn dma_priority_control_suite_passes() {
     assert_passes("dma/dpcr/dpcr.exe", 2);
 }
+
+#[test]
+fn gte_suite_passes() {
+    let Some(tty) = run("gte/test-all/test-all.exe", 600) else {
+        eprintln!("PS1_TESTS_DIR is not set; skipping");
+        return;
+    };
+    assert!(tty.contains("Passed tests: 1150\nFailed tests: 0\n"), "{tty}");
+}
