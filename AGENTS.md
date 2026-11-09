@@ -1,8 +1,8 @@
 # Agent guide
 
 bof3-player plays the music and sound of *Breath of Fire III* (PlayStation) from the user's own disc image.
-It is a Cargo workspace (`core`, `emi`, `psx-audio`, `psx-cd`, `psx-formats`) with a CLI and a
-Rust library. Read [README.md](README.md) first, then [CONTRIBUTING.md](CONTRIBUTING.md),
+It is a Cargo workspace (`core`, `emi`, `psx-audio`, `psx-cd`, `psx-formats`, `psx-machine`) with three tools
+(`bof3player`, `bof3player-tui`, `bof3player-gui`) and a Rust library. Read [README.md](README.md) first, then [CONTRIBUTING.md](CONTRIBUTING.md),
 then the doc for the area you change.
 
 ## Where things are
@@ -14,6 +14,7 @@ then the doc for the area you change.
 | `psx-audio/`           | SPU voice engine, XA and CD-DA playback, WAV, FLAC and Ogg output      | [docs/spu-model.md](docs/spu-model.md), [psx-audio/README.md](psx-audio/README.md) |
 | `psx-formats/`         | SPU and XA ADPCM, VAB, SEP and other PlayStation file formats          | [psx-formats/README.md](psx-formats/README.md)          |
 | `psx-cd/`              | ISO 9660, Mode 2 XA sectors, CUE/BIN images                            | [psx-cd/README.md](psx-cd/README.md)                    |
+| `psx-machine/`         | The R3000A interpreter, memory map and GPU frame drawing               | [psx-machine/README.md](psx-machine/README.md)          |
 | `emi/`                 | The EMI archive reader                                                 | [emi/README.md](emi/README.md)                          |
 | `data/`                | The bundled catalog names and their sources                            | [data/README.md](data/README.md)                        |
 | all crates             | How the crates depend on each other                                    | [docs/crates.md](docs/crates.md)                        |
@@ -21,10 +22,11 @@ then the doc for the area you change.
 
 ## Build and test
 
-Rust 1.88 or later, edition 2024. Run from this folder:
+Rust 1.88 or later, edition 2024. Run from this folder. `make build` links `bin/bof3player`,
+`bin/bof3player-tui` and `bin/bof3player-gui`; run those, not `cargo run`. `make help` lists the targets.
 
 ```sh
-cargo build --release -p bof3player --features cli --bin bof3player
+make build
 cargo test --workspace --all-features
 ```
 
@@ -45,7 +47,7 @@ cargo deny check
 - The repository holds no game data, extracted assets or game text. The only titles are in
   `data/bof3-names.json`, each with a source. Tests use constants, generated fixtures or a
   temporary folder (`target/tmp/<test>`).
-- A task's `writes` list is the grant. Anything else is a `needs:` line in the report.
+- Change only what the task names; report anything else it needs.
 - Commit as `type(scope): subject`, imperative and lowercase. Add no AI attribution. Never amend,
   force-push or rewrite history.
 
