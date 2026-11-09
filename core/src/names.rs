@@ -21,10 +21,7 @@ pub const DEFAULT_FILE: &str = "bof3-names.json";
 #[cfg(feature = "bundled-names")]
 #[must_use]
 pub fn game_names() -> &'static Names {
-    static GAME: std::sync::LazyLock<Names> = std::sync::LazyLock::new(|| {
-        Names::from_json(include_str!("../../data/bof3-names.json"))
-            .expect("data/bof3-names.json is a valid names file")
-    });
+    static GAME: std::sync::LazyLock<Names> = std::sync::LazyLock::new(|| Names::from_json(include_str!("../../data/bof3-names.json")).expect("data/bof3-names.json is a valid names file"));
     &GAME
 }
 
@@ -86,11 +83,7 @@ impl Names {
     /// Returns the reason when the text is not a names file or its version is not [`VERSION`].
     pub fn from_json(text: &str) -> Result<Self, String> {
         let names: Self = serde_json::from_str(text).map_err(|error| error.to_string())?;
-        if names.version == VERSION {
-            Ok(names)
-        } else {
-            Err(format!("unsupported names version {} (this player reads version {VERSION})", names.version))
-        }
+        if names.version == VERSION { Ok(names) } else { Err(format!("unsupported names version {} (this player reads version {VERSION})", names.version)) }
     }
 
     /// Read the names file at `path`.
@@ -139,13 +132,8 @@ pub fn default_path() -> Option<PathBuf> {
     }
     let cwd = std::env::current_dir().ok();
     let exe = std::env::current_exe().ok().and_then(|path| path.parent().map(Path::to_path_buf));
-    let bases =
-        cwd.iter().flat_map(|dir| dir.ancestors().take(6)).chain(exe.iter().flat_map(|dir| dir.ancestors().take(4)));
-    bases
-        .flat_map(|base| {
-            [base.join(DEFAULT_FILE), base.join("build").join(DEFAULT_FILE), base.join("data").join(DEFAULT_FILE)]
-        })
-        .find(|path| path.is_file())
+    let bases = cwd.iter().flat_map(|dir| dir.ancestors().take(6)).chain(exe.iter().flat_map(|dir| dir.ancestors().take(4)));
+    bases.flat_map(|base| [base.join(DEFAULT_FILE), base.join("build").join(DEFAULT_FILE), base.join("data").join(DEFAULT_FILE)]).find(|path| path.is_file())
 }
 
 /// The names file `--names` selects, or else the default one. A file that was asked for must
@@ -333,8 +321,7 @@ mod tests {
     fn an_explicit_file_overrides_the_default_and_a_bad_one_reports_why() {
         let dir = scratch("names-override");
         let file = dir.join("mine.json");
-        std::fs::write(&file, r#"{"version":1,"music":{"music:A#0":{"title":"Mine","source":"data","evidence":"e"}}}"#)
-            .unwrap();
+        std::fs::write(&file, r#"{"version":1,"music":{"music:A#0":{"title":"Mine","source":"data","evidence":"e"}}}"#).unwrap();
         let (names, failure) = load(Some(&file));
         assert!(failure.is_none());
         assert_eq!(names.music_title("A", 0), Some("Mine"));

@@ -272,12 +272,7 @@ impl Palette {
             words: self.words.len(),
             rows_4bpp: self.rows_4bpp(),
             rows_8bpp: self.rows_8bpp(),
-            colors: self
-                .words
-                .iter()
-                .enumerate()
-                .map(|(index, &word)| ColorJson { index, word, stp: word & STP != 0, rgba: word_to_rgba(word) })
-                .collect(),
+            colors: self.words.iter().enumerate().map(|(index, &word)| ColorJson { index, word, stp: word & STP != 0, rgba: word_to_rgba(word) }).collect(),
         };
         serde_json::to_string_pretty(&document).expect("palette model is serializable")
     }

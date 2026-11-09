@@ -167,13 +167,7 @@ impl Plane {
         let (d1, d2) = (values[1] - values[0], values[2] - values[0]);
         let step_x = ((d1 * (y2 - y0) - d2 * (y1 - y0)) << PLANE_FRACTION) / area;
         let step_y = ((d2 * (x1 - x0) - d1 * (x2 - x0)) << PLANE_FRACTION) / area;
-        Self {
-            value: 0,
-            base: (values[origin] << PLANE_FRACTION) + (1 << (PLANE_FRACTION - 1)),
-            step_x,
-            step_y,
-            origin: points[origin],
-        }
+        Self { value: 0, base: (values[origin] << PLANE_FRACTION) + (1 << (PLANE_FRACTION - 1)), step_x, step_y, origin: points[origin] }
     }
 
     /// Moves to pixel `(x, y)`.
@@ -246,9 +240,7 @@ struct Painter<'a> {
 
 impl Painter<'_> {
     fn row_visible(&self, y: i64) -> bool {
-        y >= i64::from(self.area.top)
-            && y <= i64::from(self.area.bottom)
-            && self.mode.skip_parity.is_none_or(|parity| y.rem_euclid(2) as usize != parity)
+        y >= i64::from(self.area.top) && y <= i64::from(self.area.bottom) && self.mode.skip_parity.is_none_or(|parity| y.rem_euclid(2) as usize != parity)
     }
 
     fn columns(&self) -> (i64, i64) {
@@ -300,8 +292,7 @@ impl Painter<'_> {
         if too_far(vertices[0], vertices[1]) || too_far(vertices[1], vertices[2]) || too_far(vertices[0], vertices[2]) {
             return;
         }
-        let mut points = vertices
-            .map(|vertex| (i64::from(i32::from(vertex.x) + offset.0), i64::from(i32::from(vertex.y) + offset.1)));
+        let mut points = vertices.map(|vertex| (i64::from(i32::from(vertex.x) + offset.0), i64::from(i32::from(vertex.y) + offset.1)));
         let mut vertices = vertices;
         let cross = |p: &[(i64, i64); 3]| (p[1].0 - p[0].0) * (p[2].1 - p[0].1) - (p[2].0 - p[0].0) * (p[1].1 - p[0].1);
         let mut area = cross(&points);
@@ -329,10 +320,8 @@ impl Painter<'_> {
             planes[4] = plane(vertices.map(|vertex| i64::from(vertex.v)));
         }
         let mut fragment = Fragment { rgb: rgb[0], u: 0, v: 0 };
-        let (top, bottom) =
-            (points.iter().map(|p| p.1).min().unwrap_or(0), points.iter().map(|p| p.1).max().unwrap_or(0));
-        let (left, right) =
-            (points.iter().map(|p| p.0).min().unwrap_or(0), points.iter().map(|p| p.0).max().unwrap_or(0));
+        let (top, bottom) = (points.iter().map(|p| p.1).min().unwrap_or(0), points.iter().map(|p| p.1).max().unwrap_or(0));
+        let (left, right) = (points.iter().map(|p| p.0).min().unwrap_or(0), points.iter().map(|p| p.0).max().unwrap_or(0));
         let (area_left, area_right) = self.columns();
         let used = (if shaded { 0 } else { 3 })..(if textured { 5 } else { 3 });
         for y in top.max(i64::from(self.area.top))..=bottom.min(i64::from(self.area.bottom)) {
@@ -380,11 +369,8 @@ impl Painter<'_> {
             y -= LINE_BIAS;
         }
         let (first, last) = (channels(from.color), channels(to.color));
-        let mut shade: [i64; 3] =
-            std::array::from_fn(|channel| (i64::from(first[channel]) << SHADE_FRACTION) + (1 << (SHADE_FRACTION - 1)));
-        let shade_step: [i64; 3] = std::array::from_fn(|channel| {
-            if steps == 0 { 0 } else { (i64::from(last[channel] - first[channel]) << SHADE_FRACTION) / steps }
-        });
+        let mut shade: [i64; 3] = std::array::from_fn(|channel| (i64::from(first[channel]) << SHADE_FRACTION) + (1 << (SHADE_FRACTION - 1)));
+        let shade_step: [i64; 3] = std::array::from_fn(|channel| if steps == 0 { 0 } else { (i64::from(last[channel] - first[channel]) << SHADE_FRACTION) / steps });
         let (area_left, area_right) = self.columns();
         for _ in 0..=steps {
             let (column, row) = (x >> LINE_FRACTION, y >> LINE_FRACTION);
@@ -409,8 +395,7 @@ impl Painter<'_> {
         let rgb = channels(corner.color);
         let (area_left, area_right) = self.columns();
         let columns = (area_left - left).max(0)..i64::from(size.0).min(area_right - left + 1);
-        let rows =
-            (i64::from(self.area.top) - top).max(0)..i64::from(size.1).min(i64::from(self.area.bottom) - top + 1);
+        let rows = (i64::from(self.area.top) - top).max(0)..i64::from(size.1).min(i64::from(self.area.bottom) - top + 1);
         let flips = self.flips;
         for row in rows {
             let y = top + row;

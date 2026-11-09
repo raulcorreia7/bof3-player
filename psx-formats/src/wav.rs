@@ -131,8 +131,7 @@ pub fn pcm(samples: &[i16], sample_rate: u32, channels: u32) -> Result<Vec<u8>> 
         return Err(Error::WaveShape("the samples do not hold whole frames"));
     }
     let channels = u16::try_from(channels).map_err(|_| Error::WaveShape("too many channels"))?;
-    let data_bytes = u32::try_from(samples.len() * BYTES_PER_SAMPLE as usize)
-        .map_err(|_| Error::WaveShape("audio is too long for a WAVE file"))?;
+    let data_bytes = u32::try_from(samples.len() * BYTES_PER_SAMPLE as usize).map_err(|_| Error::WaveShape("audio is too long for a WAVE file"))?;
     let mut out = Vec::with_capacity(HEADER_BYTES + samples.len() * BYTES_PER_SAMPLE as usize);
     out.extend_from_slice(b"RIFF");
     out.extend_from_slice(&(36 + data_bytes).to_le_bytes());

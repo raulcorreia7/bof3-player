@@ -92,17 +92,10 @@ impl<'a> Library<'a> {
                 let engine = SampleEngine::new(&blob.bytes()?, item.bank as usize, item.sub_index, options.reverb)?;
                 Ok(Player::new(engine))
             }
-            Kind::Bank => {
-                Err(Error::Unsupported(String::from("bank audition is not available; play its samples or music")))
-            }
+            Kind::Bank => Err(Error::Unsupported(String::from("bank audition is not available; play its samples or music"))),
             Kind::Xa => {
                 let blob = self.source.open(&item.path)?;
-                let stream = XaStream {
-                    channel: item.index as u8,
-                    first_sector: item.sub_index,
-                    sector_count: item.sectors,
-                    duration: item.duration.unwrap_or(0.0),
-                };
+                let stream = XaStream { channel: item.index as u8, first_sector: item.sub_index, sector_count: item.sectors, duration: item.duration.unwrap_or(0.0) };
                 Ok(Player::xa(blob, stream)?)
             }
             Kind::Cdda => {

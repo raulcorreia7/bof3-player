@@ -42,13 +42,7 @@ pub struct Timers {
 
 impl Default for Timers {
     fn default() -> Self {
-        Self {
-            counters: [Counter { mode: 1 << 10, ..Counter::default() }; 3],
-            video_fraction: 0,
-            line: 0,
-            last_sync: 0,
-            frame: 0,
-        }
+        Self { counters: [Counter { mode: 1 << 10, ..Counter::default() }; 3], video_fraction: 0, line: 0, last_sync: 0, frame: 0 }
     }
 }
 
@@ -106,8 +100,7 @@ impl Timers {
             }
         }
         // Timer 0: system clock or dot clock.
-        let ticks0 =
-            if self.counters[0].mode & 0x100 != 0 { self.divided(0, video, VIDEO_CYCLES_PER_DOT) } else { delta };
+        let ticks0 = if self.counters[0].mode & 0x100 != 0 { self.divided(0, video, VIDEO_CYCLES_PER_DOT) } else { delta };
         self.advance(0, ticks0, irq);
         if self.counters[1].mode & 0x100 == 0 {
             self.advance(1, delta, irq);

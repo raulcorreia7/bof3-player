@@ -135,10 +135,7 @@ mod tests {
     #[test]
     fn borders_icons_and_bars_are_visible() {
         for background in SURFACES {
-            for part in [BORDER_STRONG, FOCUS_RING, SUCCESS, SPECTRUM_PEAK, SPECTRUM_WARM, SPECTRUM_COOL]
-                .into_iter()
-                .chain(SPECTRUM)
-            {
+            for part in [BORDER_STRONG, FOCUS_RING, SUCCESS, SPECTRUM_PEAK, SPECTRUM_WARM, SPECTRUM_COOL].into_iter().chain(SPECTRUM) {
                 assert_contrast(part, background, 3.0);
             }
         }

@@ -24,9 +24,7 @@ use crate::catalog::Naming;
 use crate::cli::Global;
 use crate::cli::audio::Deck;
 use crate::cli::commands::{clock, music_length, open_library};
-use crate::save::{
-    ExportFormat, ExportOptions, Format, OggQuality, Save, Step, absolute, export_failed, saved_message,
-};
+use crate::save::{ExportFormat, ExportOptions, Format, OggQuality, Save, Step, absolute, export_failed, saved_message};
 use crate::spectrum::Spectrum;
 
 /// Frame interval of the extract browser's loop.
@@ -208,9 +206,7 @@ impl App {
                                 continue;
                             }
                             seen_canon.insert(canon);
-                        } else if groups.group_members(&hit.id).is_some()
-                            && groups.canonical_of(&hit.id).as_deref() == Some(hit.id.as_str())
-                        {
+                        } else if groups.group_members(&hit.id).is_some() && groups.canonical_of(&hit.id).as_deref() == Some(hit.id.as_str()) {
                             if seen_canon.contains(&hit.id) {
                                 continue;
                             }
@@ -246,9 +242,7 @@ impl App {
                                     continue;
                                 }
                                 seen_canon.insert(canon);
-                            } else if groups.group_members(&item.id).is_some()
-                                && groups.canonical_of(&item.id).as_deref() == Some(item.id.as_str())
-                            {
+                            } else if groups.group_members(&item.id).is_some() && groups.canonical_of(&item.id).as_deref() == Some(item.id.as_str()) {
                                 if seen_canon.contains(&item.id) {
                                     continue;
                                 }
@@ -280,9 +274,7 @@ impl App {
         let key = match self.selected_row() {
             Some(Row::Kind(k)) => kind_key(*k),
             Some(Row::Family(k, f)) => family_key(*k, f),
-            Some(Row::Item(i, 0)) if self.item(*i).kind == Kind::Xa && !self.item(*i).id.contains('@') => {
-                self.item(*i).id.clone()
-            }
+            Some(Row::Item(i, 0)) if self.item(*i).kind == Kind::Xa && !self.item(*i).id.contains('@') => self.item(*i).id.clone(),
             _ => return,
         };
         let now = self.expanded.contains(&key);
@@ -312,13 +304,10 @@ impl App {
             return;
         }
         if self.query.is_empty()
-            && let Some(parent) =
-                (0..at).rev().find(|&j| matches!(self.rows[j], Row::Kind(_) | Row::Family(..)) && j < at)
+            && let Some(parent) = (0..at).rev().find(|&j| matches!(self.rows[j], Row::Kind(_) | Row::Family(..)) && j < at)
         {
             let want_family = matches!(self.rows[at], Row::Item(..));
-            let target = (0..at).rev().find(|&j| {
-                if want_family { matches!(self.rows[j], Row::Family(..)) } else { matches!(self.rows[j], Row::Kind(_)) }
-            });
+            let target = (0..at).rev().find(|&j| if want_family { matches!(self.rows[j], Row::Family(..)) } else { matches!(self.rows[j], Row::Kind(_)) });
             self.state.select(Some(target.unwrap_or(parent)));
         }
     }
@@ -352,10 +341,7 @@ impl App {
 
     fn step_item(&mut self, forward: bool) {
         let n = self.rows.len() as isize;
-        let from = self
-            .current
-            .and_then(|c| self.rows.iter().position(|r| matches!(r, Row::Item(i, _) if *i == c)))
-            .or(self.state.selected());
+        let from = self.current.and_then(|c| self.rows.iter().position(|r| matches!(r, Row::Item(i, _) if *i == c))).or(self.state.selected());
         let Some(mut at) = from.map(|a| a as isize) else { return };
         let dir = if forward { 1 } else { -1 };
         loop {
@@ -416,12 +402,8 @@ impl App {
         };
         let item = self.item(index);
         let directory = self.global.exports();
-        let rows = Format::for_kind(item.kind)
-            .iter()
-            .map(|&format| (format, crate::save::export_path(&directory, item, format.extension())))
-            .collect();
-        self.export =
-            Some(ExportMenu { item: index, selected: 0, rows, loops: self.global.loops, quality: OggQuality::Normal });
+        let rows = Format::for_kind(item.kind).iter().map(|&format| (format, crate::save::export_path(&directory, item, format.extension()))).collect();
+        self.export = Some(ExportMenu { item: index, selected: 0, rows, loops: self.global.loops, quality: OggQuality::Normal });
         self.help = false;
     }
 
@@ -556,8 +538,7 @@ impl App {
             KeyCode::Char('D') => {
                 self.show_all_dupes = !self.show_all_dupes;
                 self.rebuild();
-                self.message =
-                    (if self.show_all_dupes { "show all duplicates" } else { "group duplicates" }).to_string();
+                self.message = (if self.show_all_dupes { "show all duplicates" } else { "group duplicates" }).to_string();
             }
             KeyCode::Char('/') => self.typing = true,
             KeyCode::Esc => {
@@ -579,10 +560,7 @@ impl App {
     /// Whether the next frame differs from this one without any input: audio plays, bars or
     /// meters are still falling, or an export runs.
     fn animating(&self) -> bool {
-        self.save.is_some()
-            || (self.deck.is_loaded() && !self.deck.paused())
-            || self.meters != (0.0, 0.0)
-            || self.spectrum.levels.iter().chain(&self.spectrum.caps).any(|&v| v > 0.0)
+        self.save.is_some() || (self.deck.is_loaded() && !self.deck.paused()) || self.meters != (0.0, 0.0) || self.spectrum.levels.iter().chain(&self.spectrum.caps).any(|&v| v > 0.0)
     }
 
     /// Advance the meters, the spectrum, exports and the end of the track. The motion follows
@@ -633,17 +611,8 @@ fn row_line(app: &App, row: &Row, width: usize) -> Line<'static> {
         Row::Family(k, f) => {
             let open = app.expanded.contains(&family_key(*k, f));
             let family = &app.groups[k][f];
-            let count = if app.playable_only {
-                format!("{}/{}", family.playable, family.items.len())
-            } else {
-                family.items.len().to_string()
-            };
-            Line::from(vec![
-                Span::raw("  "),
-                Span::styled(if open { "▾ " } else { "▸ " }, Style::new().fg(ACCENT)),
-                Span::raw(f.clone()),
-                Span::styled(format!("  {count}"), Style::new().fg(DIM)),
-            ])
+            let count = if app.playable_only { format!("{}/{}", family.playable, family.items.len()) } else { family.items.len().to_string() };
+            Line::from(vec![Span::raw("  "), Span::styled(if open { "▾ " } else { "▸ " }, Style::new().fg(ACCENT)), Span::raw(f.clone()), Span::styled(format!("  {count}"), Style::new().fg(DIM))])
         }
         Row::Item(index, depth) => {
             let item = app.item(*index);
@@ -657,11 +626,7 @@ fn row_line(app: &App, row: &Row, width: usize) -> Line<'static> {
                 Style::new()
             };
             let mark = if playing { "♪ " } else { "  " };
-            let fold = if item.kind == Kind::Xa && *depth == 0 && !item.id.contains('@') {
-                if app.expanded.contains(&item.id) { "▾ " } else { "▸ " }
-            } else {
-                ""
-            };
+            let fold = if item.kind == Kind::Xa && *depth == 0 && !item.id.contains('@') { if app.expanded.contains(&item.id) { "▾ " } else { "▸ " } } else { "" };
             let time = music_length(item.duration);
             // Columns: the id, the title filling the rest, then the duration at the right edge.
             let name_width = if width >= 50 { 12 } else { 0 };
@@ -699,43 +664,20 @@ fn draw(frame: &mut Frame<'_>, app: &mut App) {
     let rows = screen_rows(area);
     let columns = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(if area.width < DETAILS_MIN_WIDTH {
-            [Constraint::Percentage(100), Constraint::Length(0)]
-        } else {
-            [Constraint::Percentage(62), Constraint::Fill(1)]
-        })
+        .constraints(if area.width < DETAILS_MIN_WIDTH { [Constraint::Percentage(100), Constraint::Length(0)] } else { [Constraint::Percentage(62), Constraint::Fill(1)] })
         .split(rows[1]);
 
     let header = Line::from(vec![
         Span::styled("♫ Breath of Fire III", Style::new().add_modifier(Modifier::BOLD)),
-        Span::styled(
-            format!("   ·   {} playable / {} items", app.playable, app.library.catalog().len()),
-            Style::new().fg(DIM),
-        ),
+        Span::styled(format!("   ·   {} playable / {} items", app.playable, app.library.catalog().len()), Style::new().fg(DIM)),
     ]);
     if roomy(area) {
-        frame.render_widget(
-            Paragraph::new(header).block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(Style::new().fg(ACCENT))
-                    .padding(Padding::horizontal(2)),
-            ),
-            rows[0],
-        );
+        frame.render_widget(Paragraph::new(header).block(Block::default().borders(Borders::ALL).border_style(Style::new().fg(ACCENT)).padding(Padding::horizontal(2))), rows[0]);
     } else {
         frame.render_widget(Paragraph::new(header), rows[0]);
     }
-    let title = if app.query.is_empty() && !app.typing {
-        " Library ".to_string()
-    } else {
-        format!(" Search: {}{} · {} hits ", app.query, if app.typing { "▏" } else { "" }, app.rows.len())
-    };
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .padding(padding(area))
-        .title(title)
-        .border_style(Style::new().fg(if app.typing { Color::Yellow } else { ACCENT }));
+    let title = if app.query.is_empty() && !app.typing { " Library ".to_string() } else { format!(" Search: {}{} · {} hits ", app.query, if app.typing { "▏" } else { "" }, app.rows.len()) };
+    let block = Block::default().borders(Borders::ALL).padding(padding(area)).title(title).border_style(Style::new().fg(if app.typing { Color::Yellow } else { ACCENT }));
     let width = block.inner(columns[0]).width as usize;
     let spaced = roomy(area);
     let items: Vec<ListItem<'_>> = app
@@ -745,16 +687,10 @@ fn draw(frame: &mut Frame<'_>, app: &mut App) {
         .map(|(at, r)| {
             let line = row_line(app, r, width);
             // A blank line separates the kind groups.
-            if spaced && at > 0 && matches!(r, Row::Kind(_)) {
-                ListItem::new(Text::from(vec![Line::raw(""), line]))
-            } else {
-                ListItem::new(line)
-            }
+            if spaced && at > 0 && matches!(r, Row::Kind(_)) { ListItem::new(Text::from(vec![Line::raw(""), line])) } else { ListItem::new(line) }
         })
         .collect();
-    let list = List::new(items)
-        .block(block)
-        .highlight_style(Style::new().bg(Color::Rgb(31, 52, 112)).fg(Color::White).add_modifier(Modifier::BOLD));
+    let list = List::new(items).block(block).highlight_style(Style::new().bg(Color::Rgb(31, 52, 112)).fg(Color::White).add_modifier(Modifier::BOLD));
     frame.render_stateful_widget(list, columns[0], &mut app.state);
     if app.rows.is_empty() {
         let inner = Block::default().borders(Borders::ALL).padding(padding(area)).inner(columns[0]);
@@ -766,10 +702,7 @@ fn draw(frame: &mut Frame<'_>, app: &mut App) {
         Some(Row::Item(index, _)) => {
             let item = app.item(*index);
             let catalog = app.library.catalog();
-            let mut lines = vec![
-                Line::styled(item.id.clone(), Style::new().fg(ACCENT).add_modifier(Modifier::BOLD)),
-                Line::raw(item.name.clone()),
-            ];
+            let mut lines = vec![Line::styled(item.id.clone(), Style::new().fg(ACCENT).add_modifier(Modifier::BOLD)), Line::raw(item.name.clone())];
             if !item.title.is_empty() {
                 lines.push(Line::raw(item.title.clone()));
             }
@@ -798,22 +731,14 @@ fn draw(frame: &mut Frame<'_>, app: &mut App) {
             lines
         }
         Some(Row::Family(k, f)) => {
-            vec![
-                Line::raw(format!("{} / {f}", label(*k))),
-                Line::raw(format!("{} items", app.groups[k][f].items.len())),
-            ]
+            vec![Line::raw(format!("{} / {f}", label(*k))), Line::raw(format!("{} items", app.groups[k][f].items.len()))]
         }
         Some(Row::Kind(k)) => vec![Line::raw(label(*k)), Line::raw("Enter or → to open")],
         None => vec![Line::raw("nothing selected")],
     };
     if columns[1].width > 0 {
         let [text, levels] = split_details(columns[1], area);
-        frame.render_widget(
-            Paragraph::new(details)
-                .wrap(Wrap { trim: false })
-                .block(Block::default().borders(Borders::ALL).padding(padding(area)).title(" Details ")),
-            text,
-        );
+        frame.render_widget(Paragraph::new(details).wrap(Wrap { trim: false }).block(Block::default().borders(Borders::ALL).padding(padding(area)).title(" Details ")), text);
         if levels.height > 0 {
             draw_levels(frame, app.meters, &mut app.spectrum, levels);
         }
@@ -825,10 +750,7 @@ fn draw(frame: &mut Frame<'_>, app: &mut App) {
     let status = if let Some(save) = &app.save {
         let duration = save.duration();
         let percent = if duration > 0.0 { (save.rendered() / duration * 100.0) as u32 } else { 0 };
-        Line::styled(
-            format!("saving {}  {} / {}  ({percent}%)", save.id(), clock(save.rendered()), clock(duration)),
-            Style::new().fg(Color::Yellow),
-        )
+        Line::styled(format!("saving {}  {} / {}  ({percent}%)", save.id(), clock(save.rendered()), clock(duration)), Style::new().fg(Color::Yellow))
     } else if app.message.is_empty() {
         Line::raw("")
     } else {
@@ -884,10 +806,7 @@ pub fn hints(entries: &[(&str, &str)], keep: usize, width: usize) -> Line<'stati
         used += cost(entry);
         shown += 1;
     }
-    let spans = entries[..shown]
-        .iter()
-        .chain(&entries[split..])
-        .flat_map(|(name, action)| [key(name), Span::raw(format!(" {action} "))]);
+    let spans = entries[..shown].iter().chain(&entries[split..]).flat_map(|(name, action)| [key(name), Span::raw(format!(" {action} "))]);
     Line::from(spans.collect::<Vec<_>>())
 }
 
@@ -984,30 +903,17 @@ fn draw_now_playing(frame: &mut Frame<'_>, app: &mut App, area: Rect) {
 /// with the time at the right, a progress gauge, the loop and volume state, and, when it has the
 /// rows, the level meters and the spectrum across the full width. `now` is the id and label of
 /// what plays (None: nothing). It always has the same rows, so the layout does not jump.
-pub fn draw_playbar(
-    frame: &mut Frame<'_>,
-    deck: &Deck,
-    now: Option<(String, String)>,
-    looping: bool,
-    meters: (f32, f32),
-    spectrum: &mut Spectrum,
-    area: Rect,
-) {
+pub fn draw_playbar(frame: &mut Frame<'_>, deck: &Deck, now: Option<(String, String)>, looping: bool, meters: (f32, f32), spectrum: &mut Spectrum, area: Rect) {
     let full = frame.area();
     let block = Block::default().borders(Borders::ALL).padding(padding(full)).title(" ♪ Now playing ");
     let inner = block.inner(area);
     frame.render_widget(block, area);
     let thick = if roomy(full) { 2 } else { 1 };
-    let rows =
-        Layout::vertical([Constraint::Length(1), Constraint::Length(thick), Constraint::Length(1), Constraint::Min(0)])
-            .split(inner);
+    let rows = Layout::vertical([Constraint::Length(1), Constraint::Length(thick), Constraint::Length(1), Constraint::Min(0)]).split(inner);
 
     let (pos, dur) = if now.is_some() { deck.times() } else { (0.0, 0.0) };
-    let time =
-        if rows[0].width >= FULL_TIME_MIN_WIDTH { format!("{} / {}", clock(pos), clock(dur)) } else { clock(pos) };
-    let [left, right] = Layout::horizontal([Constraint::Fill(1), Constraint::Length(time.chars().count() as u16)])
-        .spacing(1)
-        .areas(rows[0]);
+    let time = if rows[0].width >= FULL_TIME_MIN_WIDTH { format!("{} / {}", clock(pos), clock(dur)) } else { clock(pos) };
+    let [left, right] = Layout::horizontal([Constraint::Fill(1), Constraint::Length(time.chars().count() as u16)]).spacing(1).areas(rows[0]);
     let title = match &now {
         Some((id, label)) => {
             let state = if deck.paused() { "❚❚ " } else { "▶ " };
@@ -1026,18 +932,11 @@ pub fn draw_playbar(
     frame.render_widget(Paragraph::new(Line::styled(time, Style::new().add_modifier(Modifier::BOLD))), right);
 
     let ratio = if dur > 0.0 { (pos / dur).clamp(0.0, 1.0) } else { 0.0 };
-    let window = deck
-        .loop_window()
-        .filter(|_| looping && dur > 0.0)
-        .map(|(a, b)| ((a / dur).clamp(0.0, 1.0), (b / dur).clamp(0.0, 1.0)));
+    let window = deck.loop_window().filter(|_| looping && dur > 0.0).map(|(a, b)| ((a / dur).clamp(0.0, 1.0), (b / dur).clamp(0.0, 1.0)));
     let bar = progress_line(rows[1].width as usize, ratio, window);
     frame.render_widget(Paragraph::new(vec![bar; usize::from(rows[1].height)]), rows[1]);
 
-    let volume = if deck.muted() {
-        Span::styled("muted", Style::new().fg(Color::Yellow))
-    } else {
-        Span::styled(format!("vol {:>3}%", (deck.volume() * 100.0) as u32), Style::new().fg(DIM))
-    };
+    let volume = if deck.muted() { Span::styled("muted", Style::new().fg(Color::Yellow)) } else { Span::styled(format!("vol {:>3}%", (deck.volume() * 100.0) as u32), Style::new().fg(DIM)) };
     let loop_text = match (now.is_some(), deck.loop_window()) {
         (true, Some((a, b))) => format!("loop window {} - {}", clock(a), clock(b)),
         (true, None) => "no loop window".to_string(),
@@ -1045,10 +944,7 @@ pub fn draw_playbar(
     };
     frame.render_widget(
         Paragraph::new(Line::from(vec![
-            Span::styled(
-                if looping { "⟳ loop on   " } else { "  loop off  " },
-                Style::new().fg(if looping { Color::Yellow } else { DIM }),
-            ),
+            Span::styled(if looping { "⟳ loop on   " } else { "  loop off  " }, Style::new().fg(if looping { Color::Yellow } else { DIM })),
             volume,
             Span::styled(format!("   {loop_text}"), Style::new().fg(DIM)),
         ])),
@@ -1056,8 +952,7 @@ pub fn draw_playbar(
     );
 
     if rows[3].height >= 2 {
-        let [meter_area, bars] =
-            Layout::horizontal([Constraint::Length(16), Constraint::Fill(1)]).spacing(2).areas(rows[3]);
+        let [meter_area, bars] = Layout::horizontal([Constraint::Length(16), Constraint::Fill(1)]).spacing(2).areas(rows[3]);
         draw_meters(frame, meters, meter_area);
         draw_spectrum(frame, spectrum, bars);
     }
@@ -1067,8 +962,7 @@ pub fn draw_playbar(
 /// (`COLORTERM` is `truecolor` or `24bit`), else the nearest of the 256-color cube.
 fn themed(rgb: u32) -> Color {
     static TRUECOLOR: OnceLock<bool> = OnceLock::new();
-    let truecolor = *TRUECOLOR
-        .get_or_init(|| std::env::var("COLORTERM").is_ok_and(|value| matches!(value.as_str(), "truecolor" | "24bit")));
+    let truecolor = *TRUECOLOR.get_or_init(|| std::env::var("COLORTERM").is_ok_and(|value| matches!(value.as_str(), "truecolor" | "24bit")));
     if truecolor {
         let [_, r, g, b] = rgb.to_be_bytes();
         Color::Rgb(r, g, b)
@@ -1143,10 +1037,7 @@ fn draw_meters(frame: &mut Frame<'_>, meters: (f32, f32), area: Rect) {
         };
         let [label, bar] = Layout::horizontal([Constraint::Length(2), Constraint::Fill(1)]).areas(area);
         frame.render_widget(Paragraph::new(Line::styled(name, Style::new().fg(DIM))), label);
-        frame.render_widget(
-            Gauge::default().ratio(f64::from(level.clamp(0.0, 1.0))).label("").gauge_style(Style::new().fg(color)),
-            bar,
-        );
+        frame.render_widget(Gauge::default().ratio(f64::from(level.clamp(0.0, 1.0))).label("").gauge_style(Style::new().fg(color)), bar);
     }
 }
 
@@ -1179,8 +1070,7 @@ fn draw_spectrum(frame: &mut Frame<'_>, spectrum: &mut Spectrum, area: Rect) {
             if fill == 0 && row == cap_row && cap > CAP_MIN {
                 cell.set_char('▔').set_fg(themed(theme::SPECTRUM_PEAK));
             } else {
-                cell.set_char(BLOCKS[fill])
-                    .set_fg(themed(tint.apply(theme::spectrum_at((row as f32 + 0.5) / rows as f32))));
+                cell.set_char(BLOCKS[fill]).set_fg(themed(tint.apply(theme::spectrum_at((row as f32 + 0.5) / rows as f32))));
             }
         }
     }
@@ -1188,11 +1078,7 @@ fn draw_spectrum(frame: &mut Frame<'_>, spectrum: &mut Spectrum, area: Rect) {
 
 /// `text` cut to `width` columns with an ellipsis at the end where it is longer.
 fn head_fit(text: String, width: usize) -> String {
-    if text.chars().count() <= width {
-        text
-    } else {
-        text.chars().take(width.saturating_sub(1)).chain(['…']).collect()
-    }
+    if text.chars().count() <= width { text } else { text.chars().take(width.saturating_sub(1)).chain(['…']).collect() }
 }
 
 /// The longest `text` that fits `width` columns: a long path keeps its end.
@@ -1231,11 +1117,7 @@ fn draw_help(frame: &mut Frame<'_>, area: Rect, export_dir: &std::path::Path) {
     ];
     let rect = popup_for(area, &lines);
     frame.render_widget(Clear, rect);
-    frame.render_widget(
-        Paragraph::new(lines)
-            .block(Block::default().borders(Borders::ALL).padding(Padding::uniform(1)).title(" Keys ")),
-        rect,
-    );
+    frame.render_widget(Paragraph::new(lines).block(Block::default().borders(Borders::ALL).padding(Padding::uniform(1)).title(" Keys ")), rect);
 }
 
 /// The export menu: the item's name, the export folder and one row per format
@@ -1252,17 +1134,13 @@ fn draw_export_menu(frame: &mut Frame<'_>, app: &App, area: Rect) {
             Style::new().add_modifier(Modifier::BOLD),
         ),
         Line::raw(format!("Folder  {}", tail_fit(&absolute(&app.global.exports()).display().to_string(), 52))),
-        Line::raw(format!(
-            "Loops   {}   [ ] change, 1 = one play",
-            menu.loops.map_or_else(|| "auto (intro + 1 loop)".to_string(), |loops| loops.to_string())
-        )),
+        Line::raw(format!("Loops   {}   [ ] change, 1 = one play", menu.loops.map_or_else(|| "auto (intro + 1 loop)".to_string(), |loops| loops.to_string()))),
         Line::raw(format!("Ogg     {}   - + change", menu.quality.label())),
         Line::raw(""),
     ];
     for (index, (format, path)) in menu.rows.iter().enumerate() {
         let selected = index == menu.selected;
-        let name =
-            path.file_name().map_or_else(|| path.display().to_string(), |name| name.to_string_lossy().into_owned());
+        let name = path.file_name().map_or_else(|| path.display().to_string(), |name| name.to_string_lossy().into_owned());
         lines.push(Line::from(vec![
             Span::styled(if selected { "> " } else { "  " }, Style::new().fg(ACCENT)),
             Span::styled(format!("{:<19}", format.label()), Style::new().fg(if selected { ACCENT } else { DIM })),
@@ -1273,11 +1151,7 @@ fn draw_export_menu(frame: &mut Frame<'_>, app: &App, area: Rect) {
     lines.push(Line::styled("Enter save   ↑↓ choose   [ ] loops   - + quality   Esc close", Style::new().fg(DIM)));
     let rect = popup_for(area, &lines);
     frame.render_widget(Clear, rect);
-    frame.render_widget(
-        Paragraph::new(lines)
-            .block(Block::default().borders(Borders::ALL).padding(Padding::uniform(1)).title(" Export ")),
-        rect,
-    );
+    frame.render_widget(Paragraph::new(lines).block(Block::default().borders(Borders::ALL).padding(Padding::uniform(1)).title(" Export ")), rect);
 }
 
 /// Run the browser until the user quits.
@@ -1317,10 +1191,7 @@ pub fn run(global: &Global, naming: &dyn Naming) -> Result<ExitCode, String> {
             }
             if std::mem::take(&mut app.choose_folder) {
                 let start = absolute(&app.global.export_dir);
-                if let Some(dir) =
-                    super::pick::pick_folder(&mut terminal, "Choose the folder exports are written into.", &start)
-                        .map_err(std::io::Error::other)?
-                {
+                if let Some(dir) = super::pick::pick_folder(&mut terminal, "Choose the folder exports are written into.", &start).map_err(std::io::Error::other)? {
                     app.global.export_dir = dir;
                 }
             }

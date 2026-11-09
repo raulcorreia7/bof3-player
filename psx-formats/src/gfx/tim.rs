@@ -234,8 +234,7 @@ impl File {
             return Err(Error::Tim(format!("not a TIM file (the ID word is {id:#010x})")));
         }
         let flags = u32::from_le_bytes(header[4..8].try_into().unwrap());
-        let mode = Mode::of_value(flags & 0x0f)
-            .ok_or_else(|| Error::Tim(format!("a pixel mode of {} is not one this codec reads", flags & 0x0f)))?;
+        let mode = Mode::of_value(flags & 0x0f).ok_or_else(|| Error::Tim(format!("a pixel mode of {} is not one this codec reads", flags & 0x0f)))?;
         let mut at = 8;
         let clut = if flags & 0x10 != 0 {
             let (block, next) = Block::read(bytes, at)?;

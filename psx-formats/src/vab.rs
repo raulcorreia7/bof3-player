@@ -185,11 +185,7 @@ impl Tone {
     /// assert!(!tone.is_usable(1));
     /// ```
     pub fn is_usable(&self, vag_count: u16) -> bool {
-        self.is_live()
-            && self.vag >= 1
-            && self.vag <= vag_count as i16
-            && self.program >= 0
-            && self.program < PROGRAM_LIMIT
+        self.is_live() && self.vag >= 1 && self.vag <= vag_count as i16 && self.program >= 0 && self.program < PROGRAM_LIMIT
     }
 }
 
@@ -286,11 +282,7 @@ impl Vag {
     /// assert_eq!(vag.repeat_offset(), 16);
     /// ```
     pub fn repeat_offset(&self) -> u32 {
-        if self.has_loop {
-            self.offset + (self.loop_start_frame / BLOCK_SAMPLES as u32) * BLOCK_BYTES as u32
-        } else {
-            self.offset
-        }
+        if self.has_loop { self.offset + (self.loop_start_frame / BLOCK_SAMPLES as u32) * BLOCK_BYTES as u32 } else { self.offset }
     }
 }
 
@@ -480,8 +472,7 @@ impl Bank {
         let programs: Vec<Program> = (0..PROGRAM_SLOTS).map(|slot| read_program(vh, slot)).collect();
         let tones = read_tones(vh, program_count, &programs);
         let vag_count = u16_le(vh, 0x16);
-        let size_table: Vec<u16> =
-            (0..SIZE_ENTRIES).map(|entry| u16_le(vh, TONE_TABLE + tone_bytes(program_count) + entry * 2)).collect();
+        let size_table: Vec<u16> = (0..SIZE_ENTRIES).map(|entry| u16_le(vh, TONE_TABLE + tone_bytes(program_count) + entry * 2)).collect();
         let mut vags = read_vag_ranges(&size_table, vag_count);
         scan_vag_blocks(vb, &mut vags);
 
@@ -763,10 +754,7 @@ impl Bank {
             self.reserved1,
         ));
         for (slot, program) in self.programs.iter().enumerate() {
-            out.push_str(&format!(
-                "prog {slot} tones={} vol={} priority={} pan={}\n",
-                program.tones, program.vol, program.priority, program.pan,
-            ));
+            out.push_str(&format!("prog {slot} tones={} vol={} priority={} pan={}\n", program.tones, program.vol, program.priority, program.pan,));
         }
         for tone in &self.tones {
             out.push_str(&format!(
@@ -883,9 +871,7 @@ pub fn encode_bank(id: u32, programs: &[BankProgram], vags: &[Vec<u8>]) -> Resul
         if vag.is_empty() || vag.len() % BLOCK_BYTES != 0 {
             return Err(Error::VabEncode("a VAG is not a whole number of ADPCM blocks"));
         }
-        units.push(
-            u16::try_from(vag.len() / VAG_SIZE_UNIT as usize).map_err(|_| Error::VabEncode("a VAG is over 512 KiB"))?,
-        );
+        units.push(u16::try_from(vag.len() / VAG_SIZE_UNIT as usize).map_err(|_| Error::VabEncode("a VAG is over 512 KiB"))?);
     }
     let body = vags.concat();
 
@@ -902,11 +888,7 @@ pub fn encode_bank(id: u32, programs: &[BankProgram], vags: &[Vec<u8>]) -> Resul
     header.extend_from_slice(&[BANK_VOLUME, BANK_PAN, 0, 0]);
     push_u32_le(&mut header, 0);
     for number in 0..PROGRAM_SLOTS {
-        let record = programs
-            .iter()
-            .find(|program| usize::from(program.number) == number)
-            .map(|program| program.record)
-            .unwrap_or_default();
+        let record = programs.iter().find(|program| usize::from(program.number) == number).map(|program| program.record).unwrap_or_default();
         push_program(&mut header, &record);
     }
     for program in programs {
@@ -1140,24 +1122,16 @@ mod tests {
         let programs: Vec<BankProgram> = vab
             .playable_programs()
             .zip(vab.tone_blocks())
-            .map(|((number, record), block)| BankProgram {
-                number: number as u8,
-                record: *record,
-                tones: block.iter().take(usize::from(record.tones)).copied().collect(),
-            })
+            .map(|((number, record), block)| BankProgram { number: number as u8, record: *record, tones: block.iter().take(usize::from(record.tones)).copied().collect() })
             .collect();
-        let vags: Vec<Vec<u8>> =
-            (1..=vab.vag_count as u32).map(|index| vab.vag_bytes(&body, index).unwrap().to_vec()).collect();
+        let vags: Vec<Vec<u8>> = (1..=vab.vag_count as u32).map(|index| vab.vag_bytes(&body, index).unwrap().to_vec()).collect();
         let (again_header, again_body) = encode_bank(vab.id, &programs, &vags).unwrap();
         let again = Bank::parse(&again_header, &again_body).unwrap();
         assert!(again.problems().is_empty(), "{:?}", again.problems());
         assert_eq!(again.programs[1], vab.programs[1]);
         assert_eq!(again.tones[0], vab.tones[0]);
         assert_eq!(again.vags[1].frames, vab.vags[1].frames);
-        assert_eq!(
-            (again.vags[1].has_loop, again.vags[1].loop_start_frame, again.vags[1].loop_end_frame),
-            (true, 0, 56)
-        );
+        assert_eq!((again.vags[1].has_loop, again.vags[1].loop_start_frame, again.vags[1].loop_end_frame), (true, 0, 56));
         assert_eq!(again.decode_vag(&again_body, 1).unwrap(), vab.decode_vag(&body, 1).unwrap());
     }
 }

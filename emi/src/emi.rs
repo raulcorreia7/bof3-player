@@ -77,8 +77,7 @@ impl Archive {
             return Err(Error::InvalidArchive("bad magic"));
         }
 
-        let toc_size =
-            (count as u64).checked_mul(TOC_ENTRY_SIZE).ok_or(Error::InvalidArchive("entry table overflows"))?;
+        let toc_size = (count as u64).checked_mul(TOC_ENTRY_SIZE).ok_or(Error::InvalidArchive("entry table overflows"))?;
         let toc_end = HEADER_SIZE.checked_add(toc_size).ok_or(Error::InvalidArchive("entry table overflows"))?;
         if toc_end > SECTOR_SIZE || toc_end > file_len || toc_end > head.len() as u64 {
             return Err(Error::InvalidArchive("entry table does not fit before data"));
@@ -93,13 +92,7 @@ impl Archive {
             if end > file_len {
                 return Err(Error::InvalidArchive("entry extends beyond end of file"));
             }
-            entries.push(Entry {
-                size,
-                offset,
-                ram_ptr: u32_le(head, at + 4),
-                first4: u32_le(head, at + 8),
-                file_type: u16_le(head, at + 12),
-            });
+            entries.push(Entry { size, offset, ram_ptr: u32_le(head, at + 4), first4: u32_le(head, at + 8), file_type: u16_le(head, at + 12) });
             offset = align_sector(end)?;
         }
 
@@ -126,9 +119,7 @@ impl Archive {
     pub fn payload<'a>(&self, container: &'a [u8], index: usize) -> Result<&'a [u8]> {
         let entry = self.entry(index)?;
         let start = entry.offset as usize;
-        container
-            .get(start..start + entry.size as usize)
-            .ok_or(Error::InvalidArchive("entry extends beyond end of file"))
+        container.get(start..start + entry.size as usize).ok_or(Error::InvalidArchive("entry extends beyond end of file"))
     }
 
     fn entry(&self, index: usize) -> Result<&Entry> {
@@ -235,8 +226,5 @@ pub(crate) fn create_output(path: &Path) -> Result<File> {
 
 /// `value` rounded up to the next payload boundary.
 pub fn align_sector(value: u64) -> Result<u64> {
-    value
-        .checked_add(SECTOR_SIZE - 1)
-        .map(|value| value & !(SECTOR_SIZE - 1))
-        .ok_or(Error::InvalidArchive("aligned entry range overflows"))
+    value.checked_add(SECTOR_SIZE - 1).map(|value| value & !(SECTOR_SIZE - 1)).ok_or(Error::InvalidArchive("aligned entry range overflows"))
 }

@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 //! Drawing the window.
 
-use gpui::{
-    AnyElement, ClickEvent, Context, Div, FontWeight, IntoElement, Render, SharedString, Window, div, prelude::*, px,
-    transparent_black, uniform_list,
-};
+use gpui::{AnyElement, ClickEvent, Context, Div, FontWeight, IntoElement, Render, SharedString, Window, div, prelude::*, px, transparent_black, uniform_list};
 
 use super::chooser::Target;
 use super::icons::icon;
@@ -85,17 +82,7 @@ impl Render for Gui {
 
 fn overlay(card: impl IntoElement) -> Div {
     let palette = Palette::get();
-    div()
-        .absolute()
-        .top_0()
-        .left_0()
-        .size_full()
-        .flex()
-        .items_center()
-        .justify_center()
-        .bg(palette.scrim)
-        .occlude()
-        .child(card)
+    div().absolute().top_0().left_0().size_full().flex().items_center().justify_center().bg(palette.scrim).occlude().child(card)
 }
 
 impl Gui {
@@ -113,11 +100,7 @@ impl Gui {
             State::Failed(_) => ("No game data loaded".to_string(), ""),
         };
         let disc = match &self.state {
-            State::Ready(browser) => browser
-                .loaded
-                .path
-                .file_name()
-                .map_or_else(|| browser.loaded.path.display().to_string(), |name| name.to_string_lossy().into_owned()),
+            State::Ready(browser) => browser.loaded.path.file_name().map_or_else(|| browser.loaded.path.display().to_string(), |name| name.to_string_lossy().into_owned()),
             _ => String::new(),
         };
         div()
@@ -129,13 +112,7 @@ impl Gui {
                     .flex()
                     .items_baseline()
                     .gap_4()
-                    .child(
-                        div()
-                            .text_2xl()
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(palette.text)
-                            .child("Breath of Fire III"),
-                    )
+                    .child(div().text_2xl().font_weight(FontWeight::BOLD).text_color(palette.text).child("Breath of Fire III"))
                     .child(div().text_color(palette.muted).child("Music player"))
                     .child(div().text_color(palette.muted).child(counts))
                     .child(div().flex_1())
@@ -152,19 +129,10 @@ impl Gui {
             .items_center()
             .gap_3()
             .child(div().w(px(80.0)).text_color(palette.muted).child("Game data"))
-            .child(
-                field(
-                    "path",
-                    &self.path,
-                    "path to a .cue disc image or an extracted folder",
-                    self.editing == Some(Field::Path),
-                )
-                .flex_1()
-                .on_click(cx.listener(|gui, _, _, cx| {
-                    gui.editing = Some(Field::Path);
-                    cx.notify();
-                })),
-            )
+            .child(field("path", &self.path, "path to a .cue disc image or an extracted folder", self.editing == Some(Field::Path)).flex_1().on_click(cx.listener(|gui, _, _, cx| {
+                gui.editing = Some(Field::Path);
+                cx.notify();
+            })))
             .child(button("browse", Some("folder"), "Browse", true).on_click(cx.listener(|gui, _, _, cx| {
                 gui.browse_for(Target::Data);
                 cx.notify();
@@ -183,34 +151,20 @@ impl Gui {
             .items_center()
             .gap_3()
             .child(div().w(px(80.0)).text_color(palette.muted).child("Filter"))
-            .child(
-                field("filter", &self.filter, "type to search, or press /", self.editing == Some(Field::Filter))
-                    .flex_1()
-                    .on_click(cx.listener(|gui, _, _, cx| {
-                        gui.editing = Some(Field::Filter);
-                        cx.notify();
-                    })),
-            )
-            .child(
-                chip(
-                    "all",
-                    "filter",
-                    if self.playable_only { "Playable only" } else { "All items" },
-                    self.playable_only,
-                )
-                .on_click(cx.listener(|gui, _, _, cx| {
-                    gui.playable_only = !gui.playable_only;
-                    gui.rebuild();
-                    cx.notify();
-                })),
-            )
+            .child(field("filter", &self.filter, "type to search, or press /", self.editing == Some(Field::Filter)).flex_1().on_click(cx.listener(|gui, _, _, cx| {
+                gui.editing = Some(Field::Filter);
+                cx.notify();
+            })))
+            .child(chip("all", "filter", if self.playable_only { "Playable only" } else { "All items" }, self.playable_only).on_click(cx.listener(|gui, _, _, cx| {
+                gui.playable_only = !gui.playable_only;
+                gui.rebuild();
+                cx.notify();
+            })))
     }
 
     fn list_panel(&self, cx: &mut Context<Self>) -> Div {
         let body = match &self.state {
-            State::Loading(_) => {
-                notice("Opening game data...", "", "Reading the catalog. This takes a moment.", None, &[])
-            }
+            State::Loading(_) => notice("Opening game data...", "", "Reading the catalog. This takes a moment.", None, &[]),
             State::Failed(failed) => notice(
                 "Open a disc image or folder",
                 &failed.message,
@@ -226,13 +180,7 @@ impl Gui {
                 ),
                 &failed.probes,
             ),
-            State::Ready(browser) if browser.rows.is_empty() => notice(
-                "Nothing to list",
-                "",
-                "No item matches. Clear the filter, or press a to show all items.",
-                None,
-                &[],
-            ),
+            State::Ready(browser) if browser.rows.is_empty() => notice("Nothing to list", "", "No item matches. Clear the filter, or press a to show all items.", None, &[]),
             State::Ready(browser) => uniform_list(
                 "rows",
                 browser.rows.len(),
@@ -244,20 +192,17 @@ impl Gui {
                             let row = browser.rows[ix];
                             let open = browser.tree.is_open(&row);
                             let selected = ix == browser.selected;
-                            let playing =
-                                matches!(row, Row::Item(item) if gui.current.is_some_and(|c| std::ptr::eq(c, item)));
-                            row_view(ix, row, open, selected, playing).on_click(cx.listener(
-                                move |gui, event: &ClickEvent, _, cx| {
-                                    gui.editing = None;
-                                    gui.select(ix);
-                                    match row {
-                                        Row::Item(item) if event.click_count() >= 2 => gui.play(item),
-                                        Row::Item(_) => {}
-                                        _ => gui.toggle(None),
-                                    }
-                                    cx.notify();
-                                },
-                            ))
+                            let playing = matches!(row, Row::Item(item) if gui.current.is_some_and(|c| std::ptr::eq(c, item)));
+                            row_view(ix, row, open, selected, playing).on_click(cx.listener(move |gui, event: &ClickEvent, _, cx| {
+                                gui.editing = None;
+                                gui.select(ix);
+                                match row {
+                                    Row::Item(item) if event.click_count() >= 2 => gui.play(item),
+                                    Row::Item(_) => {}
+                                    _ => gui.toggle(None),
+                                }
+                                cx.notify();
+                            }))
                         })
                         .collect()
                 }),
@@ -283,17 +228,9 @@ impl Gui {
         };
         let fraction = if duration > 0.0 { (position / duration) as f32 } else { 0.0 };
         let window = self.deck.loop_window();
-        let mark = window
-            .filter(|_| duration > 0.0 && self.looping)
-            .map(|(a, b)| ((a / duration) as f32, (b / duration) as f32));
+        let mark = window.filter(|_| duration > 0.0 && self.looping).map(|(a, b)| ((a / duration) as f32, (b / duration) as f32));
         let dup_info = match (&self.state, shown) {
-            (State::Ready(browser), Some(item)) => browser
-                .loaded
-                .library
-                .catalog()
-                .groups()
-                .group_members(&item.id)
-                .map(|m| format!("{} duplicates", m.len())),
+            (State::Ready(browser), Some(item)) => browser.loaded.library.catalog().groups().group_members(&item.id).map(|m| format!("{} duplicates", m.len())),
             _ => None,
         };
         let mut details = shown.map(|item| format!("{}  ·  {}", describe(item), item.id)).unwrap_or_default();
@@ -313,14 +250,7 @@ impl Gui {
         .map(|text| format!("Same as {text}"));
         let volume = self.deck.volume();
         let (left, right) = self.meters;
-        let level = |label: &'static str, value: f32| {
-            div()
-                .flex()
-                .items_center()
-                .gap_2()
-                .child(div().w(px(12.0)).text_color(palette.muted).child(label))
-                .child(meter(value).flex_1())
-        };
+        let level = |label: &'static str, value: f32| div().flex().items_center().gap_2().child(div().w(px(12.0)).text_color(palette.muted).child(label)).child(meter(value).flex_1());
         let controls = div()
             .flex_1()
             .min_w_0()
@@ -334,14 +264,8 @@ impl Gui {
                     .gap_3()
                     .child(div().text_xl().font_weight(FontWeight::BOLD).text_color(palette.text).child(title))
                     .child(div().font_weight(FontWeight::MEDIUM).text_color(state_color).child(state))
-                    .child(
-                        div().flex_1().overflow_hidden().whitespace_nowrap().text_color(palette.muted).child(details),
-                    )
-                    .child(div().text_lg().text_color(palette.muted).child(format!(
-                        "{} / {}",
-                        clock(position),
-                        clock(duration)
-                    ))),
+                    .child(div().flex_1().overflow_hidden().whitespace_nowrap().text_color(palette.muted).child(details))
+                    .child(div().text_lg().text_color(palette.muted).child(format!("{} / {}", clock(position), clock(duration)))),
             )
             .children(same_as.map(|text| div().text_color(palette.muted).child(text)))
             .child(slider("seek", fraction, mark, &self.seek_bounds, cx, |gui, f| gui.seek_to(f)))
@@ -349,19 +273,8 @@ impl Gui {
                 div()
                     .flex()
                     .gap_4()
-                    .child(
-                        div()
-                            .w(px(150.0))
-                            .flex()
-                            .flex_col()
-                            .justify_center()
-                            .gap_2()
-                            .child(level("L", left))
-                            .child(level("R", right)),
-                    )
-                    .child(
-                        spectrum(self.spectrum.levels.clone(), self.spectrum.caps.clone(), self.spectrum.tint).flex_1(),
-                    ),
+                    .child(div().w(px(150.0)).flex().flex_col().justify_center().gap_2().child(level("L", left)).child(level("R", right)))
+                    .child(spectrum(self.spectrum.levels.clone(), self.spectrum.caps.clone(), self.spectrum.tint).flex_1()),
             )
             .child(
                 div()
@@ -372,14 +285,10 @@ impl Gui {
                         gui.step_item(false);
                         cx.notify();
                     })))
-                    .child(
-                        transport("play", if loaded && !paused { "pause" } else { "play" }, 56.0, true, true).on_click(
-                            cx.listener(|gui, _, _, cx| {
-                                gui.toggle_pause();
-                                cx.notify();
-                            }),
-                        ),
-                    )
+                    .child(transport("play", if loaded && !paused { "pause" } else { "play" }, 56.0, true, true).on_click(cx.listener(|gui, _, _, cx| {
+                        gui.toggle_pause();
+                        cx.notify();
+                    })))
                     .child(transport("stop", "stop", 44.0, loaded, false).on_click(cx.listener(|gui, _, _, cx| {
                         gui.stop();
                         cx.notify();
@@ -393,12 +302,10 @@ impl Gui {
                         gui.toggle_loop();
                         cx.notify();
                     })))
-                    .child(chip("play-on", "queue", "Play on", self.continuous).on_click(cx.listener(
-                        |gui, _, _, cx| {
-                            gui.continuous = !gui.continuous;
-                            cx.notify();
-                        },
-                    )))
+                    .child(chip("play-on", "queue", "Play on", self.continuous).on_click(cx.listener(|gui, _, _, cx| {
+                        gui.continuous = !gui.continuous;
+                        cx.notify();
+                    })))
                     .child(div().flex_1())
                     .child(
                         div()
@@ -410,10 +317,7 @@ impl Gui {
                             .rounded(px(RADIUS))
                             .cursor_pointer()
                             .hover(|style| style.bg(palette.hover))
-                            .child(
-                                icon(if self.deck.muted() { "volume-off" } else { "volume" }, 18.0)
-                                    .text_color(if self.deck.muted() { palette.warning } else { palette.muted }),
-                            )
+                            .child(icon(if self.deck.muted() { "volume-off" } else { "volume" }, 18.0).text_color(if self.deck.muted() { palette.warning } else { palette.muted }))
                             .on_click(cx.listener(|gui, _, _, cx| {
                                 gui.deck.set_muted(!gui.deck.muted());
                                 cx.notify();
@@ -426,12 +330,10 @@ impl Gui {
                         .w(px(120.0)),
                     )
                     .child(div().w(px(40.0)).child(format!("{}%", (volume * 100.0).round() as u32)))
-                    .child(button("export", Some("export"), "Export", self.selected_item().is_some()).on_click(
-                        cx.listener(|gui, _, _, cx| {
-                            gui.open_export();
-                            cx.notify();
-                        }),
-                    )),
+                    .child(button("export", Some("export"), "Export", self.selected_item().is_some()).on_click(cx.listener(|gui, _, _, cx| {
+                        gui.open_export();
+                        cx.notify();
+                    }))),
             );
         panel().flex().gap_4().p_4().child(controls)
     }
@@ -440,46 +342,25 @@ impl Gui {
         let palette = Palette::get();
         let text: SharedString = if let Some(save) = &self.save {
             let percent = (save.rendered() / save.duration().max(0.001) * 100.0).min(100.0) as u32;
-            format!("Saving {}  {} / {}  ({percent}%)", save.id(), clock(save.rendered()), clock(save.duration()))
-                .into()
+            format!("Saving {}  {} / {}  ({percent}%)", save.id(), clock(save.rendered()), clock(save.duration())).into()
         } else if !self.message.is_empty() {
             self.message.clone().into()
         } else {
             let output = format!("Output: {}", self.deck.device);
             output.into()
         };
-        let is_problem = self.save.is_none()
-            && (self.message.starts_with("Cannot")
-                || self.message.starts_with("Could not")
-                || self.message.contains("error"));
+        let is_problem = self.save.is_none() && (self.message.starts_with("Cannot") || self.message.starts_with("Could not") || self.message.contains("error"));
         div()
             .flex()
             .items_center()
             .gap_4()
-            .child(
-                div()
-                    .flex_1()
-                    .overflow_hidden()
-                    .whitespace_nowrap()
-                    .text_color(if is_problem { palette.danger } else { palette.muted })
-                    .child(text),
-            )
-            .child(
-                div().text_color(palette.muted).child(
-                    "Space play  ·  Enter play  ·  ↑ ↓ move  ·  n b next prev  ·  / filter  ·  e export  ·  ? help",
-                ),
-            )
+            .child(div().flex_1().overflow_hidden().whitespace_nowrap().text_color(if is_problem { palette.danger } else { palette.muted }).child(text))
+            .child(div().text_color(palette.muted).child("Space play  ·  Enter play  ·  ↑ ↓ move  ·  n b next prev  ·  / filter  ·  e export  ·  ? help"))
     }
 
     fn help_card() -> Div {
         let palette = Palette::get();
-        let rows = HELP.iter().map(|(keys, what)| {
-            div()
-                .flex()
-                .gap_4()
-                .child(div().w(px(150.0)).text_color(palette.accent).child(*keys))
-                .child(div().child(*what))
-        });
+        let rows = HELP.iter().map(|(keys, what)| div().flex().gap_4().child(div().w(px(150.0)).text_color(palette.accent).child(*keys)).child(div().child(*what)));
         panel()
             .flex()
             .flex_col()
@@ -506,11 +387,7 @@ impl Gui {
                 .child(div().text_color(palette.muted).child(name))
         });
         let renders = menu.rows.iter().any(|(format, _)| format.export_format().is_some());
-        let settings = if renders {
-            format!("[ ] plays of the loop: {}    + - Ogg quality: {}", menu.loops.unwrap_or(1), menu.quality.label())
-        } else {
-            String::new()
-        };
+        let settings = if renders { format!("[ ] plays of the loop: {}    + - Ogg quality: {}", menu.loops.unwrap_or(1), menu.quality.label()) } else { String::new() };
         panel()
             .flex()
             .flex_col()
@@ -518,30 +395,15 @@ impl Gui {
             .p_5()
             .w(px(620.0))
             .child(div().text_lg().font_weight(FontWeight::BOLD).child(format!("Export {}", list::label(menu.item))))
-            .child(
-                div()
-                    .pb_2()
-                    .flex()
-                    .items_center()
-                    .gap_3()
-                    .child(
-                        div()
-                            .flex_1()
-                            .text_color(palette.muted)
-                            .child(format!("Folder: {}", crate::save::absolute(&self.export_dir).display())),
-                    )
-                    .child(button("folder", Some("folder"), "Change", true).on_click(cx.listener(|gui, _, _, cx| {
-                        gui.browse_for(Target::Export);
-                        cx.notify();
-                    }))),
-            )
+            .child(div().pb_2().flex().items_center().gap_3().child(div().flex_1().text_color(palette.muted).child(format!("Folder: {}", crate::save::absolute(&self.export_dir).display()))).child(
+                button("folder", Some("folder"), "Change", true).on_click(cx.listener(|gui, _, _, cx| {
+                    gui.browse_for(Target::Export);
+                    cx.notify();
+                })),
+            ))
             .children(rows)
             .child(div().pt_2().text_color(palette.muted).child(settings))
-            .child(
-                div()
-                    .text_color(palette.muted)
-                    .child("Up Down choose  ·  Enter save  ·  f change folder  ·  Esc cancel"),
-            )
+            .child(div().text_color(palette.muted).child("Up Down choose  ·  Enter save  ·  f change folder  ·  Esc cancel"))
     }
 }
 
@@ -591,11 +453,7 @@ fn row_view(ix: usize, row: Row, open: bool, selected: bool, playing: bool) -> g
             .child(icon(kind_icon(kind), 16.0).text_color(palette.accent))
             .child(div().text_color(palette.text).child(kind.label()))
             .child(div().text_color(palette.muted).font_weight(FontWeight::NORMAL).child(count.to_string())),
-        Row::Family(_, family, count) => base
-            .pl(px(34.0))
-            .child(chevron(palette.muted))
-            .child(div().child(family))
-            .child(div().text_color(palette.muted).child(count.to_string())),
+        Row::Family(_, family, count) => base.pl(px(34.0)).child(chevron(palette.muted)).child(div().child(family)).child(div().text_color(palette.muted).child(count.to_string())),
         Row::Item(item) => item_row(base, item, playing),
     }
 }
@@ -609,24 +467,9 @@ fn item_row(base: gpui::Stateful<Div>, item: &'static Item, playing: bool) -> gp
         (false, false) => palette.disabled,
     };
     base.pl(px(56.0))
-        .child(div().w(px(14.0)).child(icon("play", 12.0).text_color(if playing {
-            palette.success
-        } else {
-            transparent_black()
-        })))
-        .child(
-            div()
-                .w(px(280.0))
-                .overflow_hidden()
-                .whitespace_nowrap()
-                .text_color(color)
-                .child(list::label(item).to_string()),
-        )
-        .child(div().flex_1().overflow_hidden().whitespace_nowrap().text_color(palette.muted).child(if item.playable {
-            item.id.clone()
-        } else {
-            format!("{}  ·  no audio", item.id)
-        }))
+        .child(div().w(px(14.0)).child(icon("play", 12.0).text_color(if playing { palette.success } else { transparent_black() })))
+        .child(div().w(px(280.0)).overflow_hidden().whitespace_nowrap().text_color(color).child(list::label(item).to_string()))
+        .child(div().flex_1().overflow_hidden().whitespace_nowrap().text_color(palette.muted).child(if item.playable { item.id.clone() } else { format!("{}  ·  no audio", item.id) }))
         .child(div().text_color(palette.muted).child(length))
 }
 

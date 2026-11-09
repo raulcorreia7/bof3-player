@@ -535,10 +535,7 @@ impl Gpu {
                 self.read = match value & 7 {
                     2 => {
                         let w = self.window;
-                        u32::from(w.mask_x)
-                            | u32::from(w.mask_y) << 5
-                            | u32::from(w.offset_x) << 10
-                            | u32::from(w.offset_y) << 15
+                        u32::from(w.mask_x) | u32::from(w.mask_y) << 5 | u32::from(w.offset_x) << 10 | u32::from(w.offset_y) << 15
                     }
                     3 => u32::from(self.area.left) | u32::from(self.area.top) << 10,
                     4 => u32::from(self.area.right) | u32::from(self.area.bottom) << 10,
@@ -583,12 +580,7 @@ impl Gpu {
             0xE1 => self.draw_mode = words[0] & self.draw_mode_bits(0x3FFF),
             0xE2 => {
                 let w = words[0];
-                self.window = TextureWindow {
-                    mask_x: (w & 0x1F) as u8,
-                    mask_y: ((w >> 5) & 0x1F) as u8,
-                    offset_x: ((w >> 10) & 0x1F) as u8,
-                    offset_y: ((w >> 15) & 0x1F) as u8,
-                };
+                self.window = TextureWindow { mask_x: (w & 0x1F) as u8, mask_y: ((w >> 5) & 0x1F) as u8, offset_x: ((w >> 10) & 0x1F) as u8, offset_y: ((w >> 15) & 0x1F) as u8 };
             }
             0xE3 => {
                 self.area.left = (words[0] & 0x3FF) as u16;
@@ -608,16 +600,7 @@ impl Gpu {
     }
 
     fn draw(&mut self, opcode: u32, shape: Shape, vertices: Vec<Vertex>, texture: Option<Texture>) {
-        let draw = Draw {
-            opcode: opcode as u8,
-            shape,
-            vertices,
-            texture,
-            semi_transparent: opcode & 0x02 != 0,
-            gouraud: opcode & 0x10 != 0 && opcode < 0x60,
-            offset: self.offset,
-            area: self.area,
-        };
+        let draw = Draw { opcode: opcode as u8, shape, vertices, texture, semi_transparent: opcode & 0x02 != 0, gouraud: opcode & 0x10 != 0 && opcode < 0x60, offset: self.offset, area: self.area };
         if self.rasterize {
             let mode = raster::Mode {
                 blend: ((self.draw_mode >> 5) & 3) as u8,
@@ -685,14 +668,7 @@ impl Gpu {
             // A textured polygon's page attribute replaces the page bits of the draw mode.
             let bits = self.draw_mode_bits(PAGE_ATTRIBUTE_BITS);
             self.draw_mode = (self.draw_mode & !PAGE_ATTRIBUTE_BITS) | (page_bits & bits);
-            Texture {
-                page: TexturePage::from_bits(page_bits),
-                clut: Clut::from_bits(clut_bits),
-                window: self.window,
-                raw: opcode & 0x01 != 0,
-                flip_x: false,
-                flip_y: false,
-            }
+            Texture { page: TexturePage::from_bits(page_bits), clut: Clut::from_bits(clut_bits), window: self.window, raw: opcode & 0x01 != 0, flip_x: false, flip_y: false }
         });
         let shape = if count == 4 { Shape::Quad } else { Shape::Triangle };
         self.draw(opcode, shape, vertices, texture);
@@ -720,8 +696,7 @@ impl Gpu {
         let opcode = words[0] >> 24;
         let textured = opcode & 0x04 != 0;
         let position = words[1];
-        let mut vertex =
-            Vertex { x: sign11(position), y: sign11(position >> 16), color: words[0] & 0x00FF_FFFF, u: 0, v: 0 };
+        let mut vertex = Vertex { x: sign11(position), y: sign11(position >> 16), color: words[0] & 0x00FF_FFFF, u: 0, v: 0 };
         let mut cursor = 2;
         let mut clut = Clut { x: 0, y: 0 };
         if textured {
@@ -753,12 +728,7 @@ impl Gpu {
 
     fn fill(&mut self, words: &[u32]) {
         let color = words[0] & 0x00FF_FFFF;
-        let rect = VramRect {
-            x: (words[1] & 0x3F0) as u16,
-            y: ((words[1] >> 16) & 0x1FF) as u16,
-            width: (((words[2] & 0x3FF) + 0xF) & !0xF) as u16,
-            height: ((words[2] >> 16) & 0x1FF) as u16,
-        };
+        let rect = VramRect { x: (words[1] & 0x3F0) as u16, y: ((words[1] >> 16) & 0x1FF) as u16, width: (((words[2] & 0x3FF) + 0xF) & !0xF) as u16, height: ((words[2] >> 16) & 0x1FF) as u16 };
         let pixel = to_15bit(color);
         let skipped = self.skipped_parity();
         for row in 0..usize::from(rect.height) {
@@ -783,10 +753,7 @@ impl Gpu {
         let mut line = Vec::with_capacity(usize::from(size.width));
         for row in 0..usize::from(size.height) {
             line.clear();
-            line.extend(
-                (0..usize::from(size.width))
-                    .map(|column| self.pixel(usize::from(from_x) + column, usize::from(from_y) + row)),
-            );
+            line.extend((0..usize::from(size.width)).map(|column| self.pixel(usize::from(from_x) + column, usize::from(from_y) + row)));
             for (column, &source) in line.iter().enumerate() {
                 self.put(usize::from(size.x) + column, usize::from(size.y) + row, source);
             }

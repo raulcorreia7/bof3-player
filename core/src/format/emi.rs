@@ -59,18 +59,11 @@ impl<'a> Emi<'a> {
     /// Payloads of every entry of `kind`, in table order.
     pub fn payloads(&self, kind: EntryType) -> impl Iterator<Item = &'a [u8]> + '_ {
         let bytes = self.bytes;
-        self.archive
-            .entries()
-            .iter()
-            .enumerate()
-            .filter(move |(_, entry)| entry.file_type == kind.code())
-            .filter_map(move |(index, _)| self.archive.payload(bytes, index).ok())
+        self.archive.entries().iter().enumerate().filter(move |(_, entry)| entry.file_type == kind.code()).filter_map(move |(index, _)| self.archive.payload(bytes, index).ok())
     }
 
     /// The `occurrence`-th (0-based) payload of `kind`.
     pub fn find(&self, kind: EntryType, occurrence: usize) -> Result<&'a [u8]> {
-        self.payloads(kind)
-            .nth(occurrence)
-            .ok_or_else(|| Error::format(format!("EMI archive holds no entry of type {} #{occurrence}", kind.code())))
+        self.payloads(kind).nth(occurrence).ok_or_else(|| Error::format(format!("EMI archive holds no entry of type {} #{occurrence}", kind.code())))
     }
 }

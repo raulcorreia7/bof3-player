@@ -170,12 +170,7 @@ impl Tpage {
             2 => Color::Direct15,
             _ => return None,
         };
-        Some(Self {
-            x: (word & 0xf) * PAGE_COLUMN_WORDS,
-            y: if word & PAGE_ROW_BIT != 0 { PAGE_ROW_ROWS } else { 0 },
-            color,
-            blend: ((word >> BLEND_SHIFT) & 3) as u8,
-        })
+        Some(Self { x: (word & 0xf) * PAGE_COLUMN_WORDS, y: if word & PAGE_ROW_BIT != 0 { PAGE_ROW_ROWS } else { 0 }, color, blend: ((word >> BLEND_SHIFT) & 3) as u8 })
     }
 
     /// Encodes the fields back to a texture-page word (bits 0-8 only).
@@ -274,15 +269,7 @@ impl Clut {
 pub fn texel_words(indices: &[u8], depth: Depth) -> Vec<u16> {
     let bits = depth.bits();
     let mask = (1u16 << bits) - 1;
-    indices
-        .chunks(depth.texels_per_word())
-        .map(|texels| {
-            texels
-                .iter()
-                .enumerate()
-                .fold(0u16, |word, (texel, &index)| word | ((u16::from(index) & mask) << (texel as u32 * bits)))
-        })
-        .collect()
+    indices.chunks(depth.texels_per_word()).map(|texels| texels.iter().enumerate().fold(0u16, |word, (texel, &index)| word | ((u16::from(index) & mask) << (texel as u32 * bits)))).collect()
 }
 
 /// Unpacks the texel indices of a row of VRAM words, lowest bits first.

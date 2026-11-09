@@ -48,9 +48,7 @@ pub fn open_library(global: &Global, naming: &dyn Naming) -> Result<&'static Lib
     if discovery.found.is_none() {
         return Err(not_found(&discovery));
     }
-    let library = discovery.open_with(naming).map_err(|error| {
-        format!("cannot open the game data: {}; run `bof3player doctor` to see every probe", error.message())
-    })?;
+    let library = discovery.open_with(naming).map_err(|error| format!("cannot open the game data: {}; run `bof3player doctor` to see every probe", error.message()))?;
     Ok(Box::leak(Box::new(library)))
 }
 
@@ -67,9 +65,7 @@ fn not_found(discovery: &discover::Discovery) -> String {
 
 pub fn filter_of<'a>(filters: &'a Filters) -> Result<Filter<'a>, String> {
     let kinds = match &filters.kind {
-        Some(name) => vec![
-            Kind::from_name(name).ok_or_else(|| format!("unknown kind {name}: use music, bank, sample, xa or cdda"))?,
-        ],
+        Some(name) => vec![Kind::from_name(name).ok_or_else(|| format!("unknown kind {name}: use music, bank, sample, xa or cdda"))?],
         None => Vec::new(),
     };
     Ok(Filter { kinds, family: filters.family.as_deref(), playable_only: filters.playable })
@@ -96,10 +92,7 @@ pub fn resolve<'a>(library: &'a Library<'static>, query: &str) -> Result<&'a Ite
         None => {
             let hint = catalog.search(query, &Filter::default());
             let list = hint.iter().take(5).map(|i| i.id.as_str()).collect::<Vec<_>>().join(", ");
-            Err(format!(
-                "no item matches \"{query}\"{}. Try `bof3player list` or a shorter query.",
-                if list.is_empty() { String::new() } else { format!("; closest: {list}") }
-            ))
+            Err(format!("no item matches \"{query}\"{}. Try `bof3player list` or a shorter query.", if list.is_empty() { String::new() } else { format!("; closest: {list}") }))
         }
     }
 }
@@ -114,10 +107,7 @@ fn item_json(item: &Item) -> serde_json::Value {
 
 fn print_rows(global: &Global, catalog: &Catalog, rows: &[&Item], total: usize, show_all: bool) {
     if global.json {
-        say!(
-            "{}",
-            serde_json::to_string_pretty(&rows.iter().map(|i| item_json(i)).collect::<Vec<_>>()).unwrap_or_default()
-        );
+        say!("{}", serde_json::to_string_pretty(&rows.iter().map(|i| item_json(i)).collect::<Vec<_>>()).unwrap_or_default());
         return;
     }
     let groups = catalog.groups();
@@ -136,16 +126,7 @@ fn print_rows(global: &Global, catalog: &Catalog, rows: &[&Item], total: usize, 
                     seen_group.insert(canon);
                     let title = if item.title.is_empty() { String::new() } else { format!("{} · ", item.title) };
                     let same = catalog.same_as_text(item).map_or_else(String::new, |text| format!("  same as {text}"));
-                    say!(
-                        "{:<6} {:<28} {:>8}  {}{}{} ×{}",
-                        item.kind.name(),
-                        item.id,
-                        duration_text(item),
-                        title,
-                        item.name,
-                        same,
-                        members.len()
-                    );
+                    say!("{:<6} {:<28} {:>8}  {}{}{} ×{}", item.kind.name(), item.id, duration_text(item), title, item.name, same, members.len());
                     continue;
                 }
             }
@@ -158,16 +139,7 @@ fn print_rows(global: &Global, catalog: &Catalog, rows: &[&Item], total: usize, 
                 seen_group.insert(item.id.clone());
                 let title = if item.title.is_empty() { String::new() } else { format!("{} · ", item.title) };
                 let same = catalog.same_as_text(item).map_or_else(String::new, |text| format!("  same as {text}"));
-                say!(
-                    "{:<6} {:<28} {:>8}  {}{}{} ×{}",
-                    item.kind.name(),
-                    item.id,
-                    duration_text(item),
-                    title,
-                    item.name,
-                    same,
-                    members.len()
-                );
+                say!("{:<6} {:<28} {:>8}  {}{}{} ×{}", item.kind.name(), item.id, duration_text(item), title, item.name, same, members.len());
                 continue;
             }
         }
@@ -185,13 +157,7 @@ pub fn list(global: &Global, filters: &Filters, limit: Option<usize>, naming: &d
     list_with(global, filters, limit, naming, false)
 }
 
-pub fn list_with(
-    global: &Global,
-    filters: &Filters,
-    limit: Option<usize>,
-    naming: &dyn Naming,
-    show_all: bool,
-) -> Outcome {
+pub fn list_with(global: &Global, filters: &Filters, limit: Option<usize>, naming: &dyn Naming, show_all: bool) -> Outcome {
     let library = open_library(global, naming)?;
     let filter = filter_of(filters)?;
     let hits = library.catalog().search("", &filter);
@@ -205,14 +171,7 @@ pub fn search(global: &Global, query: &str, filters: &Filters, limit: usize, nam
     search_with(global, query, filters, limit, naming, false)
 }
 
-pub fn search_with(
-    global: &Global,
-    query: &str,
-    filters: &Filters,
-    limit: usize,
-    naming: &dyn Naming,
-    show_all: bool,
-) -> Outcome {
+pub fn search_with(global: &Global, query: &str, filters: &Filters, limit: usize, naming: &dyn Naming, show_all: bool) -> Outcome {
     let library = open_library(global, naming)?;
     let filter = filter_of(filters)?;
     let hits = library.catalog().search(query, &filter);
@@ -253,13 +212,7 @@ pub fn info(global: &Global, query: &str, naming: &dyn Naming) -> Outcome {
         }
     }
     say!("family    {}\nduration  {}\ndetail    {}", item.family, duration_text(item), item.detail);
-    say!(
-        "playable  {}\nsource    {}\nindex     {}\nsub index {}",
-        if item.playable { "yes" } else { "no" },
-        item.path,
-        item.index,
-        item.sub_index
-    );
+    say!("playable  {}\nsource    {}\nindex     {}\nsub index {}", if item.playable { "yes" } else { "no" }, item.path, item.index, item.sub_index);
     if item.playable
         && matches!(item.kind, Kind::Music)
         && let Ok(player) = library.player(item)
@@ -316,12 +269,7 @@ pub fn music(global: &Global, all: bool, untitled: bool, naming: &dyn Naming) ->
             for item in items.iter().copied().filter(|i| selected(i)) {
                 let title = if item.title.is_empty() { "-" } else { item.title.as_str() };
                 let same = library.catalog().same_as_text(item).map_or_else(String::new, |t| format!("  same as {t}"));
-                say!(
-                    "  #{}   {}  {title}{same}{}",
-                    item.index,
-                    music_length(item.duration),
-                    if item.playable { "" } else { "  [no audio]" }
-                );
+                say!("  #{}   {}  {title}{same}{}", item.index, music_length(item.duration), if item.playable { "" } else { "  [no audio]" });
             }
         }
     }
@@ -341,10 +289,7 @@ pub fn stats(global: &Global, naming: &dyn Naming) -> Outcome {
         *families.entry(&item.family).or_default() += 1;
     }
     if global.json {
-        let k: Vec<_> = kinds
-            .iter()
-            .map(|(k, v)| json!({"kind": k.name(), "items": v.0, "no_audio": v.1, "seconds": v.2}))
-            .collect();
+        let k: Vec<_> = kinds.iter().map(|(k, v)| json!({"kind": k.name(), "items": v.0, "no_audio": v.1, "seconds": v.2})).collect();
         say!("{}", json!({"items": items.len(), "kinds": k, "families": families}));
         return Ok(ExitCode::SUCCESS);
     }
@@ -377,9 +322,7 @@ pub fn doctor(global: &Global, naming: &dyn Naming) -> Outcome {
     if discovery.found.is_none() {
         return Ok(ExitCode::from(1));
     }
-    let library = discovery.open_with(naming).map_err(|error| {
-        format!("cannot open the game data: {}; run `bof3player doctor` to see every probe", error.message())
-    })?;
+    let library = discovery.open_with(naming).map_err(|error| format!("cannot open the game data: {}; run `bof3player doctor` to see every probe", error.message()))?;
     let mut counts = BTreeMap::new();
     for item in library.catalog().items() {
         *counts.entry(item.kind).or_insert(0usize) += 1;
@@ -451,9 +394,7 @@ fn parse_format(name: &str, quality: f32) -> Result<ExportFormat, String> {
         "s16" => Ok(ExportFormat::Raw),
         "flac" => Ok(ExportFormat::Flac),
         "ogg" if crate::export::OGG_QUALITY_RANGE.contains(&quality) => Ok(ExportFormat::Ogg),
-        "ogg" => Err(format!(
-            "Ogg quality {quality} is outside 0-10: pass --quality 0 (smallest) to 10 (best), for example --quality 6."
-        )),
+        "ogg" => Err(format!("Ogg quality {quality} is outside 0-10: pass --quality 0 (smallest) to 10 (best), for example --quality 6.")),
         other => Err(format!("unknown format {other}: use wav, s16, flac or ogg.")),
     }
 }
@@ -461,12 +402,7 @@ fn parse_format(name: &str, quality: f32) -> Result<ExportFormat, String> {
 /// Render every playable item matching `query` as WAV into `dir`; returns how many failed.
 pub fn render_matching(global: &Global, query: &str, dir: &Path, naming: &dyn Naming) -> Result<usize, String> {
     let library = open_library(global, naming)?;
-    let style = RenderStyle {
-        loops: global.loops,
-        fade: global.fade.unwrap_or(0.0),
-        player: global.player_options(),
-        ..RenderStyle::default()
-    };
+    let style = RenderStyle { loops: global.loops, fade: global.fade.unwrap_or(0.0), player: global.player_options(), ..RenderStyle::default() };
     Ok(render::render(library, query, dir, &playable(), &style, false))
 }
 
@@ -488,14 +424,7 @@ pub fn render(
     filters: &Filters,
     naming: &dyn Naming,
 ) -> Outcome {
-    let style = RenderStyle {
-        format: parse_format(format, quality)?,
-        quality,
-        loops,
-        seconds,
-        fade: global.fade.unwrap_or(0.0),
-        player: global.player_options(),
-    };
+    let style = RenderStyle { format: parse_format(format, quality)?, quality, loops, seconds, fade: global.fade.unwrap_or(0.0), player: global.player_options() };
     let library = open_library(global, naming)?;
     if all {
         let dir = out_dir.ok_or("render --all needs an output folder: pass --out-dir DIR.")?;
@@ -529,15 +458,11 @@ pub fn export(global: &Global, what: &str, query: &str, output: &Path, naming: &
         "seq" => library.export_sequence(item),
         "vab" => library.export_bank(item),
         other => {
-            return Err(format!(
-                "cannot export {other}: use midi, vag, seq or vab, for example `bof3player export midi ITEM -o song.mid`."
-            ));
+            return Err(format!("cannot export {other}: use midi, vag, seq or vab, for example `bof3player export midi ITEM -o song.mid`."));
         }
     }
     .map_err(|e| e.to_string())?;
-    std::fs::File::create(output)
-        .and_then(|mut f| f.write_all(&bytes))
-        .map_err(|e| format!("{}: {e}", output.display()))?;
+    std::fs::File::create(output).and_then(|mut f| f.write_all(&bytes)).map_err(|e| format!("{}: {e}", output.display()))?;
     if !global.quiet {
         eprintln!("wrote {} ({} bytes)", crate::save::absolute(output).display(), bytes.len());
     }

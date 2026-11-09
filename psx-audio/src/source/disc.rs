@@ -178,12 +178,7 @@ impl Blob for FileBlob<'_> {
 
 impl Source for DiscSource {
     fn list(&self) -> Result<Vec<String>> {
-        let mut files: Vec<String> = self
-            .entries
-            .iter()
-            .filter(|entry| !entry.is_directory)
-            .map(|entry| entry.path.to_string_lossy().replace('\\', "/"))
-            .collect();
+        let mut files: Vec<String> = self.entries.iter().filter(|entry| !entry.is_directory).map(|entry| entry.path.to_string_lossy().replace('\\', "/")).collect();
         if let Some(audio) = &self.audio {
             files.push(audio.name.clone());
         }
@@ -199,9 +194,7 @@ impl Source for DiscSource {
         let entry = self
             .entries
             .iter()
-            .find(|entry| {
-                !entry.is_directory && entry.path.to_string_lossy().replace('\\', "/").eq_ignore_ascii_case(&wanted)
-            })
+            .find(|entry| !entry.is_directory && entry.path.to_string_lossy().replace('\\', "/").eq_ignore_ascii_case(&wanted))
             .cloned()
             .ok_or_else(|| Error::io(format!("no such file: {path}")))?;
         if entry.size == 0 {
@@ -225,19 +218,11 @@ fn resolve(path: &Path) -> Result<(PathBuf, Option<PathBuf>)> {
     let ext = |p: &Path, e: &str| p.extension().is_some_and(|x| x.eq_ignore_ascii_case(e));
     let cue_image = |cue: &Path| -> Result<(PathBuf, Option<PathBuf>)> {
         let sheet = cue::read(cue).map_err(cd_error)?;
-        let data = sheet
-            .tracks
-            .iter()
-            .find(|track| track.mode != TrackMode::Audio)
-            .ok_or_else(|| Error::format(format!("cue sheet has no data track: {}", cue.display())))?;
+        let data = sheet.tracks.iter().find(|track| track.mode != TrackMode::Audio).ok_or_else(|| Error::format(format!("cue sheet has no data track: {}", cue.display())))?;
         Ok((data.file.clone(), Some(cue.to_path_buf())))
     };
     if path.is_dir() {
-        let mut cues: Vec<PathBuf> = std::fs::read_dir(path)?
-            .filter_map(std::result::Result::ok)
-            .map(|e| e.path())
-            .filter(|p| p.is_file() && ext(p, "cue"))
-            .collect();
+        let mut cues: Vec<PathBuf> = std::fs::read_dir(path)?.filter_map(std::result::Result::ok).map(|e| e.path()).filter(|p| p.is_file() && ext(p, "cue")).collect();
         cues.sort();
         if let Some(cue) = cues.first() {
             return cue_image(cue);
@@ -262,8 +247,7 @@ fn resolve(path: &Path) -> Result<(PathBuf, Option<PathBuf>)> {
         if let Some(parent) = path.parent()
             && let Ok(entries) = std::fs::read_dir(if parent.as_os_str().is_empty() { Path::new(".") } else { parent })
         {
-            let mut cues: Vec<PathBuf> =
-                entries.filter_map(std::result::Result::ok).map(|e| e.path()).filter(|p| ext(p, "cue")).collect();
+            let mut cues: Vec<PathBuf> = entries.filter_map(std::result::Result::ok).map(|e| e.path()).filter(|p| ext(p, "cue")).collect();
             cues.sort();
             for cue in cues {
                 if let Ok((image, _)) = cue_image(&cue)

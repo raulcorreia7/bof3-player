@@ -57,9 +57,6 @@ impl Global {
     /// The player settings these options select.
     #[must_use]
     pub fn player_options(&self) -> PlayerOptions {
-        PlayerOptions {
-            reverb: if self.legacy_reverb { ReverbModel::Legacy } else { ReverbModel::Hardware },
-            ..PlayerOptions::default()
-        }
+        PlayerOptions { reverb: if self.legacy_reverb { ReverbModel::Legacy } else { ReverbModel::Hardware }, ..PlayerOptions::default() }
     }
 }

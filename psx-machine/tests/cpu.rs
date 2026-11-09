@@ -30,10 +30,7 @@ const DATA: u32 = 0x8002_0000;
 /// An exception handler at 0x80000080 that copies EPC to t9 and CAUSE to t8, then returns to
 /// `EPC + skip`.
 fn install_handler(machine: &mut psx_machine::Machine, skip: i32) {
-    machine.write_words(
-        0x8000_0080,
-        &[mfc0(K0, 14), mfc0(K1, 13), nop(), or(T9, K0, 0), or(T8, K1, 0), addiu(K0, K0, skip), jr(K0), rfe()],
-    );
+    machine.write_words(0x8000_0080, &[mfc0(K0, 14), mfc0(K1, 13), nop(), or(T9, K0, 0), or(T8, K1, 0), addiu(K0, K0, skip), jr(K0), rfe()]);
 }
 
 fn reg(machine: &psx_machine::Machine, index: u32) -> u32 {
@@ -105,20 +102,7 @@ fn multiply_and_divide() {
     let mut program = Vec::new();
     program.extend(li(T0, 0xFFFF_FFFE)); // -2
     program.extend(li(T1, 0x0000_0003));
-    program.extend([
-        mult(T0, T1),
-        mfhi(A0),
-        mflo(A1),
-        multu(T0, T1),
-        mfhi(A2),
-        mflo(A3),
-        div(T0, T1),
-        mfhi(V0),
-        mflo(V1),
-        divu(T0, T1),
-        mfhi(S0),
-        mflo(S0 + 1),
-    ]);
+    program.extend([mult(T0, T1), mfhi(A0), mflo(A1), multu(T0, T1), mfhi(A2), mflo(A3), div(T0, T1), mfhi(V0), mflo(V1), divu(T0, T1), mfhi(S0), mflo(S0 + 1)]);
     let machine = run(&program);
     assert_eq!((reg(&machine, A0), reg(&machine, A1)), (0xFFFF_FFFF, 0xFFFF_FFFA));
     assert_eq!((reg(&machine, A2), reg(&machine, A3)), (2, 0xFFFF_FFFA));

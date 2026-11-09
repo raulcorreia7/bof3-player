@@ -81,12 +81,7 @@ pub struct EnvelopeTiming {
 pub fn envelope_timing(adsr1: u16, adsr2: u16) -> Option<EnvelopeTiming> {
     let timing = envelope::timing_of(adsr1, adsr2)?;
     let seconds = |samples: u64| samples as f64 / f64::from(SAMPLE_RATE);
-    Some(EnvelopeTiming {
-        attack: seconds(timing.attack),
-        decay: seconds(timing.decay),
-        sustain_level: timing.sustain_level,
-        release: seconds(timing.release),
-    })
+    Some(EnvelopeTiming { attack: seconds(timing.attack), decay: seconds(timing.decay), sustain_level: timing.sustain_level, release: seconds(timing.release) })
 }
 
 /// Size of SPU RAM in bytes (512 KiB).
@@ -311,13 +306,7 @@ impl Spu {
     pub fn with_reverb_model(model: ReverbModel) -> Self {
         let mut reverb = Reverb::new(REVERB_AREA_START);
         reverb.set_model(model);
-        Self {
-            ram: vec![0u8; RAM_SIZE].into_boxed_slice(),
-            voices: core::array::from_fn(|_| Voice::idle()),
-            main_left: 0,
-            main_right: 0,
-            reverb,
-        }
+        Self { ram: vec![0u8; RAM_SIZE].into_boxed_slice(), voices: core::array::from_fn(|_| Voice::idle()), main_left: 0, main_right: 0, reverb }
     }
 
     /// Copy `data` into SPU RAM at byte `address` (wraps at the end of RAM).

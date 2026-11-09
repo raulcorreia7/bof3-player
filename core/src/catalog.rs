@@ -277,8 +277,7 @@ fn natural_compare(left: &str, right: &str) -> Ordering {
             while j < r.len() && r[j].is_ascii_digit() {
                 j += 1;
             }
-            let order =
-                (i - ln).cmp(&(j - rn)).then_with(|| l[ln..i].cmp(&r[rn..j])).then_with(|| (ln - ls).cmp(&(rn - rs)));
+            let order = (i - ln).cmp(&(j - rn)).then_with(|| l[ln..i].cmp(&r[rn..j])).then_with(|| (ln - ls).cmp(&(rn - rs)));
             if order != Ordering::Equal {
                 return order;
             }
@@ -323,9 +322,7 @@ impl Catalog {
         for path in source.list()? {
             add_path(&mut items, source, &cues, &path, naming)?;
         }
-        items.sort_by(|a, b| {
-            a.kind.cmp(&b.kind).then_with(|| natural_compare(&a.id, &b.id)).then_with(|| a.id.cmp(&b.id))
-        });
+        items.sort_by(|a, b| a.kind.cmp(&b.kind).then_with(|| natural_compare(&a.id, &b.id)).then_with(|| a.id.cmp(&b.id)));
         for pair in items.windows(2) {
             if pair[0].id == pair[1].id {
                 return Err(Error::format(format!("duplicate catalog id: {}", pair[0].id)));
@@ -469,20 +466,12 @@ fn rate_text(rate: u32, channels: u32) -> String {
     format!("{rate} Hz {}", if channels >= 2 { "stereo" } else { "mono" })
 }
 
-fn add_path(
-    items: &mut Vec<Item>,
-    source: &dyn Source,
-    cues: &CueTable,
-    path: &str,
-    naming: &dyn Naming,
-) -> Result<()> {
+fn add_path(items: &mut Vec<Item>, source: &dyn Source, cues: &CueTable, path: &str, naming: &dyn Naming) -> Result<()> {
     if has_extension(path, "EMI") {
         add_archive(items, source, path, naming).map_err(|e| e.context(path))
     } else if has_extension(path, "STR") {
         add_xa(items, source, cues, path, naming).map_err(|e| e.context(path))
-    } else if directory_of(path).eq_ignore_ascii_case("CDDA")
-        || (starts_with_ci(stem_of(path), "track") && (has_extension(path, "wav") || has_extension(path, "raw")))
-    {
+    } else if directory_of(path).eq_ignore_ascii_case("CDDA") || (starts_with_ci(stem_of(path), "track") && (has_extension(path, "wav") || has_extension(path, "raw"))) {
         add_cdda(items, source, path).map_err(|e| e.context(path))
     } else {
         Ok(())
@@ -522,8 +511,7 @@ struct BankTones {
 
 fn bank_tones(vab: &Bank, tones_of_bank: &[Tone]) -> BankTones {
     let n = vab.vags.len();
-    let mut tones =
-        BankTones { named: alloc::vec![false; n], audible: alloc::vec![false; n], pan_of: alloc::vec![PAN_CENTRE; n] };
+    let mut tones = BankTones { named: alloc::vec![false; n], audible: alloc::vec![false; n], pan_of: alloc::vec![PAN_CENTRE; n] };
     for tone in tones_of_bank {
         let v = tone.vag as usize;
         if v < 1 || v >= n {
@@ -535,9 +523,7 @@ fn bank_tones(vab: &Bank, tones_of_bank: &[Tone]) -> BankTones {
             tones.audible[v] = true;
         }
         if first {
-            let pan = i32::from(tone.pan)
-                + (i32::from(tone.program_pan) - PAN_CENTRE)
-                + (i32::from(vab.master_pan) - PAN_CENTRE);
+            let pan = i32::from(tone.pan) + (i32::from(tone.program_pan) - PAN_CENTRE) + (i32::from(vab.master_pan) - PAN_CENTRE);
             tones.pan_of[v] = pan.clamp(0, PAN_MAX);
         }
     }
@@ -548,8 +534,7 @@ fn add_archive(items: &mut Vec<Item>, source: &dyn Source, path: &str, naming: &
     let blob = source.open(path)?;
     let bytes = blob.bytes()?;
     let emi = Emi::parse(&bytes)?;
-    let mut archive =
-        Archive { name: stem_of(path).to_string(), family: directory_of(path).to_string(), path, banks: 0 };
+    let mut archive = Archive { name: stem_of(path).to_string(), family: directory_of(path).to_string(), path, banks: 0 };
     let bodies: Vec<&[u8]> = emi.payloads(EntryType::Vb).collect();
     let cue_lists: Vec<&[u8]> = emi.payloads(EntryType::Aux).collect();
     archive.banks = emi.payloads(EntryType::Vh).count() as u32;
@@ -566,13 +551,7 @@ fn add_archive(items: &mut Vec<Item>, source: &dyn Source, path: &str, naming: &
     Ok(())
 }
 
-fn add_sequences(
-    items: &mut Vec<Item>,
-    archive: &Archive<'_>,
-    payload: &[u8],
-    bank_programs: u128,
-    naming: &dyn Naming,
-) -> Result<()> {
+fn add_sequences(items: &mut Vec<Item>, archive: &Archive<'_>, payload: &[u8], bank_programs: u128, naming: &dyn Naming) -> Result<()> {
     let sep = Package::parse(payload)?;
     let count = sep.sequences.len();
     for sequence in &sep.sequences {
@@ -611,28 +590,12 @@ fn loop_text(vag: &Vag) -> String {
         return String::new();
     }
     let rate = f64::from(crate::format::VAB_SAMPLE_RATE);
-    format!(
-        ", loops {} to {}",
-        seconds_text(f64::from(vag.loop_start_frame) / rate),
-        seconds_text(f64::from(vag.loop_end_frame) / rate)
-    )
+    format!(", loops {} to {}", seconds_text(f64::from(vag.loop_start_frame) / rate), seconds_text(f64::from(vag.loop_end_frame) / rate))
 }
 
-fn add_bank(
-    items: &mut Vec<Item>,
-    archive: &Archive<'_>,
-    number: u32,
-    header: &[u8],
-    body: &[u8],
-    cues: &[u8],
-    naming: &dyn Naming,
-) -> Result<u128> {
+fn add_bank(items: &mut Vec<Item>, archive: &Archive<'_>, number: u32, header: &[u8], body: &[u8], cues: &[u8], naming: &dyn Naming) -> Result<u128> {
     let vab = Bank::parse(header, body)?;
-    let (qualifier, label) = if number == 0 {
-        (String::new(), archive.name.clone())
-    } else {
-        (format!("@{}", number + 1), format!("{} bank {}", archive.name, number + 1))
-    };
+    let (qualifier, label) = if number == 0 { (String::new(), archive.name.clone()) } else { (format!("@{}", number + 1), format!("{} bank {}", archive.name, number + 1)) };
     let usable: Vec<Tone> = vab.usable_tones().copied().collect();
     let tones = bank_tones(&vab, &usable);
 
@@ -656,10 +619,7 @@ fn add_bank(
     } else {
         " (silent: every tone volume is 0)"
     };
-    bank.detail = format!(
-        "audition: {} programs, {} tones, one at a time (the game keys one tone per sound){silent_note}",
-        vab.program_count, vab.declared_tones
-    );
+    bank.detail = format!("audition: {} programs, {} tones, one at a time (the game keys one tone per sound){silent_note}", vab.program_count, vab.declared_tones);
     items.push(bank);
 
     // One sample item per non-empty VAG.
@@ -682,8 +642,7 @@ fn add_bank(
         sample.id = format!("sample:{}{qualifier}#{}", archive.name, vag.index);
         sample.name = format!("{label} #{}", vag.index);
         sample.family = archive.family.clone();
-        sample.detail =
-            format!("{} bytes, {frames} samples, {}{}{verdict}", vag.size, seconds_text(seconds), loop_text(vag));
+        sample.detail = format!("{} bytes, {frames} samples, {}{}{verdict}", vag.size, seconds_text(seconds), loop_text(vag));
         sample.path = archive.path.to_string();
         sample.index = number;
         sample.sub_index = vag.index;
@@ -710,10 +669,7 @@ fn add_bank(
         item.bank = number;
         item.cue = true;
         if archive.banks != 1 {
-            item.detail += &format!(
-                ", one of the archive's {} banks - the archive does not say which one this list was loaded with",
-                archive.banks
-            );
+            item.detail += &format!(", one of the archive's {} banks - the archive does not say which one this list was loaded with", archive.banks);
         } else if let Some(tone) = usable.iter().find(|t| t.storage_block == cue.program && t.tone_slot == cue.tone) {
             let vag_index = tone.vag as usize;
             let vag = &vab.vags[vag_index];
@@ -813,18 +769,7 @@ fn add_xa(items: &mut Vec<Item>, source: &dyn Source, cues: &CueTable, path: &st
 /// window end; the catalog plays the whole window so a clip reaches its own
 /// boundary.
 #[allow(clippy::too_many_arguments)]
-fn add_xa_cue(
-    items: &mut Vec<Item>,
-    path: &str,
-    stream: &str,
-    family: &str,
-    cue: xa_cues::Cue,
-    file: usize,
-    table: &CueTable,
-    coding: &BTreeMap<u8, u8>,
-    total: u64,
-    naming: &dyn Naming,
-) {
+fn add_xa_cue(items: &mut Vec<Item>, path: &str, stream: &str, family: &str, cue: xa_cues::Cue, file: usize, table: &CueTable, coding: &BTreeMap<u8, u8>, total: u64, naming: &dyn Naming) {
     let Some(&coding) = coding.get(&cue.channel) else { return };
     let first = u64::from(cue.first_sector());
     let wanted = cue.wanted_sectors();
@@ -839,34 +784,15 @@ fn add_xa_cue(
     let seconds = xa::duration(sectors, coding);
     let shape = rate_text(xa::rate(coding), xa::channels(coding));
     let id = format!("xa:{stream}#ch{}@{}", cue.channel, first);
-    let fallback =
-        if file == 1 { format!("Magic 0x{:04x}", cue.game_id) } else { format!("{stream} ch{} @{first}", cue.channel) };
-    let name = naming
-        .xa_span(&id)
-        .map(ToString::to_string)
-        .or_else(|| table.name(cue.ordinal).map(|name| format!("{name} (0x{:04x})", cue.game_id)))
-        .unwrap_or(fallback);
+    let fallback = if file == 1 { format!("Magic 0x{:04x}", cue.game_id) } else { format!("{stream} ch{} @{first}", cue.channel) };
+    let name = naming.xa_span(&id).map(ToString::to_string).or_else(|| table.name(cue.ordinal).map(|name| format!("{name} (0x{:04x})", cue.game_id))).unwrap_or(fallback);
     let detail = if sectors == 0 {
         format!("periods {}-{}, not in the extracted copy (stream ends at sector {total})", cue.start, cue.end)
     } else if sectors < wanted {
-        format!(
-            "periods {}-{} ({} of {} sectors in the copy), {shape}, {}, game cue 0x{:04x}",
-            cue.start,
-            cue.end,
-            sectors,
-            wanted,
-            seconds_text(seconds),
-            cue.game_id
-        )
+        format!("periods {}-{} ({} of {} sectors in the copy), {shape}, {}, game cue 0x{:04x}", cue.start, cue.end, sectors, wanted, seconds_text(seconds), cue.game_id)
     } else {
         let last = first + u64::from(sectors - 1) * u64::from(cue.period);
-        format!(
-            "periods {}-{}, sectors {first}-{last} ({sectors}), {shape}, {}, game cue 0x{:04x}",
-            cue.start,
-            cue.end,
-            seconds_text(seconds),
-            cue.game_id
-        )
+        format!("periods {}-{}, sectors {first}-{last} ({sectors}), {shape}, {}, game cue 0x{:04x}", cue.start, cue.end, seconds_text(seconds), cue.game_id)
     };
     let mut clip = Item::new(Kind::Xa);
     clip.id = id;
@@ -943,14 +869,7 @@ mod tests {
     use super::*;
 
     fn item(kind: Kind, id: &str, name: &str, title: &str, family: &str, playable: bool) -> Item {
-        Item {
-            id: id.to_string(),
-            name: name.to_string(),
-            title: title.to_string(),
-            family: family.to_string(),
-            playable,
-            ..Item::new(kind)
-        }
+        Item { id: id.to_string(), name: name.to_string(), title: title.to_string(), family: family.to_string(), playable, ..Item::new(kind) }
     }
 
     fn catalog() -> Catalog {
@@ -961,9 +880,7 @@ mod tests {
             item(Kind::Sample, "sample:BOSS001#3", "BOSS001 #3", "", "BOSS", true),
             item(Kind::Xa, "xa:S_XA00#ch0@0", "S_XA00 ch0", "", "S_XA", true),
         ];
-        items.sort_by(|a, b| {
-            a.kind.cmp(&b.kind).then_with(|| natural_compare(&a.id, &b.id)).then_with(|| a.id.cmp(&b.id))
-        });
+        items.sort_by(|a, b| a.kind.cmp(&b.kind).then_with(|| natural_compare(&a.id, &b.id)).then_with(|| a.id.cmp(&b.id)));
         let by_id = items.iter().enumerate().map(|(i, item)| (item.id.clone(), i)).collect();
         Catalog { items, by_id, groups: Groups::default() }
     }
@@ -1004,8 +921,7 @@ mod tests {
     #[test]
     fn search_ranks_exact_then_prefix_then_substring_then_subsequence() {
         let catalog = catalog();
-        let hits =
-            |query: &str| catalog.search(query, &Filter::default()).iter().map(|i| i.id.clone()).collect::<Vec<_>>();
+        let hits = |query: &str| catalog.search(query, &Filter::default()).iter().map(|i| i.id.clone()).collect::<Vec<_>>();
         assert_eq!(hits("music:BGM10#0"), ["music:BGM10#0"]);
         assert_eq!(hits("battle"), ["music:BGM10#0"]);
         // Prefix of the name beats a match inside the id.
@@ -1027,10 +943,7 @@ mod tests {
     #[test]
     fn same_as_text_names_the_original_and_its_title() {
         let catalog = catalog();
-        let copy = Item {
-            same_as: Some("music:BGM2#0".to_string()),
-            ..item(Kind::Music, "music:X#0", "X", "Battle", "BGM", true)
-        };
+        let copy = Item { same_as: Some("music:BGM2#0".to_string()), ..item(Kind::Music, "music:X#0", "X", "Battle", "BGM", true) };
         assert_eq!(catalog.same_as_text(&copy).as_deref(), Some("BGM2#0 (Opening)"));
         let same_title = Item { title: "Opening".to_string(), ..copy.clone() };
         assert_eq!(catalog.same_as_text(&same_title).as_deref(), Some("BGM2#0"));

@@ -170,8 +170,7 @@ impl Shared {
             self.peak_right.store(0, Ordering::Relaxed);
             return;
         }
-        let volume =
-            if self.muted.load(Ordering::Relaxed) { 0.0 } else { f32::from_bits(self.volume.load(Ordering::Relaxed)) };
+        let volume = if self.muted.load(Ordering::Relaxed) { 0.0 } else { f32::from_bits(self.volume.load(Ordering::Relaxed)) };
         let ratio = f64::from(inner.src_rate) / f64::from(self.dev_rate);
         let (mut peak_l, mut peak_r) = (0.0f32, 0.0f32);
         for frame in out.chunks_exact_mut(channels) {
@@ -294,20 +293,13 @@ impl Deck {
         let shared = Self::make_shared(config.sample_rate(), usize::from(config.channels()).max(1));
         let mut stream_config = config.config();
         stream_config.buffer_size = match config.buffer_size() {
-            cpal::SupportedBufferSize::Range { min, max } if *max >= 2048 => {
-                cpal::BufferSize::Fixed(2048u32.clamp(*min, *max))
-            }
+            cpal::SupportedBufferSize::Range { min, max } if *max >= 2048 => cpal::BufferSize::Fixed(2048u32.clamp(*min, *max)),
             _ => cpal::BufferSize::Default,
         };
         let worker = Arc::clone(&shared);
         let on_error = error_sink(Arc::clone(&shared));
         let stream = match config.sample_format() {
-            cpal::SampleFormat::F32 => device.build_output_stream(
-                stream_config,
-                move |data: &mut [f32], _: &cpal::OutputCallbackInfo| worker.fill(data),
-                on_error,
-                None,
-            ),
+            cpal::SampleFormat::F32 => device.build_output_stream(stream_config, move |data: &mut [f32], _: &cpal::OutputCallbackInfo| worker.fill(data), on_error, None),
             cpal::SampleFormat::I16 => {
                 let mut scratch = Vec::new();
                 device.build_output_stream(
@@ -424,10 +416,7 @@ impl Deck {
 
     /// Recent peak levels (left, right), `0.0..`, before volume and mute.
     pub fn peaks(&self) -> (f32, f32) {
-        (
-            f32::from_bits(self.shared.peak_left.load(Ordering::Relaxed)),
-            f32::from_bits(self.shared.peak_right.load(Ordering::Relaxed)),
-        )
+        (f32::from_bits(self.shared.peak_left.load(Ordering::Relaxed)), f32::from_bits(self.shared.peak_right.load(Ordering::Relaxed)))
     }
 
     /// Frames per second of the output device, the rate of [`Deck::scope`].

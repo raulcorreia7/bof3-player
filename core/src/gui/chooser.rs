@@ -5,10 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use gpui::prelude::FluentBuilder;
-use gpui::{
-    ClickEvent, Context, Div, FontWeight, InteractiveElement, ParentElement, StatefulInteractiveElement, Styled, div,
-    px, transparent_black,
-};
+use gpui::{ClickEvent, Context, Div, FontWeight, InteractiveElement, ParentElement, StatefulInteractiveElement, Styled, div, px, transparent_black};
 
 use super::Gui;
 use super::icons::icon;
@@ -179,17 +176,7 @@ impl Gui {
             .child(div().text_color(palette.muted).child(hint))
             .child(div().text_color(palette.accent).child(chooser.dir.display().to_string()))
             .when_some(chooser.error.clone(), |card, error| card.child(div().text_color(palette.warning).child(error)))
-            .child(
-                div()
-                    .id("chooser-list")
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_y_scroll()
-                    .flex()
-                    .flex_col()
-                    .children(rows)
-                    .children(empty),
-            )
+            .child(div().id("chooser-list").flex_1().min_h_0().overflow_y_scroll().flex().flex_col().children(rows).children(empty))
             .child(
                 div()
                     .flex()
@@ -206,20 +193,13 @@ impl Gui {
                         gui.chooser = None;
                         cx.notify();
                     })))
-                    .child(button("use", Some("folder"), "Use this folder", true).on_click(cx.listener(
-                        |gui, _, _, cx| {
-                            if let Some(dir) = gui.chooser.as_ref().map(|c| c.dir.clone()) {
-                                gui.finish_choice(dir);
-                            }
-                            cx.notify();
-                        },
-                    ))),
+                    .child(button("use", Some("folder"), "Use this folder", true).on_click(cx.listener(|gui, _, _, cx| {
+                        if let Some(dir) = gui.chooser.as_ref().map(|c| c.dir.clone()) {
+                            gui.finish_choice(dir);
+                        }
+                        cx.notify();
+                    }))),
             )
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(palette.muted)
-                    .child("Up Down choose  ·  Enter open  ·  Backspace up  ·  o use this folder  ·  Esc cancel"),
-            )
+            .child(div().text_xs().text_color(palette.muted).child("Up Down choose  ·  Enter open  ·  Backspace up  ·  o use this folder  ·  Esc cancel"))
     }
 }

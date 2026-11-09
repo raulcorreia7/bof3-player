@@ -255,10 +255,7 @@ impl Scanner {
         let slot = match self.channels.iter().position(|(c, _)| c.file == sector[0] && c.channel == sector[1]) {
             Some(slot) => slot,
             None => {
-                self.channels.push((
-                    Channel { file: sector[0], channel: sector[1], coding: sector[3], first: at, ..Channel::default() },
-                    0,
-                ));
+                self.channels.push((Channel { file: sector[0], channel: sector[1], coding: sector[3], first: at, ..Channel::default() }, 0));
                 self.channels.len() - 1
             }
         };

@@ -171,11 +171,7 @@ impl Image {
     /// # }
     /// ```
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        let cue_path = path
-            .as_ref()
-            .extension()
-            .is_some_and(|extension| extension.eq_ignore_ascii_case("cue"))
-            .then(|| path.as_ref().to_path_buf());
+        let cue_path = path.as_ref().extension().is_some_and(|extension| extension.eq_ignore_ascii_case("cue")).then(|| path.as_ref().to_path_buf());
         let image_path = resolve_image_path(path.as_ref())?;
         let file = File::open(image_path)?;
         let file_len = file.metadata()?.len();
@@ -205,8 +201,7 @@ impl Image {
         if !is_pvd(&pvd) {
             return Err(Error::InvalidImage("missing ISO9660 primary volume descriptor"));
         }
-        let root =
-            parse_record(&pvd[PVD_ROOT_RECORD..])?.ok_or(Error::InvalidImage("missing root directory record"))?;
+        let root = parse_record(&pvd[PVD_ROOT_RECORD..])?.ok_or(Error::InvalidImage("missing root directory record"))?;
         Ok(Self { file, file_len, layout, root, cue_path })
     }
 
@@ -324,11 +319,7 @@ impl Image {
             return Ok(0);
         }
         let want = out.len().min(usize::try_from(size - offset).unwrap_or(usize::MAX));
-        let (capacity, payload, attributes) = if xa {
-            (XA_SECTOR_SIZE, RAW_HEADER_SIZE as usize, 0)
-        } else {
-            (ISO_SECTOR_SIZE as usize, 0, usize::from(entry.extended_attributes))
-        };
+        let (capacity, payload, attributes) = if xa { (XA_SECTOR_SIZE, RAW_HEADER_SIZE as usize, 0) } else { (ISO_SECTOR_SIZE as usize, 0, usize::from(entry.extended_attributes)) };
         let capacity = capacity - attributes;
         let mut done = 0;
         while done < want {
@@ -400,8 +391,7 @@ impl Image {
         if entry.is_directory {
             return Err(Error::InvalidInput("a directory has no file bytes"));
         }
-        let size =
-            if entry.is_xa && self.is_raw() { entry.sectors() * XA_SECTOR_SIZE as u64 } else { u64::from(entry.size) };
+        let size = if entry.is_xa && self.is_raw() { entry.sectors() * XA_SECTOR_SIZE as u64 } else { u64::from(entry.size) };
         let mut bytes = vec![0; usize::try_from(size).map_err(|_| Error::InvalidImage("file is too large"))?];
         self.read_entry_range(entry, 0, &mut bytes)?;
         Ok(bytes)
@@ -446,15 +436,7 @@ impl Image {
     }
 
     fn extract_file(&mut self, record: &DirectoryRecord, path: &Path) -> Result<()> {
-        let entry = Entry {
-            path: path.to_path_buf(),
-            lba: record.extent,
-            size: record.size,
-            is_directory: false,
-            extended_attributes: record.extended_attributes,
-            is_xa: record.is_xa,
-            xa: record.xa,
-        };
+        let entry = Entry { path: path.to_path_buf(), lba: record.extent, size: record.size, is_directory: false, extended_attributes: record.extended_attributes, is_xa: record.is_xa, xa: record.xa };
         let bytes = self.read_file(&entry)?;
         let mut output = File::create(path)?;
         output.write_all(&bytes)?;
@@ -467,10 +449,7 @@ impl Image {
         let mut bytes = Vec::with_capacity(sectors as usize * XA_SECTOR_SIZE);
         for sector_index in 0..sectors {
             let sector = u64::from(extent).checked_add(sector_index).ok_or(Error::InvalidImage("extent overflows"))?;
-            let offset = sector
-                .checked_mul(RAW_SECTOR_SIZE)
-                .and_then(|value| value.checked_add(RAW_HEADER_SIZE))
-                .ok_or(Error::InvalidImage("XA sector offset overflows"))?;
+            let offset = sector.checked_mul(RAW_SECTOR_SIZE).and_then(|value| value.checked_add(RAW_HEADER_SIZE)).ok_or(Error::InvalidImage("XA sector offset overflows"))?;
             self.file.seek(SeekFrom::Start(offset))?;
             let mut sector_bytes = [0; XA_SECTOR_SIZE];
             self.file.read_exact(&mut sector_bytes)?;
@@ -510,19 +489,14 @@ pub fn discover_image(directory: &Path) -> Result<PathBuf> {
         let mut matches = fs::read_dir(directory)?
             .filter_map(std::result::Result::ok)
             .map(|entry| entry.path())
-            .filter(|path| {
-                path.is_file() && path.extension().is_some_and(|value| value.eq_ignore_ascii_case(extension))
-            })
+            .filter(|path| path.is_file() && path.extension().is_some_and(|value| value.eq_ignore_ascii_case(extension)))
             .collect::<Vec<_>>();
         matches.sort();
         match matches.as_slice() {
             [path] => return Ok(path.clone()),
             [] => {}
             _ => {
-                return Err(Error::NoImage(format!(
-                    "multiple {label} found in {}; choose one explicitly",
-                    directory.display()
-                )));
+                return Err(Error::NoImage(format!("multiple {label} found in {}; choose one explicitly", directory.display())));
             }
         }
     }
@@ -541,11 +515,7 @@ fn resolve_image_path(path: &Path) -> Result<PathBuf> {
         return Ok(path.to_path_buf());
     }
     let sheet = cue::read(path)?;
-    let data_track = sheet
-        .tracks
-        .iter()
-        .find(|track| track.mode != cue::TrackMode::Audio)
-        .ok_or(Error::InvalidImage("cue sheet has no data track"))?;
+    let data_track = sheet.tracks.iter().find(|track| track.mode != cue::TrackMode::Audio).ok_or(Error::InvalidImage("cue sheet has no data track"))?;
     if data_track.index01 != 0 {
         return Err(Error::InvalidImage("data track with nonzero INDEX 01 is not supported yet"));
     }
@@ -571,16 +541,8 @@ fn detect_layout(file: &mut dyn ReadSeek, file_len: u64) -> Result<SectorLayout>
     Err(Error::InvalidImage("unsupported sector layout or missing ISO9660 PVD"))
 }
 
-fn read_sector(
-    file: &mut dyn ReadSeek,
-    file_len: u64,
-    layout: SectorLayout,
-    sector: u64,
-) -> Result<[u8; ISO_SECTOR_SIZE as usize]> {
-    let offset = sector
-        .checked_mul(layout.size)
-        .and_then(|value| value.checked_add(layout.data_offset))
-        .ok_or(Error::InvalidImage("sector offset overflows"))?;
+fn read_sector(file: &mut dyn ReadSeek, file_len: u64, layout: SectorLayout, sector: u64) -> Result<[u8; ISO_SECTOR_SIZE as usize]> {
+    let offset = sector.checked_mul(layout.size).and_then(|value| value.checked_add(layout.data_offset)).ok_or(Error::InvalidImage("sector offset overflows"))?;
     let end = offset.checked_add(ISO_SECTOR_SIZE).ok_or(Error::InvalidImage("sector range overflows"))?;
     if end > file_len {
         return Err(Error::InvalidImage("sector extends beyond image"));

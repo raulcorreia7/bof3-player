@@ -62,10 +62,7 @@ enum Command {
     #[command(after_help = "Examples:\n  bof3player doctor\n  bof3player -i \"Breath of Fire III (USA).cue\" doctor")]
     Doctor,
     /// List items
-    #[command(
-        alias = "ls",
-        after_help = "Examples:\n  bof3player list --kind music\n  bof3player list --kind xa --family BMAG_XA\n  bof3player list --limit 20\n  bof3player list --all"
-    )]
+    #[command(alias = "ls", after_help = "Examples:\n  bof3player list --kind music\n  bof3player list --kind xa --family BMAG_XA\n  bof3player list --limit 20\n  bof3player list --all")]
     List {
         #[command(flatten)]
         filters: Filters,
@@ -77,10 +74,7 @@ enum Command {
         all: bool,
     },
     /// Ranked search over ids, names, titles and families
-    #[command(
-        alias = "find",
-        after_help = "Examples:\n  bof3player search battle\n  bof3player search --kind sample drum\n  bof3player search --playable boss\n  bof3player search --all battle"
-    )]
+    #[command(alias = "find", after_help = "Examples:\n  bof3player search battle\n  bof3player search --kind sample drum\n  bof3player search --playable boss\n  bof3player search --all battle")]
     Search {
         query: String,
         #[command(flatten)]
@@ -93,15 +87,10 @@ enum Command {
         all: bool,
     },
     /// Details of one item
-    #[command(
-        alias = "show",
-        after_help = "Examples:\n  bof3player info \"music:BGMOPN#0\"\n  bof3player info xa:MAGIC00#ch9@12665\n  bof3player info bank:MAGIC004"
-    )]
+    #[command(alias = "show", after_help = "Examples:\n  bof3player info \"music:BGMOPN#0\"\n  bof3player info xa:MAGIC00#ch9@12665\n  bof3player info bank:MAGIC004")]
     Info { item: String },
     /// Play an item through the audio device
-    #[command(
-        after_help = "Examples:\n  bof3player play \"music:BGMOPN#0\"\n  bof3player play --loops 3 \"music:BGMOPN#0\"\n  bof3player play --forever \"music:BGMOPN#0\""
-    )]
+    #[command(after_help = "Examples:\n  bof3player play \"music:BGMOPN#0\"\n  bof3player play --loops 3 \"music:BGMOPN#0\"\n  bof3player play --forever \"music:BGMOPN#0\"")]
     Play {
         item: String,
         /// Repeat until interrupted (default: off)
@@ -151,10 +140,7 @@ FLAC/Ogg music without --loops renders the intro plus one loop and tags it."
         output: PathBuf,
     },
     /// Render every playable item and classify what has sound
-    #[command(
-        alias = "check",
-        after_help = "Examples:\n  bof3player verify --kind sample\n  bof3player verify --seconds 3 --limit 100\n  bof3player verify --kind xa"
-    )]
+    #[command(alias = "check", after_help = "Examples:\n  bof3player verify --kind sample\n  bof3player verify --seconds 3 --limit 100\n  bof3player verify --kind xa")]
     Verify {
         #[command(flatten)]
         filters: Filters,
@@ -169,10 +155,7 @@ FLAC/Ogg music without --loops renders the intro plus one loop and tags it."
     #[command(after_help = "Examples:\n  bof3player stats\n  bof3player stats --json")]
     Stats,
     /// List every music archive
-    #[command(
-        alias = "songs",
-        after_help = "Examples:\n  bof3player music\n  bof3player music --untitled\n  bof3player music --all"
-    )]
+    #[command(alias = "songs", after_help = "Examples:\n  bof3player music\n  bof3player music --untitled\n  bof3player music --all")]
     Music {
         /// Include sequences with no audio (default: off)
         #[arg(long)]
@@ -188,8 +171,7 @@ FLAC/Ogg music without --loops renders the intro plus one loop and tags it."
 /// Render every playable item that matches `query` as WAV files into `out_dir`, reading `disc`
 /// (a .cue sheet or an extracted folder); returns the count of items that failed.
 pub fn render_matching(disc: &Path, query: &str, out_dir: &Path, naming: &dyn Naming) -> Result<usize, String> {
-    let cli = Cli::try_parse_from([OsString::from("bof3player"), "--input".into(), disc.into()])
-        .map_err(|error| error.to_string())?;
+    let cli = Cli::try_parse_from([OsString::from("bof3player"), "--input".into(), disc.into()]).map_err(|error| error.to_string())?;
     commands::render_matching(&cli.global, query, out_dir, naming)
 }
 
@@ -224,8 +206,7 @@ struct TuiCli {
 
 /// Run the terminal browser; `naming` supplies the catalog's names.
 pub fn tui_main(program: &str, args: Vec<OsString>, naming: &dyn Naming) -> ExitCode {
-    let matches =
-        TuiCli::command().bin_name(program).get_matches_from(std::iter::once(OsString::from(program)).chain(args));
+    let matches = TuiCli::command().bin_name(program).get_matches_from(std::iter::once(OsString::from(program)).chain(args));
     let cli = TuiCli::from_arg_matches(&matches).unwrap_or_else(|error| error.exit());
     let titles = match cli.global.names.as_deref().map(Names::read) {
         Some(Ok(titles)) => Some(titles),
@@ -270,28 +251,14 @@ pub fn main(program: &str, args: Vec<OsString>, naming: &dyn Naming) -> ExitCode
         }
         Some(Command::Doctor) => commands::doctor(&cli.global, naming),
         Some(Command::List { filters, limit, all }) => commands::list_with(&cli.global, &filters, limit, naming, all),
-        Some(Command::Search { query, filters, limit, all }) => {
-            commands::search_with(&cli.global, &query, &filters, limit, naming, all)
-        }
+        Some(Command::Search { query, filters, limit, all }) => commands::search_with(&cli.global, &query, &filters, limit, naming, all),
         Some(Command::Info { item }) => commands::info(&cli.global, &item, naming),
         Some(Command::Play { item, forever }) => commands::play(&cli.global, &item, cli.global.loops, forever, naming),
-        Some(Command::Render { item, output, out_dir, all, format, quality, seconds, filters }) => commands::render(
-            &cli.global,
-            item.as_deref(),
-            output,
-            out_dir,
-            all,
-            &format,
-            quality,
-            cli.global.loops,
-            seconds,
-            &filters,
-            naming,
-        ),
-        Some(Command::Export { what, item, output }) => commands::export(&cli.global, &what, &item, &output, naming),
-        Some(Command::Verify { filters, seconds, limit }) => {
-            commands::verify(&cli.global, &filters, seconds, limit, naming)
+        Some(Command::Render { item, output, out_dir, all, format, quality, seconds, filters }) => {
+            commands::render(&cli.global, item.as_deref(), output, out_dir, all, &format, quality, cli.global.loops, seconds, &filters, naming)
         }
+        Some(Command::Export { what, item, output }) => commands::export(&cli.global, &what, &item, &output, naming),
+        Some(Command::Verify { filters, seconds, limit }) => commands::verify(&cli.global, &filters, seconds, limit, naming),
         Some(Command::Stats) => commands::stats(&cli.global, naming),
         Some(Command::Music { all, untitled }) => commands::music(&cli.global, all, untitled, naming),
         Some(Command::Query(words)) => {

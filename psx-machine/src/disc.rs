@@ -58,11 +58,7 @@ impl ImageDisc {
                     }
                     current_file = Some(track.file.clone());
                 }
-                tracks.push(Track {
-                    number: track.number,
-                    start: file_base + track.index01,
-                    audio: track.mode == psx_cd::cue::TrackMode::Audio,
-                });
+                tracks.push(Track { number: track.number, start: file_base + track.index01, audio: track.mode == psx_cd::cue::TrackMode::Audio });
             }
             if let Some(file) = &current_file {
                 end = file_base + file_sectors(file);
@@ -93,15 +89,7 @@ impl Disc for ImageDisc {
             return None;
         }
         let mut sector = Box::new([0u8; SECTOR_SIZE]);
-        let entry = psx_cd::Entry {
-            path: "".into(),
-            lba,
-            size: psx_cd::ISO_SECTOR_SIZE as u32,
-            is_directory: false,
-            extended_attributes: 0,
-            is_xa: true,
-            xa: None,
-        };
+        let entry = psx_cd::Entry { path: "".into(), lba, size: psx_cd::ISO_SECTOR_SIZE as u32, is_directory: false, extended_attributes: 0, is_xa: true, xa: None };
         if self.image.is_raw() {
             self.image.read_entry_range(&entry, 0, &mut sector[16..]).ok()?;
         } else {

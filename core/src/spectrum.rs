@@ -133,8 +133,7 @@ fn layout(count: usize, rate: u32, bands: &mut Vec<Band>) {
     bands.extend((0..count).map(|band| {
         let (low, high) = (edge(band as f32), edge(band as f32 + 1.0));
         let center = edge(band as f32 + 0.5);
-        let bins =
-            if high - low < 1.0 { Bins::At(center) } else { Bins::Peak(low.round() as usize..high.round() as usize) };
+        let bins = if high - low < 1.0 { Bins::At(center) } else { Bins::Peak(low.round() as usize..high.round() as usize) };
         Band { bins, tilt_db: TILT_DB_PER_OCTAVE * (center * bin_hz / LOW_HZ).log2() }
     }));
 }
@@ -165,8 +164,7 @@ impl Spectrum {
         if bands == old {
             return;
         }
-        let stretch =
-            |values: &[f32]| (0..bands).map(|band| values.get(band * old / bands).copied().unwrap_or(0.0)).collect();
+        let stretch = |values: &[f32]| (0..bands).map(|band| values.get(band * old / bands).copied().unwrap_or(0.0)).collect();
         self.levels = stretch(&self.levels);
         self.caps = stretch(&self.caps);
         self.averages = stretch(&self.averages);
@@ -206,20 +204,12 @@ impl Spectrum {
             position += goal * goal * at as f32;
             onset += jump;
             let goal = (goal + ONSET_BOOST * jump).min(1.0);
-            *level = if goal > *level {
-                *level + (goal - *level) * rise
-            } else {
-                (*level - FALL_PER_SECOND * step).max(goal)
-            };
+            *level = if goal > *level { *level + (goal - *level) * rise } else { (*level - FALL_PER_SECOND * step).max(goal) };
             *cap = level.max(*cap - CAP_FALL_PER_SECOND * step);
         }
         let count = self.levels.len().max(1) as f32;
         let centroid = if weight > 0.0 { position / weight / (count - 1.0).max(1.0) } else { BALANCE };
-        let goal = Tint {
-            warmth: ((BALANCE - centroid) * WARMTH_GAIN).clamp(-1.0, 1.0),
-            glow: loudness / count,
-            flash: (onset / count * FLASH_GAIN).min(1.0),
-        };
+        let goal = Tint { warmth: ((BALANCE - centroid) * WARMTH_GAIN).clamp(-1.0, 1.0), glow: loudness / count, flash: (onset / count * FLASH_GAIN).min(1.0) };
         self.tint.follow(goal, step);
     }
 
@@ -229,9 +219,7 @@ impl Spectrum {
         let take = scope.len().min(WINDOW);
         let start = WINDOW - take;
         self.re[..start].fill(0.0);
-        for ((re, &sample), &weight) in
-            self.re[start..].iter_mut().zip(&scope[scope.len() - take..]).zip(&self.window[start..])
-        {
+        for ((re, &sample), &weight) in self.re[start..].iter_mut().zip(&scope[scope.len() - take..]).zip(&self.window[start..]) {
             *re = sample * weight;
         }
         self.im.fill(0.0);
@@ -379,8 +367,7 @@ mod tests {
         for hz in [60.0, 250.0, 1000.0, 8000.0] {
             for count in [32, 100, 256] {
                 let band = loudest(&sine(hz, 0.1), count);
-                let (low, high) =
-                    (edge_hz(band as f32 / count as f32, HIGH_HZ), edge_hz((band + 1) as f32 / count as f32, HIGH_HZ));
+                let (low, high) = (edge_hz(band as f32 / count as f32, HIGH_HZ), edge_hz((band + 1) as f32 / count as f32, HIGH_HZ));
                 // The band that holds the pitch, or a neighbor where the pitch sits near an edge.
                 assert!(low / 1.1 <= hz && hz <= high * 1.1, "{hz} Hz lit band {band} of {count}, {low}-{high} Hz");
             }
@@ -418,12 +405,7 @@ mod tests {
         let loudest = (0..32).max_by(|&a, &b| settled.levels[a].total_cmp(&settled.levels[b])).unwrap();
         let mut spectrum = Spectrum::new(32);
         spectrum.advance(&tone, RATE, 5.0 * ATTACK_SECONDS);
-        assert!(
-            spectrum.levels[loudest] > settled.levels[loudest] + 0.1,
-            "{} against {}",
-            spectrum.levels[loudest],
-            settled.levels[loudest]
-        );
+        assert!(spectrum.levels[loudest] > settled.levels[loudest] + 0.1, "{} against {}", spectrum.levels[loudest], settled.levels[loudest]);
         for _ in 0..200 {
             spectrum.advance(&tone, RATE, 0.01);
         }

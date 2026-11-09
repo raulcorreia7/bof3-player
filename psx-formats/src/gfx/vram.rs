@@ -101,11 +101,7 @@ impl Descriptor {
     /// assert_eq!((descriptor.column, descriptor.row, descriptor.chunks_per_row), (0, 3, 1));
     /// ```
     pub fn from_load_argument(load_argument: u32) -> Self {
-        Self {
-            column: ((load_argument >> 24) & 0x3f) as u8,
-            row: ((load_argument >> 16) & 0x1f) as u8,
-            chunks_per_row: ((load_argument >> 8) & 0x3f) as u8,
-        }
+        Self { column: ((load_argument >> 24) & 0x3f) as u8, row: ((load_argument >> 16) & 0x1f) as u8, chunks_per_row: ((load_argument >> 8) & 0x3f) as u8 }
     }
 }
 
@@ -162,10 +158,7 @@ impl Descriptor {
     /// assert_eq!(descriptor.load_argument(0x00c0_00ff), 0x01c2_03ff);
     /// ```
     pub fn load_argument(self, base: u32) -> u32 {
-        base & !PLACEMENT_BITS
-            | u32::from(self.column) << 24
-            | u32::from(self.row) << 16
-            | u32::from(self.chunks_per_row) << 8
+        base & !PLACEMENT_BITS | u32::from(self.column) << 24 | u32::from(self.row) << 16 | u32::from(self.chunks_per_row) << 8
     }
 
     /// The same upload with its top-left rectangle at VRAM `column` and `row` (32-word and 32-row
@@ -183,8 +176,7 @@ impl Descriptor {
     pub fn moved(self, column: u8, row: u8, rectangles: usize) -> Option<Self> {
         let per_row = usize::from(self.chunks_per_row).max(1);
         let rows = rectangles.div_ceil(per_row);
-        let fits = usize::from(column) + per_row <= VRAM_WIDTH / RECTANGLE_SIDE
-            && usize::from(row) + rows <= VRAM_HEIGHT / RECTANGLE_SIDE;
+        let fits = usize::from(column) + per_row <= VRAM_WIDTH / RECTANGLE_SIDE && usize::from(row) + rows <= VRAM_HEIGHT / RECTANGLE_SIDE;
         fits.then_some(Self { column, row, ..self })
     }
 }
@@ -236,11 +228,7 @@ pub fn decode(payload: &[u8], descriptor: Descriptor) -> Result<Vec<Rectangle>> 
         for (word, bytes) in words.iter_mut().zip(chunk.as_chunks::<2>().0.iter()) {
             *word = u16::from_le_bytes([bytes[0], bytes[1]]);
         }
-        rectangles.push(Rectangle {
-            x: (descriptor.column as usize + index % per_row) * RECTANGLE_SIDE,
-            y: (descriptor.row as usize + index / per_row) * RECTANGLE_SIDE,
-            words,
-        });
+        rectangles.push(Rectangle { x: (descriptor.column as usize + index % per_row) * RECTANGLE_SIDE, y: (descriptor.row as usize + index / per_row) * RECTANGLE_SIDE, words });
     }
 
     Ok(rectangles)
@@ -349,8 +337,7 @@ pub fn upload_image(payload: &[u8], descriptor: Descriptor) -> Result<UploadImag
 /// assert_eq!(payload.len(), RECTANGLE_BYTES);
 /// ```
 pub fn payload_from_grid(width: usize, height: usize, words: &[u16]) -> Result<Vec<u8>> {
-    let whole =
-        width != 0 && height != 0 && width.is_multiple_of(RECTANGLE_SIDE) && height.is_multiple_of(RECTANGLE_SIDE);
+    let whole = width != 0 && height != 0 && width.is_multiple_of(RECTANGLE_SIDE) && height.is_multiple_of(RECTANGLE_SIDE);
     if !whole || words.len() != width * height {
         return Err(Error::VramGridShape { width, height, words: words.len() });
     }

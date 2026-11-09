@@ -20,8 +20,8 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use gpui::{
-    App, AppContext, Application, Bounds, Context, FocusHandle, Focusable, KeyDownEvent, Keystroke, Pixels,
-    ScrollStrategy, TitlebarOptions, UniformListScrollHandle, Window, WindowBounds, WindowOptions, px, size,
+    App, AppContext, Application, Bounds, Context, FocusHandle, Focusable, KeyDownEvent, Keystroke, Pixels, ScrollStrategy, TitlebarOptions, UniformListScrollHandle, Window, WindowBounds,
+    WindowOptions, px, size,
 };
 
 use clap::Parser;
@@ -30,9 +30,7 @@ use crate::catalog::{Item, Kind};
 use crate::deck::Deck;
 use crate::options::Global;
 use crate::player::Loop;
-use crate::save::{
-    ExportFormat, ExportOptions, Format, OggQuality, Save, Step, export_failed, export_path, saved_message,
-};
+use crate::save::{ExportFormat, ExportOptions, Format, OggQuality, Save, Step, export_failed, export_path, saved_message};
 use crate::spectrum::Spectrum;
 use chooser::{Chooser, Target};
 use list::{Row, Tree};
@@ -68,11 +66,8 @@ pub fn main(args: Vec<OsString>) -> ExitCode {
     let Some(application) = start() else { return ExitCode::FAILURE };
     application.with_assets(icons::Icons).run(move |cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(1000.0), px(720.0)), cx);
-        let options = WindowOptions {
-            window_bounds: Some(WindowBounds::Windowed(bounds)),
-            titlebar: Some(TitlebarOptions { title: Some("bof3player".into()), ..Default::default() }),
-            ..Default::default()
-        };
+        let options =
+            WindowOptions { window_bounds: Some(WindowBounds::Windowed(bounds)), titlebar: Some(TitlebarOptions { title: Some("bof3player".into()), ..Default::default() }), ..Default::default() };
         let window = cx.open_window(options, |window, cx| {
             let gui = cx.new(|cx| Gui::new(global, cx));
             gui.read(cx).focus.focus(window);
@@ -99,14 +94,8 @@ fn start() -> Option<Application> {
     std::panic::set_hook(hook);
     started
         .map_err(|panic| {
-            let reason = panic
-                .downcast_ref::<String>()
-                .map(String::as_str)
-                .or_else(|| panic.downcast_ref::<&str>().copied())
-                .unwrap_or("unknown error");
-            eprintln!(
-                "bof3player-gui: cannot start the window: {reason}.\nCheck that a Vulkan graphics driver is installed and the display is reachable, or use bof3player-tui."
-            );
+            let reason = panic.downcast_ref::<String>().map(String::as_str).or_else(|| panic.downcast_ref::<&str>().copied()).unwrap_or("unknown error");
+            eprintln!("bof3player-gui: cannot start the window: {reason}.\nCheck that a Vulkan graphics driver is installed and the display is reachable, or use bof3player-tui.");
         })
         .ok()
 }
@@ -239,9 +228,7 @@ impl Gui {
                 self.current = None;
             }
         }
-        let moving = self.deck.is_loaded() && !self.deck.paused()
-            || self.meters != (0.0, 0.0)
-            || self.spectrum.levels.iter().any(|&level| level > 0.0);
+        let moving = self.deck.is_loaded() && !self.deck.paused() || self.meters != (0.0, 0.0) || self.spectrum.levels.iter().any(|&level| level > 0.0);
         if busy || moving {
             cx.notify();
         }
@@ -299,9 +286,7 @@ impl Gui {
                         }
                         seen.insert(canon);
                         return true;
-                    } else if groups.group_members(&item.id).is_some()
-                        && groups.canonical_of(&item.id).as_deref() == Some(item.id.as_str())
-                    {
+                    } else if groups.group_members(&item.id).is_some() && groups.canonical_of(&item.id).as_deref() == Some(item.id.as_str()) {
                         if seen.contains(&item.id) {
                             return false;
                         }
@@ -313,9 +298,7 @@ impl Gui {
             });
         }
         browser.rows = rows;
-        browser.selected = keep
-            .and_then(|key| browser.rows.iter().position(|row| row.key() == key))
-            .unwrap_or_else(|| browser.rows.iter().position(|row| matches!(row, Row::Item(_))).unwrap_or(0));
+        browser.selected = keep.and_then(|key| browser.rows.iter().position(|row| row.key() == key)).unwrap_or_else(|| browser.rows.iter().position(|row| matches!(row, Row::Item(_))).unwrap_or(0));
         self.reveal();
     }
 
@@ -430,12 +413,7 @@ impl Gui {
     /// Play the next or previous playable item after or before the playing one.
     fn step_item(&mut self, forward: bool) {
         let State::Ready(browser) = &self.state else { return };
-        let from = self
-            .current
-            .and_then(|now| {
-                browser.rows.iter().position(|row| matches!(row, Row::Item(item) if std::ptr::eq(*item, now)))
-            })
-            .unwrap_or(browser.selected);
+        let from = self.current.and_then(|now| browser.rows.iter().position(|row| matches!(row, Row::Item(item) if std::ptr::eq(*item, now)))).unwrap_or(browser.selected);
         let playable = |at: &usize| matches!(browser.rows[*at], Row::Item(item) if item.playable);
         let next = if forward { (from + 1..browser.rows.len()).find(playable) } else { (0..from).rev().find(playable) };
         match next {
@@ -475,13 +453,7 @@ impl Gui {
             return;
         }
         let (State::Ready(browser), Some(item)) = (&self.state, self.selected_item()) else { return };
-        let export = ExportOptions {
-            loops,
-            fade: self.global.fade.unwrap_or(10.0),
-            format,
-            quality: quality.quality(),
-            seconds: None,
-        };
+        let export = ExportOptions { loops, fade: self.global.fade.unwrap_or(10.0), format, quality: quality.quality(), seconds: None };
         match Save::start(browser.loaded.library, item, self.global.player_options(), &self.export_dir, export) {
             Ok(save) => {
                 self.message.clear();
@@ -505,12 +477,8 @@ impl Gui {
             self.message = "Select an item to export.".to_string();
             return;
         };
-        let rows = Format::for_kind(item.kind)
-            .iter()
-            .map(|&format| (format, export_path(&self.export_dir, item, format.extension())))
-            .collect();
-        self.export =
-            Some(ExportMenu { item, selected: 0, rows, loops: self.global.loops, quality: OggQuality::Normal });
+        let rows = Format::for_kind(item.kind).iter().map(|&format| (format, export_path(&self.export_dir, item, format.extension()))).collect();
+        self.export = Some(ExportMenu { item, selected: 0, rows, loops: self.global.loops, quality: OggQuality::Normal });
         self.help = false;
     }
 
@@ -594,8 +562,7 @@ impl Gui {
                 }
             }
             _ if !command => {
-                if let Some(typed) = keystroke.key_char.as_deref().filter(|typed| !typed.chars().any(char::is_control))
-                {
+                if let Some(typed) = keystroke.key_char.as_deref().filter(|typed| !typed.chars().any(char::is_control)) {
                     text.push_str(typed);
                 }
             }
@@ -612,11 +579,7 @@ impl Gui {
             "D" => {
                 self.show_all_dupes = !self.show_all_dupes;
                 self.rebuild();
-                self.message = if self.show_all_dupes {
-                    "Show all duplicates".to_string()
-                } else {
-                    "Group duplicates".to_string()
-                };
+                self.message = if self.show_all_dupes { "Show all duplicates".to_string() } else { "Group duplicates".to_string() };
                 return true;
             }
             "q" => cx.quit(),
@@ -681,11 +644,7 @@ fn describe(item: &Item) -> String {
 /// The name a key map matches: the typed character, else the key's name.
 fn key_name(keystroke: &Keystroke) -> &str {
     let command = keystroke.modifiers.control || keystroke.modifiers.platform;
-    keystroke
-        .key_char
-        .as_deref()
-        .filter(|typed| !command && !typed.is_empty() && typed.chars().all(|c| !c.is_control() && !c.is_whitespace()))
-        .unwrap_or(&keystroke.key)
+    keystroke.key_char.as_deref().filter(|typed| !command && !typed.is_empty() && typed.chars().all(|c| !c.is_control() && !c.is_whitespace())).unwrap_or(&keystroke.key)
 }
 
 impl Focusable for Gui {

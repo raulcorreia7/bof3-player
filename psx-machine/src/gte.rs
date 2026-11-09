@@ -415,11 +415,7 @@ impl Gte {
     fn op(&mut self, fields: Fields) {
         let [i1, i2, i3] = self.ir_vector().map(i64::from);
         let [d1, d2, d3] = [self.rotation[0], self.rotation[4], self.rotation[8]].map(i64::from);
-        let sums = [
-            self.accumulate(0, &[i3 * d2, -(i2 * d3)]),
-            self.accumulate(1, &[i1 * d3, -(i3 * d1)]),
-            self.accumulate(2, &[i2 * d1, -(i1 * d2)]),
-        ];
+        let sums = [self.accumulate(0, &[i3 * d2, -(i2 * d3)]), self.accumulate(1, &[i1 * d3, -(i3 * d1)]), self.accumulate(2, &[i2 * d1, -(i1 * d2)])];
         self.store(sums, fields);
     }
 
@@ -451,14 +447,10 @@ impl Gte {
                 // The far colour is not added: the first column's sum only sets flags.
                 let mut sums = [0; 3];
                 for (row, sum) in sums.iter_mut().enumerate() {
-                    let first =
-                        [i64::from(self.far_colour[row]) << 12, i64::from(matrix[3 * row]) * i64::from(vector[0])];
+                    let first = [i64::from(self.far_colour[row]) << 12, i64::from(matrix[3 * row]) * i64::from(vector[0])];
                     let discarded = self.accumulate(row, &first);
                     self.saturate_ir(row, discarded >> fields.shift, false);
-                    let rest = [
-                        i64::from(matrix[3 * row + 1]) * i64::from(vector[1]),
-                        i64::from(matrix[3 * row + 2]) * i64::from(vector[2]),
-                    ];
+                    let rest = [i64::from(matrix[3 * row + 1]) * i64::from(vector[1]), i64::from(matrix[3 * row + 2]) * i64::from(vector[2])];
                     *sum = self.accumulate(row, &rest);
                 }
                 self.store(sums, fields);
@@ -559,9 +551,7 @@ impl Gte {
 
     fn gpl(&mut self, fields: Fields) {
         let (ir, ir0, mac) = (self.ir_vector(), i64::from(self.ir[0]), self.mac);
-        let sums = [0, 1, 2].map(|index| {
-            self.accumulate(index, &[i64::from(mac[index + 1]) << fields.shift, i64::from(ir[index]) * ir0])
-        });
+        let sums = [0, 1, 2].map(|index| self.accumulate(index, &[i64::from(mac[index + 1]) << fields.shift, i64::from(ir[index]) * ir0]));
         self.finish(sums, fields);
     }
 }

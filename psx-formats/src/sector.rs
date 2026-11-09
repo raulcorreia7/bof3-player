@@ -103,9 +103,7 @@ pub fn is_form2(sector: &[u8; RAW_SIZE]) -> bool {
 /// assert_ne!(psx_formats::sector::edc(&sector), 0);
 /// ```
 pub fn edc(sector: &[u8; RAW_SIZE]) -> u32 {
-    sector[EDC_FROM..EDC_AT]
-        .iter()
-        .fold(0, |edc, &byte| (edc >> 8) ^ EDC_TABLE[((edc ^ u32::from(byte)) & 0xFF) as usize])
+    sector[EDC_FROM..EDC_AT].iter().fold(0, |edc, &byte| (edc >> 8) ^ EDC_TABLE[((edc ^ u32::from(byte)) & 0xFF) as usize])
 }
 
 /// Writes the EDC and the parity of a Form 1 sector in place. Every byte before the EDC (the sync,

@@ -404,10 +404,7 @@ impl Source for MemorySource<'_> {
     }
 
     fn open<'b>(&'b self, path: &str) -> Result<Arc<dyn Blob + 'b>> {
-        self.files
-            .get(&normalize(path))
-            .map(|(_, blob)| Arc::clone(blob) as Arc<dyn Blob + 'b>)
-            .ok_or_else(|| Error::io(alloc::format!("no such file: {path}")))
+        self.files.get(&normalize(path)).map(|(_, blob)| Arc::clone(blob) as Arc<dyn Blob + 'b>).ok_or_else(|| Error::io(alloc::format!("no such file: {path}")))
     }
 
     fn describe(&self) -> String {

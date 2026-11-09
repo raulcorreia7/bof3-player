@@ -17,9 +17,7 @@ use crate::format::emi::{Emi, EntryType};
 use crate::format::sep::{Kind, Package as Sep, Sequence};
 use crate::format::vab::{Bank as Vab, Tone, Vag};
 use crate::player::Loop;
-use crate::spu::{
-    self, ADDRESS_UNIT, PITCH_MAX, PITCH_ONE, PITCH_TABLE, REVERB_AREA_START, ReverbModel, Spu, VOICE_COUNT, VoiceSetup,
-};
+use crate::spu::{self, ADDRESS_UNIT, PITCH_MAX, PITCH_ONE, PITCH_TABLE, REVERB_AREA_START, ReverbModel, Spu, VOICE_COUNT, VoiceSetup};
 use crate::spu::{PRESET_ROOM, REVERB_PRESETS};
 
 /// Stereo output.
@@ -140,10 +138,7 @@ fn tone_volume(master: u8, tone: &Tone) -> f32 {
 
 /// Pan a tone adds to its bank and program pans.
 fn tone_pan(master_pan: u8, tone: &Tone) -> i32 {
-    (i32::from(tone.pan)
-        + (i32::from(tone.program_pan) - i32::from(MIX_CENTER))
-        + (i32::from(master_pan) - i32::from(MIX_CENTER)))
-    .clamp(0, i32::from(MIX_MAX))
+    (i32::from(tone.pan) + (i32::from(tone.program_pan) - i32::from(MIX_CENTER)) + (i32::from(master_pan) - i32::from(MIX_CENTER))).clamp(0, i32::from(MIX_MAX))
 }
 
 /// The game's audio-init state plus `body` staged at the bottom of SPU RAM.
@@ -185,13 +180,7 @@ impl Bank {
             return Err(Error::format("VAB body does not fit SPU RAM"));
         }
         let vab = Vab::parse(header, body)?;
-        Ok(Self {
-            body: body.to_vec(),
-            tones: vab.usable_tones().copied().collect(),
-            vags: vab.vags,
-            master_volume: vab.master_vol,
-            master_pan: vab.master_pan,
-        })
+        Ok(Self { body: body.to_vec(), tones: vab.usable_tones().copied().collect(), vags: vab.vags, master_volume: vab.master_vol, master_pan: vab.master_pan })
     }
 
     fn setup(&self, vag: &Vag, tone: &Tone, pitch: u16, left: u16, right: u16) -> VoiceSetup {
@@ -288,17 +277,7 @@ fn build_timeline(sequence: &Sequence) -> Timeline {
             continue;
         }
         let state = &mut channels[usize::from(event.channel())];
-        let base = NoteEvent {
-            kind: NoteKind::Off,
-            channel: event.channel(),
-            note: 0,
-            velocity: 0,
-            program: 0,
-            volume: 0,
-            pan: MIX_CENTER,
-            bend: MIX_CENTER,
-            frame,
-        };
+        let base = NoteEvent { kind: NoteKind::Off, channel: event.channel(), note: 0, velocity: 0, program: 0, volume: 0, pan: MIX_CENTER, bend: MIX_CENTER, frame };
         match event.kind() {
             Kind::Control => {
                 if event.data1 == clock::CC_LOOP {
@@ -329,16 +308,9 @@ fn build_timeline(sequence: &Sequence) -> Timeline {
                 state.bend = event.data2;
                 events.push(NoteEvent { kind: NoteKind::Bend, bend: state.bend, ..base });
             }
-            Kind::NoteOn if event.data2 != 0 => events.push(NoteEvent {
-                kind: NoteKind::On,
-                note: event.data1,
-                velocity: event.data2,
-                program: state.program,
-                volume: state.volume,
-                pan: state.pan,
-                bend: state.bend,
-                ..base
-            }),
+            Kind::NoteOn if event.data2 != 0 => {
+                events.push(NoteEvent { kind: NoteKind::On, note: event.data1, velocity: event.data2, program: state.program, volume: state.volume, pan: state.pan, bend: state.bend, ..base })
+            }
             Kind::NoteOn | Kind::NoteOff => events.push(NoteEvent { kind: NoteKind::Off, note: event.data1, ..base }),
             Kind::PolyAftertouch | Kind::ChannelAftertouch | Kind::Meta => {}
         }
@@ -388,10 +360,7 @@ impl MusicEngine {
         let body = emi.find(EntryType::Vb, 0)?;
         let seq_bytes = emi.find(EntryType::Seq, 0)?;
         let sep = Sep::parse(seq_bytes)?;
-        let selected = sep
-            .sequences
-            .get(sequence as usize)
-            .ok_or_else(|| Error::invalid(format!("sequence {sequence} is out of range for this archive")))?;
+        let selected = sep.sequences.get(sequence as usize).ok_or_else(|| Error::invalid(format!("sequence {sequence} is out of range for this archive")))?;
         let bank = Bank::from_parts(header, body)?;
         if !selected.has_notes() {
             return Err(Error::format(format!("sequence {sequence} of this archive has no events")));
@@ -399,10 +368,7 @@ impl MusicEngine {
         let used = selected.programs_used();
         let available = bank.tones.iter().fold(0u128, |m, t| m | 1u128 << (t.program & 0x7F));
         if used & available == 0 {
-            return Err(Error::format(format!(
-                "sequence {sequence} asks for program {}, which this bank has no tone for",
-                crate::format::sep::lowest_program(used)
-            )));
+            return Err(Error::format(format!("sequence {sequence} asks for program {}, which this bank has no tone for", crate::format::sep::lowest_program(used))));
         }
         let timeline = build_timeline(selected);
         let mut engine = Self {
@@ -433,12 +399,7 @@ impl MusicEngine {
     }
 
     pub(crate) fn loop_window(&self) -> Option<(f64, f64)> {
-        self.window.exists().then(|| {
-            (
-                self.window.start_frame as f64 / f64::from(VAB_SAMPLE_RATE),
-                self.window.end_frame as f64 / f64::from(VAB_SAMPLE_RATE),
-            )
-        })
+        self.window.exists().then(|| (self.window.start_frame as f64 / f64::from(VAB_SAMPLE_RATE), self.window.end_frame as f64 / f64::from(VAB_SAMPLE_RATE)))
     }
 
     pub(crate) fn set_loop(&mut self, mode: Loop) {
@@ -518,8 +479,7 @@ impl MusicEngine {
         while written < frames {
             self.apply_events(usize::MAX);
             // Render up to the next event so a control change lands on its frame.
-            let boundary =
-                self.events.get(self.next_event).map_or(self.total_frames, |e| e.frame).min(self.total_frames);
+            let boundary = self.events.get(self.next_event).map_or(self.total_frames, |e| e.frame).min(self.total_frames);
             let chunk = (boundary - self.frame).max(1).min((frames - written) as i64) as usize;
             self.spu.render(&mut out[written * 2..(written + chunk) * 2]);
             self.frame += chunk as i64;
@@ -584,11 +544,8 @@ impl MusicEngine {
 
     fn levels(&self, tone: &Tone, event: &NoteEvent) -> (f32, f32, f32) {
         let scale = f32::from(MIX_MAX);
-        let volume = tone_volume(self.bank.master_volume, tone)
-            * (f32::from(event.volume) / scale)
-            * (f32::from(event.velocity) / scale);
-        let pan = (tone_pan(self.bank.master_pan, tone) + (i32::from(event.pan) - i32::from(MIX_CENTER)))
-            .clamp(0, i32::from(MIX_MAX));
+        let volume = tone_volume(self.bank.master_volume, tone) * (f32::from(event.volume) / scale) * (f32::from(event.velocity) / scale);
+        let pan = (tone_pan(self.bank.master_pan, tone) + (i32::from(event.pan) - i32::from(MIX_CENTER))).clamp(0, i32::from(MIX_MAX));
         let (left, right) = pan_gains(pan);
         (volume, left, right)
     }
@@ -620,9 +577,7 @@ impl MusicEngine {
             .tones
             .iter()
             .enumerate()
-            .filter(|(_, t)| {
-                t.program == i16::from(event.program) && event.note >= t.min_note && event.note <= t.max_note
-            })
+            .filter(|(_, t)| t.program == i16::from(event.program) && event.note >= t.min_note && event.note <= t.max_note)
             .filter(|(_, t)| t.vag != 0 && (t.vag as usize) < self.bank.vags.len())
             .map(|(i, _)| i)
             .collect();
@@ -662,10 +617,7 @@ impl MusicEngine {
                 continue;
             }
             let level = self.spu.envelope_level(slot);
-            if voice.priority < lowest
-                || (voice.priority == lowest && level < smallest)
-                || (voice.priority == lowest && level == smallest && voice.generation < oldest)
-            {
+            if voice.priority < lowest || (voice.priority == lowest && level < smallest) || (voice.priority == lowest && level == smallest && voice.generation < oldest) {
                 lowest = voice.priority;
                 smallest = level;
                 oldest = voice.generation;
@@ -696,8 +648,7 @@ impl MusicEngine {
         };
         self.next_generation += 1;
         let pitch = self.voice_pitch(&voice);
-        let setup =
-            self.bank.setup(&vag, &tone, pitch, fixed_voice_volume(volume * left), fixed_voice_volume(volume * right));
+        let setup = self.bank.setup(&vag, &tone, pitch, fixed_voice_volume(volume * left), fixed_voice_volume(volume * right));
         self.spu.key_on(slot, &setup);
         self.voices[slot] = Some(voice);
     }
@@ -719,30 +670,13 @@ impl SampleEngine {
     pub(crate) fn new(archive: &[u8], bank: usize, vag_index: u32, model: ReverbModel) -> Result<Self> {
         let emi = Emi::parse(archive)?;
         let bank = Bank::from_emi(&emi, bank)?;
-        let vag = *bank
-            .vags
-            .get(vag_index as usize)
-            .filter(|_| vag_index != 0)
-            .ok_or_else(|| Error::invalid(format!("VAG {vag_index} is out of range for this bank")))?;
+        let vag = *bank.vags.get(vag_index as usize).filter(|_| vag_index != 0).ok_or_else(|| Error::invalid(format!("VAG {vag_index} is out of range for this bank")))?;
         if vag.is_empty() {
             return Err(Error::format("VAG is empty"));
         }
-        let mut engine = Self {
-            bank,
-            vag_index,
-            spu: Spu::with_reverb_model(model),
-            model,
-            pass_frames: 0,
-            frame: 0,
-            total_frames: 0,
-            scratch: alloc::vec![0i16; SEEK_CHUNK_FRAMES * 2],
-        };
+        let mut engine = Self { bank, vag_index, spu: Spu::with_reverb_model(model), model, pass_frames: 0, frame: 0, total_frames: 0, scratch: alloc::vec![0i16; SEEK_CHUNK_FRAMES * 2] };
         engine.start()?;
-        engine.total_frames = if vag.has_end && !vag.has_loop {
-            engine.pass_frames
-        } else {
-            engine.pass_frames + TAIL_SECONDS * i64::from(VAB_SAMPLE_RATE)
-        };
+        engine.total_frames = if vag.has_end && !vag.has_loop { engine.pass_frames } else { engine.pass_frames + TAIL_SECONDS * i64::from(VAB_SAMPLE_RATE) };
         Ok(engine)
     }
 
@@ -753,20 +687,11 @@ impl SampleEngine {
         configure_spu(&mut self.spu, &self.bank.body)?;
         let vag = self.bank.vags[self.vag_index as usize];
         // The tone that names this sample supplies envelope, volume and pitch.
-        let named =
-            self.bank.tones.iter().find(|t| {
-                t.vag == self.vag_index as i16 && t.vol != 0 && t.program_vol != 0 && t.min_note <= t.max_note
-            });
+        let named = self.bank.tones.iter().find(|t| t.vag == self.vag_index as i16 && t.vol != 0 && t.program_vol != 0 && t.min_note <= t.max_note);
         let (adsr1, adsr2, reverb, volume, pitch) = match named {
             Some(tone) => {
                 let note = i32::from(tone.center_note.clamp(tone.min_note, tone.max_note));
-                (
-                    tone.adsr1,
-                    tone.adsr2,
-                    tone.reverb_send(),
-                    tone_volume(self.bank.master_volume, tone),
-                    pitch_from_note(note, 0, i32::from(tone.center_note), i32::from(tone.shift)),
-                )
+                (tone.adsr1, tone.adsr2, tone.reverb_send(), tone_volume(self.bank.master_volume, tone), pitch_from_note(note, 0, i32::from(tone.center_note), i32::from(tone.shift)))
             }
             None => (DEFAULT_ADSR1, DEFAULT_ADSR2, false, 1.0, PITCH_ONE as u16),
         };

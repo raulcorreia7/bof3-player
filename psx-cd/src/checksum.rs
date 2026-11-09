@@ -104,8 +104,7 @@ pub fn scan(root: &Path, current_dir: &Path) -> Result<Vec<Record>, Error> {
 /// ```
 pub fn write(path: &Path, records: &[Record]) -> Result<(), Error> {
     crate::ensure_parent(path)?;
-    let mut bytes = serde_json::to_vec_pretty(&Manifest { files: records.to_vec() })
-        .map_err(|error| Error::InvalidImageDetail(format!("cannot encode checksums JSON: {error}")))?;
+    let mut bytes = serde_json::to_vec_pretty(&Manifest { files: records.to_vec() }).map_err(|error| Error::InvalidImageDetail(format!("cannot encode checksums JSON: {error}")))?;
     bytes.push(b'\n');
     fs::write(path, bytes)?;
     Ok(())
@@ -124,8 +123,7 @@ pub fn write(path: &Path, records: &[Record]) -> Result<(), Error> {
 /// assert_eq!(psx_cd::checksum::read(&manifest).unwrap(), records);
 /// ```
 pub fn read(path: &Path) -> Result<Vec<Record>, Error> {
-    let manifest: Manifest = serde_json::from_slice(&fs::read(path)?)
-        .map_err(|error| Error::InvalidImageDetail(format!("invalid checksums JSON: {error}")))?;
+    let manifest: Manifest = serde_json::from_slice(&fs::read(path)?).map_err(|error| Error::InvalidImageDetail(format!("invalid checksums JSON: {error}")))?;
     for record in &manifest.files {
         if record.path.is_empty() || record.md5.is_empty() || record.sha256.is_empty() {
             return Err(Error::InvalidImage("checksum entry has an empty path or digest"));
@@ -179,10 +177,7 @@ fn collect(directory: &Path, paths: &mut Vec<PathBuf>) -> Result<(), Error> {
         let path = entry?.path();
         if path.is_dir() {
             collect(&path, paths)?;
-        } else if matches!(
-            path.extension().and_then(|value| value.to_str()).map(str::to_ascii_lowercase).as_deref(),
-            Some("bin" | "cue" | "img" | "iso")
-        ) {
+        } else if matches!(path.extension().and_then(|value| value.to_str()).map(str::to_ascii_lowercase).as_deref(), Some("bin" | "cue" | "img" | "iso")) {
             paths.push(path);
         }
     }

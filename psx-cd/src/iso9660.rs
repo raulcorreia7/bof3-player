@@ -107,15 +107,7 @@ pub(crate) fn parse_record(bytes: &[u8]) -> Result<Option<DirectoryRecord>> {
         let kind = (attributes.attributes >> 8) as u8;
         attributes.file_number != 0 || (kind & XA_FORM2 != 0 && kind & XA_FORM1 == 0)
     });
-    Ok(Some(DirectoryRecord {
-        extent,
-        size,
-        flags: bytes[FLAGS],
-        name: bytes[NAME..name_end].to_vec(),
-        extended_attributes: bytes[EXT_ATTR_LENGTH],
-        is_xa,
-        xa,
-    }))
+    Ok(Some(DirectoryRecord { extent, size, flags: bytes[FLAGS], name: bytes[NAME..name_end].to_vec(), extended_attributes: bytes[EXT_ATTR_LENGTH], is_xa, xa }))
 }
 
 fn parse_xa_attributes(bytes: &[u8]) -> Option<XaAttributes> {
@@ -134,11 +126,7 @@ fn parse_xa_attributes(bytes: &[u8]) -> Option<XaAttributes> {
 pub(crate) fn normalized_name(raw: &[u8]) -> Result<String> {
     let decoded = std::str::from_utf8(raw).map_err(|_| Error::InvalidImage("non-UTF-8 ISO9660 identifier"))?;
     let name = decoded.split(';').next().unwrap_or(decoded).trim_end_matches('.');
-    if name.is_empty()
-        || name == "."
-        || name == ".."
-        || Path::new(name).components().any(|component| !matches!(component, Component::Normal(_)))
-    {
+    if name.is_empty() || name == "." || name == ".." || Path::new(name).components().any(|component| !matches!(component, Component::Normal(_))) {
         return Err(Error::InvalidImage("unsafe ISO9660 identifier"));
     }
     Ok(name.to_string())

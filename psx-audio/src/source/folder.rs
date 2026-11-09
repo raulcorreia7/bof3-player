@@ -61,9 +61,7 @@ impl FolderSource {
                 out = direct;
                 continue;
             }
-            let found = std::fs::read_dir(&out)?
-                .filter_map(std::result::Result::ok)
-                .find(|e| e.file_name().to_string_lossy().eq_ignore_ascii_case(component));
+            let found = std::fs::read_dir(&out)?.filter_map(std::result::Result::ok).find(|e| e.file_name().to_string_lossy().eq_ignore_ascii_case(component));
             match found {
                 Some(entry) => out = entry.path(),
                 None => return Err(Error::io(format!("no such file: {path}"))),
@@ -120,8 +118,7 @@ pub(super) fn file_blob(path: &Path) -> Result<Arc<dyn Blob>> {
 impl Source for FolderSource {
     fn list(&self) -> Result<Vec<String>> {
         let mut out = Vec::new();
-        walk(&self.root, &self.root, &mut out)
-            .map_err(|e| Error::io(format!("cannot list {}: {e}", self.root.display())))?;
+        walk(&self.root, &self.root, &mut out).map_err(|e| Error::io(format!("cannot list {}: {e}", self.root.display())))?;
         Ok(out)
     }
 

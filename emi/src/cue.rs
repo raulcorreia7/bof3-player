@@ -56,16 +56,10 @@ impl Cue {
     fn read(record: &[u8], index: usize) -> Result<Self> {
         let [byte0, byte1, byte2, byte3] = [record[0], record[1], record[2], record[3]];
         if byte0 & !RESERVED_ALIAS != 0 {
-            return Err(Error::CueRecord {
-                record: index,
-                reason: "bits 7-3 of byte 0 are reserved and zero in all 8,608 records",
-            });
+            return Err(Error::CueRecord { record: index, reason: "bits 7-3 of byte 0 are reserved and zero in all 8,608 records" });
         }
         if byte3 & !RESERVED_VOICE != 0 {
-            return Err(Error::CueRecord {
-                record: index,
-                reason: "bit 7 of byte 3 is reserved and zero in all 8,608 records",
-            });
+            return Err(Error::CueRecord { record: index, reason: "bit 7 of byte 3 is reserved and zero in all 8,608 records" });
         }
         Ok(Self {
             alias_bank: byte0 & RESERVED_ALIAS,
@@ -81,12 +75,7 @@ impl Cue {
     /// The record's four bytes.
     pub fn encode(self) -> [u8; RECORD_BYTES] {
         let byte1 = self.program | if self.use_cue_volume { CUE_VOLUME } else { 0 };
-        [
-            self.alias_bank & RESERVED_ALIAS,
-            byte1,
-            (self.tone << 4) | (self.group & 0x0f),
-            (self.layers << 5) | (self.voice & VOICE_MASK),
-        ]
+        [self.alias_bank & RESERVED_ALIAS, byte1, (self.tone << 4) | (self.group & 0x0f), (self.layers << 5) | (self.voice & VOICE_MASK)]
     }
 
     /// The cue id the dispatcher keys this record with, `(bank << 8) | index`.

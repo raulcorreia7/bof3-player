@@ -589,12 +589,7 @@ impl Machine {
         for offset in (0..bss_size).step_by(4) {
             self.bus.write32(bss.wrapping_add(offset), 0);
         }
-        self.kernel.exec.push(ExecFrame {
-            ra: self.cpu.reg(31),
-            sp: self.cpu.reg(29),
-            fp: self.cpu.reg(30),
-            gp: self.cpu.reg(28),
-        });
+        self.kernel.exec.push(ExecFrame { ra: self.cpu.reg(31), sp: self.cpu.reg(29), fp: self.cpu.reg(30), gp: self.cpu.reg(28) });
         if stack != 0 {
             let top = stack.wrapping_add(stack_size);
             self.cpu.set_reg(29, top);
@@ -776,12 +771,7 @@ impl Machine {
             let Some(&kind) = pattern.get(index) else { break };
             index += 1;
             let zero = spec.contains('0') && !spec.contains('-');
-            let width: usize = spec
-                .trim_start_matches(['%', '-', '+', ' ', '#', '0'])
-                .split(['.', 'l', 'h'])
-                .next()
-                .and_then(|w| w.parse().ok())
-                .unwrap_or(0);
+            let width: usize = spec.trim_start_matches(['%', '-', '+', ' ', '#', '0']).split(['.', 'l', 'h']).next().and_then(|w| w.parse().ok()).unwrap_or(0);
             let text = match kind {
                 b'%' => "%".to_string(),
                 b'd' | b'i' => {

@@ -83,20 +83,7 @@ impl Cpu {
         let mut cop0 = [0; 16];
         cop0[cop0::SR] = SR_BOOT_VECTORS;
         cop0[cop0::PRID] = 0x0000_0002;
-        Self {
-            regs: [0; 32],
-            hi: 0,
-            lo: 0,
-            pc: 0xBFC0_0000,
-            next_pc: 0xBFC0_0004,
-            current_pc: 0xBFC0_0000,
-            load: (0, 0),
-            written: 0,
-            branch: false,
-            delay_slot: false,
-            cop0,
-            gte: Gte::default(),
-        }
+        Self { regs: [0; 32], hi: 0, lo: 0, pc: 0xBFC0_0000, next_pc: 0xBFC0_0004, current_pc: 0xBFC0_0000, load: (0, 0), written: 0, branch: false, delay_slot: false, cop0, gte: Gte::default() }
     }
 
     /// General register `index` (0 to 31).

@@ -75,14 +75,7 @@ pub struct Upload {
 /// assert_eq!((tim.image.x, tim.image.y), (704, 256));
 /// assert_eq!(tim.clut.unwrap().width, 16);
 /// ```
-pub fn tim_with_clut(
-    descriptor: Descriptor,
-    payload: &[u8],
-    depth: Depth,
-    clut_x: u16,
-    clut_y: u16,
-    clut_words: &[u16],
-) -> Result<File> {
+pub fn tim_with_clut(descriptor: Descriptor, payload: &[u8], depth: Depth, clut_x: u16, clut_y: u16, clut_words: &[u16]) -> Result<File> {
     let width = u16::try_from(clut_words.len()).map_err(|_| Error::Tim("a CLUT row is over 65535 words".into()))?;
     let clut = Block { x: clut_x, y: clut_y, width, height: 1, words: clut_words.to_vec() };
     let mode = match depth {
@@ -113,16 +106,8 @@ pub fn tim_direct(descriptor: Descriptor, payload: &[u8]) -> Result<File> {
 /// The image block of an upload: its word grid at its frame buffer place.
 fn image_block(descriptor: Descriptor, payload: &[u8]) -> Result<Block> {
     let grid = vram::word_grid(payload, descriptor)?;
-    let size = |value: usize| {
-        u16::try_from(value).map_err(|_| Error::Tim("the upload is over 65535 words wide or tall".into()))
-    };
-    Ok(Block {
-        x: descriptor.x(),
-        y: descriptor.y(),
-        width: size(grid.width)?,
-        height: size(grid.height)?,
-        words: grid.words,
-    })
+    let size = |value: usize| u16::try_from(value).map_err(|_| Error::Tim("the upload is over 65535 words wide or tall".into()));
+    Ok(Block { x: descriptor.x(), y: descriptor.y(), width: size(grid.width)?, height: size(grid.height)?, words: grid.words })
 }
 
 /// Reads a TIM as an upload: the image block's words are the payload, and its position and width are
@@ -156,18 +141,13 @@ pub fn from_tim(file: &File) -> Result<Upload> {
         )));
     }
     if x / side > MAX_COLUMN || y / side > MAX_ROW {
-        return Err(Error::Tim(format!(
-            "the image at ({x}, {y}) is past the place a load argument can name (column {MAX_COLUMN}, row {MAX_ROW})"
-        )));
+        return Err(Error::Tim(format!("the image at ({x}, {y}) is past the place a load argument can name (column {MAX_COLUMN}, row {MAX_ROW})")));
     }
-    let chunks_per_row = Some(width / side)
-        .filter(|per_row| *per_row <= MAX_PER_ROW)
-        .ok_or_else(|| Error::Tim(format!("{width} words per row is more than a load argument can name")))?;
+    let chunks_per_row = Some(width / side).filter(|per_row| *per_row <= MAX_PER_ROW).ok_or_else(|| Error::Tim(format!("{width} words per row is more than a load argument can name")))?;
     if image.words.len() != width * height {
         return Err(Error::Tim(format!("the image holds {} words, not {width} by {height}", image.words.len())));
     }
-    let placement =
-        Descriptor { column: (x / side) as u8, row: (y / side) as u8, chunks_per_row: chunks_per_row as u8 };
+    let placement = Descriptor { column: (x / side) as u8, row: (y / side) as u8, chunks_per_row: chunks_per_row as u8 };
     let payload = vram::payload_from_grid(width, height, &image.words)?;
     let depth = match file.mode {
         Mode::Four => Some(Depth::Four),

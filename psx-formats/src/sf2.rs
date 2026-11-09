@@ -129,12 +129,7 @@ pub fn write(vab: &Bank, body: &[u8], name: &str) -> Result<Vec<u8>> {
 /// let envelope = |_, _| Some(sf2::Envelope::DEFAULT);
 /// assert_eq!(&sf2::write_with(&bank, &body, "EMPTY", &envelope).unwrap()[..4], b"RIFF");
 /// ```
-pub fn write_with(
-    vab: &Bank,
-    body: &[u8],
-    name: &str,
-    envelope: &dyn Fn(u16, u16) -> Option<Envelope>,
-) -> Result<Vec<u8>> {
+pub fn write_with(vab: &Bank, body: &[u8], name: &str, envelope: &dyn Fn(u16, u16) -> Option<Envelope>) -> Result<Vec<u8>> {
     let mut samples: Vec<SampleData> = Vec::new();
     let mut pcm: Vec<i16> = Vec::new();
     let mut sample_of_vag: Vec<Option<u16>> = vec![None; vab.vags.len()];
@@ -159,11 +154,7 @@ pub fn write_with(
                     let start = pcm.len() as u32;
                     let end = start + frames.len() as u32;
                     let looped = reference.has_loop && reference.loop_start_frame < reference.loop_end_frame;
-                    let (loop_start, loop_end) = if looped {
-                        (start + reference.loop_start_frame, start + reference.loop_end_frame.min(frames.len() as u32))
-                    } else {
-                        (start, start)
-                    };
+                    let (loop_start, loop_end) = if looped { (start + reference.loop_start_frame, start + reference.loop_end_frame.min(frames.len() as u32)) } else { (start, start) };
                     pcm.extend_from_slice(&frames);
                     let number = samples.len() as u16;
                     samples.push(SampleData { name: format!("VAG{vag:03}"), start, end, loop_start, loop_end, looped });
@@ -183,16 +174,7 @@ pub fn write_with(
 
 /// The zone of one tone that plays sample `sample`, with its volume envelope.
 fn zone_of(tone: &Tone, sample: u16, looped: bool, envelope: Envelope) -> ZoneData {
-    ZoneData {
-        keys: (tone.min_note, tone.max_note),
-        root: tone.center_note,
-        tuning: tuning(tone.shift),
-        attenuation: attenuation(tone.vol),
-        pan: pan(tone.pan),
-        envelope,
-        looped,
-        sample,
-    }
+    ZoneData { keys: (tone.min_note, tone.max_note), root: tone.center_note, tuning: tuning(tone.shift), attenuation: attenuation(tone.vol), pan: pan(tone.pan), envelope, looped, sample }
 }
 
 /// The tone volume a zone's attenuation names: the smallest volume whose attenuation is nearest, so a
@@ -279,12 +261,7 @@ impl Envelope {
     /// assert_eq!(envelope.sustain, 0, "full scale is no attenuation");
     /// ```
     pub fn new(attack_seconds: f64, decay_seconds: f64, sustain_level: i32, release_seconds: f64) -> Self {
-        Self {
-            attack: timecents(attack_seconds),
-            decay: timecents(decay_seconds),
-            sustain: centibels(sustain_level),
-            release: timecents(release_seconds),
-        }
+        Self { attack: timecents(attack_seconds), decay: timecents(decay_seconds), sustain: centibels(sustain_level), release: timecents(release_seconds) }
     }
 }
 
@@ -326,10 +303,7 @@ fn pan(pan: u8) -> i16 {
 /// The generators of a zone, in the order the file lists them.
 fn generators(zone: &ZoneData) -> Vec<(u16, u16)> {
     let (coarse, fine) = zone.tuning;
-    let mut generators = vec![
-        (GEN_KEY_RANGE, u16::from(zone.keys.0) | (u16::from(zone.keys.1) << 8)),
-        (GEN_OVERRIDING_ROOT_KEY, u16::from(zone.root)),
-    ];
+    let mut generators = vec![(GEN_KEY_RANGE, u16::from(zone.keys.0) | (u16::from(zone.keys.1) << 8)), (GEN_OVERRIDING_ROOT_KEY, u16::from(zone.root))];
     if coarse != 0 {
         generators.push((GEN_COARSE_TUNE, coarse as u16));
     }
@@ -355,10 +329,7 @@ fn generators(zone: &ZoneData) -> Vec<(u16, u16)> {
 
 /// The whole RIFF file: the INFO list, the sample data and the preset data.
 fn file(name: &str, instruments: &[InstrumentData], samples: &[SampleData], pcm: &[i16]) -> Vec<u8> {
-    let info = list(
-        b"INFO",
-        &[chunk(b"ifil", &[2, 0, 1, 0]), chunk(b"isng", b"EMU8000\0"), chunk(b"INAM", &nul_terminated(name))],
-    );
+    let info = list(b"INFO", &[chunk(b"ifil", &[2, 0, 1, 0]), chunk(b"isng", b"EMU8000\0"), chunk(b"INAM", &nul_terminated(name))]);
     let mut data: Vec<u8> = pcm.iter().flat_map(|sample| sample.to_le_bytes()).collect();
     data.extend(std::iter::repeat_n(0, 2 * SAMPLE_PADDING));
     let sdta = list(b"sdta", &[chunk(b"smpl", &data)]);
@@ -402,14 +373,7 @@ fn preset_data(instruments: &[InstrumentData], samples: &[SampleData]) -> Vec<Ve
     for sample in samples {
         shdr.extend(sample_record(sample));
     }
-    shdr.extend(sample_record(&SampleData {
-        name: "EOS".into(),
-        start: 0,
-        end: 0,
-        loop_start: 0,
-        loop_end: 0,
-        looped: false,
-    }));
+    shdr.extend(sample_record(&SampleData { name: "EOS".into(), start: 0, end: 0, loop_start: 0, loop_end: 0, looped: false }));
     vec![
         chunk(b"phdr", &phdr),
         chunk(b"pbag", &pbag),
@@ -684,11 +648,7 @@ fn chunks(bytes: &[u8]) -> Result<Vec<([u8; 4], &[u8])>> {
 
 /// The chunks of the `LIST` of type `kind`.
 fn list_of<'a>(parts: &[([u8; 4], &'a [u8])], kind: &[u8; 4]) -> Result<Vec<([u8; 4], &'a [u8])>> {
-    let body = parts
-        .iter()
-        .find(|(id, body)| id == b"LIST" && body.get(..4) == Some(&kind[..]))
-        .map(|(_, body)| *body)
-        .ok_or(Error::SoundFont("a LIST chunk is missing"))?;
+    let body = parts.iter().find(|(id, body)| id == b"LIST" && body.get(..4) == Some(&kind[..])).map(|(_, body)| *body).ok_or(Error::SoundFont("a LIST chunk is missing"))?;
     chunks(&body[4..])
 }
 
@@ -735,8 +695,7 @@ fn read_presets(phdr: &[u8], pbag: &[u8], pgen: &[u8]) -> Result<Vec<Preset>> {
         let mut instrument = None;
         for bag in span(&headers, PHDR_BAG_AT, index)? {
             for generator in span(&bags, BAG_GEN_AT, bag)? {
-                let record =
-                    generators.get(generator).ok_or(Error::SoundFont("a generator index is past its table"))?;
+                let record = generators.get(generator).ok_or(Error::SoundFont("a generator index is past its table"))?;
                 if u16_le(record, 0) == GEN_INSTRUMENT {
                     instrument = Some(u16_le(record, 2));
                 }
@@ -811,8 +770,7 @@ fn read_samples(shdr: &[u8], pcm: &[i16]) -> Result<Vec<Sample>> {
     for header in &headers[..count(&headers)] {
         let start = u32_le(header, 20);
         let end = u32_le(header, 24);
-        let frames =
-            pcm.get(start as usize..end as usize).ok_or(Error::SoundFont("a sample runs past the sample data"))?;
+        let frames = pcm.get(start as usize..end as usize).ok_or(Error::SoundFont("a sample runs past the sample data"))?;
         samples.push(Sample {
             name: name_of(&header[..NAME_SIZE]),
             pcm: frames.to_vec(),

@@ -142,10 +142,7 @@ pub const AUDIO_SECTOR_SIZE: u64 = 2352;
 pub fn audio_track_range(sheet: &Sheet, position: usize) -> Result<(u64, u64)> {
     let track = &sheet.tracks[position];
     let file_sectors = fs::metadata(&track.file)?.len() / AUDIO_SECTOR_SIZE;
-    let end_sector = sheet.tracks[position + 1..]
-        .iter()
-        .find(|next| next.file == track.file)
-        .map_or(file_sectors, |next| u64::from(next.index00.unwrap_or(next.index01)));
+    let end_sector = sheet.tracks[position + 1..].iter().find(|next| next.file == track.file).map_or(file_sectors, |next| u64::from(next.index00.unwrap_or(next.index01)));
     let start_sector = u64::from(track.index01);
     if start_sector > end_sector || end_sector > file_sectors {
         return Err(Error::InvalidImage("cue audio track range exceeds its file"));
@@ -178,9 +175,7 @@ pub fn extract_audio_tracks(sheet: &Sheet, output: &Path) -> Result<Vec<PathBuf>
         let (start_sector, end_sector) = audio_track_range(sheet, position)?;
         let mut source = BufReader::with_capacity(AUDIO_READ_BUFFER, File::open(&track.file)?);
         source.seek(SeekFrom::Start(start_sector * AUDIO_SECTOR_SIZE))?;
-        let sample_count = (end_sector - start_sector)
-            .checked_mul(AUDIO_SECTOR_SIZE / 2)
-            .ok_or(Error::InvalidImage("cue audio sample count overflows"))?;
+        let sample_count = (end_sector - start_sector).checked_mul(AUDIO_SECTOR_SIZE / 2).ok_or(Error::InvalidImage("cue audio sample count overflows"))?;
         let path = output.join(format!("track{:02}.wav", track.number));
         let mut samples = Vec::with_capacity(usize::try_from(sample_count).unwrap_or(0));
         let mut sample = [0; 2];
@@ -188,8 +183,7 @@ pub fn extract_audio_tracks(sheet: &Sheet, output: &Path) -> Result<Vec<PathBuf>
             source.read_exact(&mut sample)?;
             samples.push(i16::from_le_bytes(sample));
         }
-        let bytes = psx_formats::wav::pcm(&samples, 44_100, 2)
-            .map_err(|error| Error::InvalidImageDetail(format!("cannot write WAV: {error}")))?;
+        let bytes = psx_formats::wav::pcm(&samples, 44_100, 2).map_err(|error| Error::InvalidImageDetail(format!("cannot write WAV: {error}")))?;
         fs::write(&path, bytes)?;
         written.push(path);
     }
@@ -337,10 +331,7 @@ pub(crate) fn parse_timecode(value: &str) -> Result<u32, Error> {
     if parts.next().is_some() || seconds >= 60 || frames >= 75 {
         return Err(Error::InvalidImage("invalid cue timecode"));
     }
-    minutes
-        .checked_mul(60 * 75)
-        .and_then(|value| value.checked_add(seconds * 75 + frames))
-        .ok_or(Error::InvalidImage("cue timecode overflows"))
+    minutes.checked_mul(60 * 75).and_then(|value| value.checked_add(seconds * 75 + frames)).ok_or(Error::InvalidImage("cue timecode overflows"))
 }
 
 pub(crate) fn format_timecode(sectors: u32) -> String {
@@ -350,10 +341,7 @@ pub(crate) fn format_timecode(sectors: u32) -> String {
 }
 
 fn parse_time_part(value: Option<&str>) -> Result<u32, Error> {
-    value
-        .ok_or(Error::InvalidImage("invalid cue timecode"))?
-        .parse()
-        .map_err(|_| Error::InvalidImage("invalid cue timecode"))
+    value.ok_or(Error::InvalidImage("invalid cue timecode"))?.parse().map_err(|_| Error::InvalidImage("invalid cue timecode"))
 }
 
 fn split_word(value: &str) -> (&str, &str) {

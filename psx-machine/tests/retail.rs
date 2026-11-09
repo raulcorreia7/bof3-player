@@ -54,9 +54,7 @@ fn files_read<'a>(machine: &Machine, entries: &'a [psx_cd::Entry]) -> Vec<(u64, 
         .filter_map(|record| {
             let [minute, second, frame] = [0, 1, 2].map(|index| from_bcd(record.parameters[index]));
             let sector = ((minute * 60 + second) * 75 + frame).checked_sub(150)?;
-            let entry = entries.iter().find(|entry| {
-                !entry.is_directory && (entry.lba..entry.lba + entry.size.div_ceil(2048).max(1)).contains(&sector)
-            })?;
+            let entry = entries.iter().find(|entry| !entry.is_directory && (entry.lba..entry.lba + entry.size.div_ceil(2048).max(1)).contains(&sector))?;
             Some((record.frame, entry))
         })
         .collect()
@@ -115,21 +113,13 @@ fn first_texture_upload_matches_its_emi_entry() {
             let payload = archive.payload(&bytes, index).expect("the payload is inside the file");
             let descriptor = Descriptor::from_load_argument(entry.ram_ptr);
             let Ok(rectangles) = vram::decode(payload, descriptor) else { continue };
-            if rectangles.iter().any(|chunk| {
-                (chunk.x, chunk.y) == (usize::from(rect.x), usize::from(rect.y)) && chunk.words[..] == pixels[..]
-            }) {
+            if rectangles.iter().any(|chunk| (chunk.x, chunk.y) == (usize::from(rect.x), usize::from(rect.y)) && chunk.words[..] == pixels[..]) {
                 found = Some((file.path.clone(), index));
             }
         }
     }
     let (path, index) = found.expect("a type-3 EMI entry holds the uploaded rectangle at its position");
-    eprintln!(
-        "frame {}: 32x32 upload at ({}, {}) equals {} entry {index}",
-        machine.frame(),
-        rect.x,
-        rect.y,
-        path.display()
-    );
+    eprintln!("frame {}: 32x32 upload at ({}, {}) equals {} entry {index}", machine.frame(), rect.x, rect.y, path.display());
 }
 
 /// Start through the title screen and the opening, then Cross to page through the dialogue and
@@ -162,12 +152,7 @@ fn play_through_the_first_battle(image: &Path, entries: &[psx_cd::Entry]) -> (Ma
         }
         let files = files_read(&machine, entries);
         let battle = files.iter().position(|(_, entry)| under(entry, "BIN/BOSS"));
-        let back_in_the_field = battle.and_then(|battle| {
-            files[battle..]
-                .iter()
-                .find(|(_, entry)| under(entry, "BIN/WORLD00"))
-                .map(|(frame, entry)| (*frame, (*entry).clone()))
-        });
+        let back_in_the_field = battle.and_then(|battle| files[battle..].iter().find(|(_, entry)| under(entry, "BIN/WORLD00")).map(|(frame, entry)| (*frame, (*entry).clone())));
         if back_in_the_field.is_some() {
             return (machine, back_in_the_field);
         }
@@ -189,17 +174,9 @@ fn new_game_reaches_the_field_through_the_first_battle() {
         let names: Vec<_> = files.iter().map(|(frame, entry)| format!("{frame}: {}", entry.path.display())).collect();
         panic!("no return to the field from a boss battle by frame {}; files read: {names:#?}", machine.frame())
     });
-    let textured_polygons = machine
-        .gpu_log()
-        .iter()
-        .filter(|logged| matches!(&logged.command, Command::Draw(draw) if draw.texture.is_some() && draw.opcode < 0x40))
-        .count();
+    let textured_polygons = machine.gpu_log().iter().filter(|logged| matches!(&logged.command, Command::Draw(draw) if draw.texture.is_some() && draw.opcode < 0x40)).count();
     assert!(textured_polygons > 0, "the field and the battle draw textured polygons");
-    eprintln!(
-        "frame {frame}: back in {} after the first battle; {textured_polygons} textured polygons, {} key-ons",
-        area.path.display(),
-        machine.key_ons().len()
-    );
+    eprintln!("frame {frame}: back in {} after the first battle; {textured_polygons} textured polygons, {} key-ons", area.path.display(), machine.key_ons().len());
 }
 
 /// Frames the field gets to draw after the game read the area file.
@@ -222,15 +199,10 @@ fn first_area_displays_the_same_frame_on_every_run() {
     };
     let entries = psx_cd::Image::open(&image).expect("the image opens").entries().expect("the image has a file system");
     let [(frame, area), (again, _)] = std::thread::scope(|scope| {
-        let runs =
-            [scope.spawn(|| first_area_frame(&image, &entries)), scope.spawn(|| first_area_frame(&image, &entries))];
+        let runs = [scope.spawn(|| first_area_frame(&image, &entries)), scope.spawn(|| first_area_frame(&image, &entries))];
         runs.map(|run| run.join().expect("the run finishes"))
     });
-    assert!(
-        area.path.starts_with(Path::new("BIN/WORLD00")),
-        "the first area is in BIN/WORLD00, not {}",
-        area.path.display()
-    );
+    assert!(area.path.starts_with(Path::new("BIN/WORLD00")), "the first area is in BIN/WORLD00, not {}", area.path.display());
     let colors: HashSet<&[u8; 4]> = frame.rgba.as_chunks::<4>().0.iter().collect();
     assert!(frame.width > 0 && frame.height > 0, "the display shows a picture");
     assert!(colors.len() > DISTINCT_COLORS, "the field frame has {} colours", colors.len());
@@ -246,12 +218,5 @@ fn first_area_displays_the_same_frame_on_every_run() {
     std::fs::create_dir_all(&folder).expect("the temporary folder is writable");
     let png = psx_formats::gfx::png::rgba_png(frame.width as u32, frame.height as u32, &frame.rgba);
     std::fs::write(folder.join("first-area.png"), png).expect("the frame is written");
-    eprintln!(
-        "{}: {}x{} frame, {} colours, hash {:016x}",
-        area.path.display(),
-        frame.width,
-        frame.height,
-        colors.len(),
-        hash(&frame)
-    );
+    eprintln!("{}: {}x{} frame, {} colours, hash {:016x}", area.path.display(), frame.width, frame.height, colors.len(), hash(&frame));
 }

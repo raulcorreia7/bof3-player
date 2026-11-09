@@ -200,8 +200,7 @@ const NIBBLE_HIGH: i32 = 7;
 
 /// The predictor term of a block for `filter` at `state`, in the rounding [`step`] uses for SPU voices.
 fn prediction(state: &State, filter: usize) -> i32 {
-    ((i32::from(state.prev1) * FILTER_POS[filter]) >> COEFFICIENT_BITS)
-        + ((i32::from(state.prev2) * FILTER_NEG[filter]) >> COEFFICIENT_BITS)
+    ((i32::from(state.prev1) * FILTER_POS[filter]) >> COEFFICIENT_BITS) + ((i32::from(state.prev2) * FILTER_NEG[filter]) >> COEFFICIENT_BITS)
 }
 
 /// The sample that nibble `n` decodes to at `shift`, given the block's prediction. For the same nibble,
@@ -274,11 +273,7 @@ fn choices() -> impl Iterator<Item = (usize, u8)> {
 pub fn encode_block(samples: &[i16; BLOCK_SAMPLES], state: &mut State) -> [u8; BLOCK_BYTES] {
     let block = choices()
         .find_map(|(filter, shift)| quantize(samples, *state, filter, shift, true))
-        .or_else(|| {
-            choices()
-                .filter_map(|(filter, shift)| quantize(samples, *state, filter, shift, false))
-                .min_by_key(|choice| choice.error)
-        })
+        .or_else(|| choices().filter_map(|(filter, shift)| quantize(samples, *state, filter, shift, false)).min_by_key(|choice| choice.error))
         .expect("a filter and shift always quantize a block");
     let mut bytes = [0u8; BLOCK_BYTES];
     bytes[0] = ((block.filter as u8) << 4) | block.shift;
@@ -404,10 +399,7 @@ mod tests {
     fn reserved_shift_acts_as_nine() {
         let mut a = State::default();
         let mut b = State::default();
-        assert_eq!(
-            step(5, 13, 0, &mut a, Rounding::TruncateEachTerm),
-            step(5, 9, 0, &mut b, Rounding::TruncateEachTerm)
-        );
+        assert_eq!(step(5, 13, 0, &mut a, Rounding::TruncateEachTerm), step(5, 9, 0, &mut b, Rounding::TruncateEachTerm));
     }
 
     #[test]
