@@ -1,18 +1,8 @@
 //! The SEQ file: one sequence with its own header.
-//!
-//! Sony's *File Formats* manual (chapter 4, "SEQ") gives the file as `pQES`, a 32-bit version, the
-//! resolution (16 bits), the tempo (24 bits), the rhythm (numerator and denominator bytes) and the
-//! score data to the end of the file. All fields are big endian. A SEQ file has no sequence id and
-//! no data size, so the id belongs to the package that holds the sequence (the SEP file, see
-//! [`super`]). The manual gives the version field as four bytes and states no value; Sony's
-//! sequencer files carry 1, which is what [`encode`] writes. [`read`] does not constrain it.
-//!
-//! The score data is the same event stream a SEP sequence holds, so a SEQ file is a sequence
-//! re-framed: [`export`] and [`read`] move a sequence between a package and a file without
-//! touching its events.
-//!
-//! # Examples
-//!
+//! Sony's *File Formats* manual (chapter 4, "SEQ") gives the file as `pQES`, a 32-bit version, the resolution (16
+//! bits), the tempo (24 bits), the rhythm (numerator and denominator bytes) and the score data to the end of the file.
+//! The manual gives the version field as four bytes and states no value; Sony's sequencer files carry 1, which is what
+//! [`encode`] writes.
 //! ```
 //! use psx_formats::sep::{Event, Package, Sequence, seq};
 //!
@@ -39,10 +29,7 @@ const SHARED_BYTES: usize = 7;
 /// Offset of the shared bytes inside a package's sequence header (after the 16-bit id).
 const SEQUENCE_SHARED_AT: usize = 2;
 
-/// One sequence as a SEQ file. The sequence id is not stored.
-///
-/// # Examples
-///
+/// One sequence as a SEQ file.
 /// ```
 /// let file = psx_formats::sep::seq::encode(&Default::default());
 /// assert_eq!(file.len(), psx_formats::sep::seq::HEADER_BYTES, "a header and no events");
@@ -59,9 +46,6 @@ pub fn encode(sequence: &Sequence) -> Vec<u8> {
 }
 
 /// Sequence `index` of a stored package as a SEQ file.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::sep::{Package, seq};
 ///
@@ -76,11 +60,7 @@ pub fn export(package: &[u8], index: usize) -> Result<Vec<u8>> {
     Ok(encode(sequence))
 }
 
-/// The sequence a SEQ file holds, given the id its package assigns. The score must parse and break
-/// no rule of the format ([`Package::check`]).
-///
-/// # Examples
-///
+/// The sequence a SEQ file holds, given the id its package assigns.
 /// ```
 /// use psx_formats::sep::seq;
 ///
@@ -103,11 +83,7 @@ pub fn read(file: &[u8], seq_id: u16) -> Result<Sequence> {
     package.sequences.pop().ok_or(Error::SeqFile("the file holds no sequence"))
 }
 
-/// A package from SEQ files, one sequence per part and in order, each with the id the package
-/// gives it. Encode it with [`Package::encode`].
-///
-/// # Examples
-///
+/// A package from SEQ files, one sequence per part and in order, each with the id the package gives it.
 /// ```
 /// use psx_formats::sep::{Event, Sequence, seq};
 ///

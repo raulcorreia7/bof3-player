@@ -228,8 +228,8 @@ pub fn li(rt: u32, value: u32) -> [u32; 2] {
 /// Where test programs start.
 pub const CODE: u32 = 0x8001_0000;
 
-/// A machine with `program` at [`CODE`], exception vectors in RAM, followed by an endless loop
-/// whose address it returns; the run stops there.
+/// A machine with `program` at [`CODE`], exception vectors in RAM, followed by an endless loop whose address it
+/// returns; the run stops there.
 pub fn machine_with(program: &[u32]) -> (Machine, u32) {
     let mut machine = Machine::new();
     let mut words = program.to_vec();
@@ -249,8 +249,8 @@ pub fn run(program: &[u32]) -> Machine {
     machine
 }
 
-/// Calls kernel function `function` of table `table` (0xA0, 0xB0 or 0xC0): the three-instruction
-/// sequence the libraries use.
+/// Calls kernel function `function` of table `table` (0xA0, 0xB0 or 0xC0): the three-instruction sequence the libraries
+/// use.
 pub fn bios(table: u32, function: u32) -> [u32; 3] {
     [addiu(10, 0, table as i32), jalr(31, 10), addiu(9, 0, function as i32)]
 }

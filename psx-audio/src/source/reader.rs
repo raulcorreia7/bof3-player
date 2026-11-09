@@ -5,13 +5,8 @@ use std::sync::Mutex;
 use super::Blob;
 use crate::error::{Error, Result};
 
-/// A [`Blob`] over any `Read + Seek`, for engines that hand over a stream
-/// (a pak-file handle, a decompressor with seek support).
-///
-/// Reads take an internal lock, so concurrent readers serialize.
-///
-/// # Examples
-///
+/// A [`Blob`] over any `Read + Seek`, for engines that hand over a stream (a pak-file handle, a decompressor with seek
+/// support).
 /// ```
 /// use psx_audio::{Blob, ReaderBlob};
 ///
@@ -28,13 +23,6 @@ pub struct ReaderBlob<R> {
 
 impl<R: Read + Seek + Send> ReaderBlob<R> {
     /// Wrap `reader`; its length is found by seeking to the end.
-    ///
-    /// # Errors
-    ///
-    /// Fails when the final seek fails.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::{Blob, ReaderBlob};
     ///

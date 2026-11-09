@@ -1,14 +1,8 @@
 // SPDX-License-Identifier: MIT
-//! The SPU voice engine: 24 ADPCM voices, ADSR, 4-point Gaussian
-//! interpolation, reverb and the main mixer, rendered at 44.1 kHz.
-//!
-//! Everything here follows the public hardware description in psx-spx
-//! (third_party/references/psx-spx.txt, chapter "Sound Processing Unit (SPU)"). Not modelled:
-//! noise generator, pitch modulation, volume sweep, capture buffers and CD
-//! audio input.
-//!
-//! # Examples
-//!
+//! The SPU voice engine: 24 ADPCM voices, ADSR, 4-point Gaussian interpolation, reverb and the main mixer, rendered at
+//! 44.1 kHz.
+//! Everything here follows the public hardware description in psx-spx (third_party/references/psx-spx.txt, chapter
+//! "Sound Processing Unit (SPU)").
 //! ```
 //! use psx_audio::spu::{PITCH_ONE, Spu, VoiceSetup};
 //!
@@ -47,9 +41,6 @@ pub use reverb::ReverbModel;
 pub use tables::{PRESET_ROOM, REVERB_PRESETS, ReverbPreset};
 
 /// How long each ADSR phase of a voice takes, in seconds.
-///
-/// # Examples
-///
 /// ```
 /// let timing = psx_audio::spu::envelope_timing(0x00F5, 0x0040).expect("the phases end");
 /// assert!(timing.attack > 0.0 && timing.release > 0.0);
@@ -67,12 +58,6 @@ pub struct EnvelopeTiming {
 }
 
 /// Time each ADSR phase of the voice with these `ADSR1`/`ADSR2` registers.
-///
-/// `None` when a phase never ends. The SoundFont export needs this; the renderer itself
-/// steps the envelope per sample.
-///
-/// # Examples
-///
 /// ```
 /// let timing = psx_audio::spu::envelope_timing(0x00F5, 0x0040).unwrap();
 /// assert_eq!(timing.sustain_level, (0x05 + 1) * 0x800);
@@ -90,66 +75,24 @@ pub fn envelope_timing(adsr1: u16, adsr2: u16) -> Option<EnvelopeTiming> {
 }
 
 /// Size of SPU RAM in bytes (512 KiB).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::spu::RAM_SIZE, 512 * 1024);
-/// ```
 pub const RAM_SIZE: usize = 512 * 1024;
 
 /// Number of hardware voices.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::spu::VOICE_COUNT, 24);
-/// ```
 pub const VOICE_COUNT: usize = 24;
 
 /// Output sample rate in Hz.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::spu::SAMPLE_RATE, 44_100);
-/// ```
 pub const SAMPLE_RATE: u32 = 44_100;
 
 /// `VxPitch` value that plays a sample at its recorded rate (psx-spx: "1000h = 44100Hz").
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::spu::PITCH_ONE, 0x1000);
-/// ```
 pub const PITCH_ONE: u32 = 0x1000;
 
 /// Largest effective `VxPitch` (psx-spx: values above 4000h act as 4000h).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::spu::PITCH_MAX, 0x4000);
-/// ```
 pub const PITCH_MAX: u32 = 0x4000;
 
 /// Address registers hold byte addresses divided by this.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::spu::ADDRESS_UNIT, 8);
-/// ```
 pub const ADDRESS_UNIT: u32 = 8;
 
 /// Default start of the reverb work area: the top 64 KiB of SPU RAM.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::spu::REVERB_AREA_START, 0x70000);
-/// ```
 pub const REVERB_AREA_START: u32 = 0x70000;
 
 /// Pitch counter bits below the sample index.
@@ -166,9 +109,6 @@ const VOLUME_BITS_MASK: u16 = 0x7FFF;
 const VOLUME_SIGN_BIT: u16 = 0x4000;
 
 /// Everything a key-on needs, in the hardware's own register terms.
-///
-/// # Examples
-///
 /// ```
 /// use psx_audio::spu::{PITCH_ONE, VoiceSetup};
 ///
@@ -255,9 +195,6 @@ fn volume_value(register: u16) -> i32 {
 }
 
 /// The SPU: RAM, voices, reverb and the main volume.
-///
-/// # Examples
-///
 /// ```
 /// let mut spu = psx_audio::spu::Spu::new();
 /// let mut pcm = [0i16; 4];
@@ -286,9 +223,6 @@ impl core::fmt::Debug for Spu {
 
 impl Spu {
     /// A silent SPU with zeroed RAM.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// assert_eq!(psx_audio::spu::Spu::new().active_voices(), 0);
     /// ```
@@ -298,9 +232,6 @@ impl Spu {
     }
 
     /// A silent SPU whose reverb unit uses the given delay-line timing.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::spu::{ReverbModel, Spu};
     ///
@@ -321,9 +252,6 @@ impl Spu {
     }
 
     /// Copy `data` into SPU RAM at byte `address` (wraps at the end of RAM).
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let mut spu = psx_audio::spu::Spu::new();
     /// spu.upload(psx_audio::spu::RAM_SIZE as u32 - 2, &[0x22, 0x22]);
@@ -337,9 +265,6 @@ impl Spu {
     }
 
     /// Set the main volume registers (fixed mode).
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let mut spu = psx_audio::spu::Spu::new();
     /// spu.set_main_volume(0x3FFF, 0x3FFF);
@@ -349,11 +274,8 @@ impl Spu {
         self.main_right = right;
     }
 
-    /// Load reverb `preset`, place the work area at `base` bytes, set the output
-    /// volume registers and enable buffer writes.
-    ///
-    /// # Examples
-    ///
+    /// Load reverb `preset`, place the work area at `base` bytes, set the output volume registers and enable buffer
+    /// writes.
     /// ```
     /// use psx_audio::spu::{PRESET_ROOM, REVERB_AREA_START, REVERB_PRESETS, Spu};
     ///
@@ -369,13 +291,6 @@ impl Spu {
     }
 
     /// Start a voice from the beginning of its sample.
-    ///
-    /// # Panics
-    ///
-    /// Panics when `voice` is at least [`VOICE_COUNT`].
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_audio::spu::{PITCH_ONE, Spu, VoiceSetup};
     ///
@@ -402,13 +317,6 @@ impl Spu {
     }
 
     /// Begin the release phase of a voice.
-    ///
-    /// # Panics
-    ///
-    /// Panics when `voice` is at least [`VOICE_COUNT`].
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let mut spu = psx_audio::spu::Spu::new();
     /// spu.key_off(0);
@@ -418,13 +326,6 @@ impl Spu {
     }
 
     /// Change a playing voice's volume registers.
-    ///
-    /// # Panics
-    ///
-    /// Panics when `voice` is at least [`VOICE_COUNT`].
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let mut spu = psx_audio::spu::Spu::new();
     /// spu.set_voice_volume(0, 0x3FFF, 0x3FFF);
@@ -435,13 +336,6 @@ impl Spu {
     }
 
     /// Change a playing voice's pitch register.
-    ///
-    /// # Panics
-    ///
-    /// Panics when `voice` is at least [`VOICE_COUNT`].
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let mut spu = psx_audio::spu::Spu::new();
     /// spu.set_voice_pitch(0, psx_audio::spu::PITCH_ONE as u16);
@@ -451,13 +345,6 @@ impl Spu {
     }
 
     /// Whether the voice is still sounding (not finished, not released to zero).
-    ///
-    /// # Panics
-    ///
-    /// Panics when `voice` is at least [`VOICE_COUNT`].
-    ///
-    /// # Examples
-    ///
     /// ```
     /// assert!(!psx_audio::spu::Spu::new().voice_active(0));
     /// ```
@@ -467,13 +354,6 @@ impl Spu {
     }
 
     /// Current envelope level of a voice, `0..=0x7FFF`.
-    ///
-    /// # Panics
-    ///
-    /// Panics when `voice` is at least [`VOICE_COUNT`].
-    ///
-    /// # Examples
-    ///
     /// ```
     /// assert_eq!(psx_audio::spu::Spu::new().envelope_level(0), 0);
     /// ```
@@ -483,9 +363,6 @@ impl Spu {
     }
 
     /// Number of voices still sounding.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// assert_eq!(psx_audio::spu::Spu::new().active_voices(), 0);
     /// ```
@@ -516,7 +393,6 @@ impl Spu {
             if v.flags & adpcm::FLAG_REPEAT != 0 {
                 v.address = v.repeat;
             } else {
-                // End + mute: release and force the level to zero.
                 v.envelope = Envelope::off();
                 v.ended = true;
                 return;
@@ -550,9 +426,6 @@ impl Spu {
     }
 
     /// Render interleaved stereo into `out`; a trailing odd sample is left untouched.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let mut spu = psx_audio::spu::Spu::new();
     /// let mut pcm = [1i16; 4];

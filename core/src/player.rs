@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: MIT
 //! The game's music and sample engines behind a `psx_audio::Player`.
-//!
-//! `psx-audio` owns [`Player`], [`Engine`] and [`Loop`]; the driver engines implement `Engine`
-//! here. XA streams and CD-DA tracks use the `psx-audio` engines directly.
 
 pub use psx_audio::player::{Engine, Loop, Player, XaStream};
 

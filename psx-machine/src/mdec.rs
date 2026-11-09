@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-//! The MDEC: the motion decoder that turns run-length coded DCT blocks into pixels for movies
-//! (psx-spx "MDEC I/O Ports", "MDEC Commands", "MDEC Decompression"). A command decodes as soon as
-//! its last parameter arrives, and its pixels wait in an output queue that has no size limit.
-//! The inverse DCT follows psx-spx's reference decoder, so a pixel can differ from the console's
-//! by a step or two: against the console dumps of the `ps1-tests` MDEC programs, 49 of 64 bytes of
-//! an 8-bit block and 30 of 32 bytes of a 4-bit block match.
+//! The MDEC: the motion decoder that turns run-length coded DCT blocks into pixels for movies (psx-spx "MDEC I/O
+//! Ports", "MDEC Commands", "MDEC Decompression"). The inverse DCT follows psx-spx's reference decoder, so a pixel can
+//! differ from the console's by a step or two: against the console dumps of the `ps1-tests` MDEC programs, 49 of 64
+//! bytes of an 8-bit block and 30 of 32 bytes of a 4-bit block match.
 
 use std::collections::VecDeque;
 
@@ -81,8 +79,7 @@ impl Mdec {
         status | (self.remaining.wrapping_sub(1) & 0xFFFF)
     }
 
-    /// A write to the control register at 0x1F801824: bit 31 resets, bits 29–30 enable the DMA
-    /// requests.
+    /// A write to the control register at 0x1F801824: bit 31 resets, bits 29–30 enable the DMA requests.
     pub fn write_control(&mut self, value: u32) {
         if value & (1 << 31) != 0 {
             self.command = 0;
@@ -232,8 +229,8 @@ impl Mdec {
         Some(self.idct(coefficients))
     }
 
-    /// The inverse DCT of psx-spx "MDEC Decompression": two passes over the scale table, each
-    /// rounded to 13 fraction bits.
+    /// The inverse DCT of psx-spx "MDEC Decompression": two passes over the scale table, each rounded to 13 fraction
+    /// bits.
     fn idct(&self, block: [i32; 64]) -> [i32; 64] {
         let mut source = block;
         let mut target = [0i32; 64];

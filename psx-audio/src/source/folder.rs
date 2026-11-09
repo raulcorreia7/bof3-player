@@ -8,11 +8,6 @@ use super::{Blob, Source};
 use crate::error::{Error, Result};
 
 /// An extracted tree on disk (`<root>/ASSETS/DATA.BIN`, ...).
-///
-/// Path lookups ignore ASCII case, so `assets/data.bin` finds `ASSETS/DATA.BIN`.
-///
-/// # Examples
-///
 /// ```
 /// use psx_audio::{FolderSource, Source};
 ///
@@ -29,13 +24,6 @@ pub struct FolderSource {
 
 impl FolderSource {
     /// Use `root` as the volume root.
-    ///
-    /// # Errors
-    ///
-    /// Fails when `root` is not a directory.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let dir = tempfile::tempdir().unwrap();
     /// assert!(psx_audio::FolderSource::open(dir.path()).is_ok());

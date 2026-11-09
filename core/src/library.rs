@@ -19,15 +19,11 @@ use crate::spu::ReverbModel;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct PlayerOptions {
-    /// Reverb delay-line timing for music and samples. The default is the
-    /// hardware timing; [`ReverbModel::Legacy`] reproduces bof3player 0.x renders.
+    /// Reverb delay-line timing for music and samples.
     pub reverb: ReverbModel,
 }
 
 /// A game's audio: its [`Source`] and the [`Catalog`] built from it.
-///
-/// `Library` is `Send + Sync`; any number of [`Player`]s may be created from
-/// it, each used from one thread at a time.
 pub struct Library<'a> {
     source: Box<dyn Source + 'a>,
     catalog: Catalog,
@@ -46,12 +42,6 @@ impl<'a> Library<'a> {
     }
 
     /// Scan `source` and build the catalog with `naming`.
-    ///
-    /// Pass [`NoNaming`] for ids and archive names
-    /// only, or an implementation of [`Naming`] with the embedder's own tables.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use bof3player::{Library, MemorySource, NoNaming};
     ///
@@ -137,8 +127,7 @@ impl<'a> Library<'a> {
         Ok(vab.vag_bytes(body, item.sub_index)?.to_vec())
     }
 
-    /// The sequence package of a music item: the bytes the disc stores, the
-    /// `.seq` file.
+    /// The sequence package of a music item: the bytes the disc stores, the `.seq` file.
     pub fn export_sequence(&self, item: &Item) -> Result<Vec<u8>> {
         if item.kind != Kind::Music {
             return Err(Error::invalid(format!("{} is not a music item", item.id)));
@@ -149,8 +138,8 @@ impl<'a> Library<'a> {
         Ok(emi.find(EntryType::Seq, 0)?.to_vec())
     }
 
-    /// The whole sound bank of a bank item: the `.vh` header followed by the
-    /// `.vb` body, which is the standard VAB file.
+    /// The whole sound bank of a bank item: the `.vh` header followed by the `.vb` body, which is the standard VAB
+    /// file.
     pub fn export_bank(&self, item: &Item) -> Result<Vec<u8>> {
         if item.kind != Kind::Bank {
             return Err(Error::invalid(format!("{} is not a bank item", item.id)));

@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: MIT
 // floor(0x1000 * 2^(i / 192)) for i in 0..=192: one octave in 192 steps (12 semitones x 16 fine steps).
-// Checked against the closed form by the `pitch_table_matches_formula` test.
 /// VxPitch values for one octave; 0x1000 is 44100 Hz (psx-spx, SPU ADPCM Pitch).
-///
-/// # Examples
-///
 /// ```
 /// assert_eq!(psx_audio::spu::PITCH_TABLE[0], 0x1000);
 /// assert_eq!(psx_audio::spu::PITCH_TABLE[192], 0x2000);

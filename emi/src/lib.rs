@@ -1,10 +1,5 @@
-//! The EMI archive container: header, table of contents, sector-aligned
-//! payloads and the type-8 cue records a VAB bank's sound effects use.
-//!
-//! [`Archive::parse`] reads the table from bytes and needs no `std`; the file
-//! operations ([`Archive::open`], extraction, [`read_entry`]) are behind the
-//! `std` feature. The PlayStation formats inside the entries (VAB, SEP, VRAM,
-//! CLUT) live in `psx-formats`.
+//! The EMI archive container: header, table of contents, sector-aligned payloads and the type-8 cue records a VAB
+//! bank's sound effects use.
 
 #![deny(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]

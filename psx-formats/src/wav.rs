@@ -1,10 +1,4 @@
 //! RIFF/WAVE: the shape of a 16-bit PCM file and the one writer for it.
-//!
-//! The writer takes interleaved 16-bit samples and returns the file bytes. The
-//! header is the canonical 44-byte PCM form, the one every reader takes.
-//!
-//! # Examples
-//!
 //! ```
 //! use psx_formats::wav;
 //!
@@ -30,9 +24,6 @@ const BITS_PER_SAMPLE: u16 = 16;
 const BYTES_PER_SAMPLE: u32 = 2;
 
 /// Shape of a PCM WAVE file.
-///
-/// # Examples
-///
 /// ```
 /// let bytes = psx_formats::wav::pcm(&[0i16; 4], 44_100, 1).unwrap();
 /// let info = psx_formats::wav::parse(&bytes).unwrap();
@@ -54,9 +45,6 @@ pub struct Info {
 
 impl Info {
     /// Frames the declared data holds.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let bytes = psx_formats::wav::pcm(&[0i16; 6], 44_100, 2).unwrap();
     /// assert_eq!(psx_formats::wav::parse(&bytes).unwrap().frames(), 3);
@@ -69,9 +57,6 @@ impl Info {
 }
 
 /// Read the shape from the first bytes of a file (a few KiB are enough).
-///
-/// # Examples
-///
 /// ```
 /// let bytes = psx_formats::wav::pcm(&[0i16; 2], 22_050, 1).unwrap();
 /// let info = psx_formats::wav::parse(&bytes).unwrap();
@@ -113,9 +98,6 @@ pub fn parse(head: &[u8]) -> Result<Info> {
 }
 
 /// A 16-bit PCM WAVE file for interleaved `samples`.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::wav;
 ///

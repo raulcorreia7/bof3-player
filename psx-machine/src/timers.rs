@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! The video beam and the three root counters (psx-spx "Timers", "GPU Timings"). The beam runs
-//! 263 NTSC lines of 3413 video cycles each; the vertical blank starts at line 240 and raises
-//! `IRQ0`, which is how the machine counts frames.
+//! The video beam and the three root counters (psx-spx "Timers", "GPU Timings").
 
 use crate::irq::{Irq, Line};
 

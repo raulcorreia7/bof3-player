@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-//! The terminal browser: a tree of kinds, families and items on the left, the
-//! selected item's details on the right, and a now-playing panel with position,
-//! loop window, level meters and a spectrum.
+//! The terminal browser: a tree of kinds, families and items on the left, the selected item's details on the right, and
+//! a now-playing panel with position, loop window, level meters and a spectrum.
 
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
@@ -46,8 +45,7 @@ pub const METER_FALL: f32 = 0.06;
 /// Levels fall this much per second, the rate `METER_FALL` gives at `TICK`.
 const METER_FALL_PER_SECOND: f32 = METER_FALL / TICK.as_secs_f32();
 
-/// The open export menu: the item, its supported formats, their target files
-/// and how many times a looping track plays.
+/// The open export menu: the item, its supported formats, their target files and how many times a looping track plays.
 struct ExportMenu {
     item: usize,
     selected: usize,
@@ -576,8 +574,8 @@ impl App {
         }
     }
 
-    /// Whether the next frame differs from this one without any input: audio plays, bars or
-    /// meters are still falling, or an export runs.
+    /// Whether the next frame differs from this one without any input: audio plays, bars or meters are still falling,
+    /// or an export runs.
     fn animating(&self) -> bool {
         self.save.is_some()
             || (self.deck.is_loaded() && !self.deck.paused())
@@ -585,8 +583,7 @@ impl App {
             || self.spectrum.levels.iter().chain(&self.spectrum.caps).any(|&v| v > 0.0)
     }
 
-    /// Advance the meters, the spectrum, exports and the end of the track. The motion follows
-    /// the time since the last call, so it looks the same at any frame rate.
+    /// Advance the meters, the spectrum, exports and the end of the track.
     fn tick(&mut self) {
         let now = Instant::now();
         let seconds = now.duration_since(std::mem::replace(&mut self.last_tick, now)).as_secs_f32().min(0.1);
@@ -663,7 +660,6 @@ fn row_line(app: &App, row: &Row, width: usize) -> Line<'static> {
                 ""
             };
             let time = music_length(item.duration);
-            // Columns: the id, the title filling the rest, then the duration at the right edge.
             let name_width = if width >= 50 { 12 } else { 0 };
             let time_width = 7;
             let fixed = pad + 4 + name_width + time_width;
@@ -744,7 +740,6 @@ fn draw(frame: &mut Frame<'_>, app: &mut App) {
         .enumerate()
         .map(|(at, r)| {
             let line = row_line(app, r, width);
-            // A blank line separates the kind groups.
             if spaced && at > 0 && matches!(r, Row::Kind(_)) {
                 ListItem::new(Text::from(vec![Line::raw(""), line]))
             } else {
@@ -869,8 +864,7 @@ fn help_line(width: usize) -> Line<'static> {
     )
 }
 
-/// A row of key badges with their actions. Entries drop from the end until the row fits `width`,
-/// except the last `keep`, which always stay.
+/// A row of key badges with their actions.
 pub fn hints(entries: &[(&str, &str)], keep: usize, width: usize) -> Line<'static> {
     let cost = |(key, action): &(&str, &str)| key.chars().count() + action.chars().count() + 2;
     let split = entries.len().saturating_sub(keep);
@@ -894,14 +888,14 @@ pub fn hints(entries: &[(&str, &str)], keep: usize, width: usize) -> Line<'stati
 /// Terminals narrower than this hide the details panel and give the list the whole width.
 const DETAILS_MIN_WIDTH: u16 = 72;
 
-/// Whether the terminal is big enough for the generous layout: wide padding, a bordered header,
-/// a tall now-playing bar with the spectrum. Smaller terminals get the compact layout.
+/// Whether the terminal is big enough for the generous layout: wide padding, a bordered header, a tall now-playing bar
+/// with the spectrum.
 pub fn roomy(area: Rect) -> bool {
     area.height >= 30 && area.width >= 100
 }
 
-/// The padding inside panels: 2 cells at the sides and 1 above and below where there is room,
-/// otherwise 1 cell at the sides.
+/// The padding inside panels: 2 cells at the sides and 1 above and below where there is room, otherwise 1 cell at the
+/// sides.
 pub fn padding(area: Rect) -> Padding {
     if roomy(area) { Padding::new(2, 2, 1, 1) } else { Padding::horizontal(1) }
 }
@@ -915,18 +909,15 @@ const FOOTER_MIN_HEIGHT: u16 = 8;
 /// A list shorter than this (its border and one row) is left out.
 const LIST_MIN_HEIGHT: u16 = 3;
 
-/// Whether the compact layout shows the levels and spectrum under the details: the details
-/// column is shown and tall enough. Otherwise the now-playing bar grows to hold them.
+/// Whether the compact layout shows the levels and spectrum under the details: the details column is shown and tall
+/// enough.
 fn levels_beside(area: Rect) -> bool {
     !roomy(area) && area.width >= DETAILS_MIN_WIDTH && area.height >= 24
 }
 
-/// The browser's vertical split, top to bottom: the header (3 rows with a border, 1 when compact,
-/// none when short), the list and details taking the remaining height (none when too short), the
-/// now-playing bar, a row for messages and a row for the key help (none when very short). The
-/// now-playing bar takes about 30% of the height when roomy; when compact it has 5 rows, plus a
-/// few spectrum rows when the details column does not show the levels and the terminal has the
-/// height. Each part has its own rows, so none hides another.
+/// The browser's vertical split, top to bottom: the header (3 rows with a border, 1 when compact, none when short), the
+/// list and details taking the remaining height (none when too short), the now-playing bar, a row for messages and a
+/// row for the key help (none when very short).
 pub fn screen_rows(area: Rect) -> [Rect; 5] {
     let height = area.height;
     let header = if roomy(area) {
@@ -949,15 +940,14 @@ pub fn screen_rows(area: Rect) -> [Rect; 5] {
     Layout::vertical([header, list, playbar, footer, footer].map(Constraint::Length)).flex(Flex::Start).areas(area)
 }
 
-/// Split the details column: the text above and, when [`levels_beside`] holds, the levels and
-/// spectrum below. Otherwise the now-playing bar shows them.
+/// Split the details column: the text above and, when [`levels_beside`] holds, the levels and spectrum below.
 pub fn split_details(area: Rect, full: Rect) -> [Rect; 2] {
     let levels = if levels_beside(full) { (area.height / 3).clamp(7, 16) } else { 0 };
     Layout::vertical([Constraint::Min(5), Constraint::Length(levels)]).areas(area)
 }
 
-/// A popup centered in `area`: `percent` of its width between `min` and `max` cells, `height` rows,
-/// both limited to the area.
+/// A popup centered in `area`: `percent` of its width between `min` and `max` cells, `height` rows, both limited to the
+/// area.
 pub fn popup(area: Rect, percent: u16, min: u16, max: u16, height: u16) -> Rect {
     let width = (area.width * percent / 100).clamp(min, max).min(area.width);
     let height = height.min(area.height);
@@ -980,10 +970,9 @@ fn draw_now_playing(frame: &mut Frame<'_>, app: &mut App, area: Rect) {
     draw_playbar(frame, &app.deck, now, app.looping, app.meters, &mut app.spectrum, area);
 }
 
-/// The now-playing bar shared by the library browser and the extract browser: the title (bold)
-/// with the time at the right, a progress gauge, the loop and volume state, and, when it has the
-/// rows, the level meters and the spectrum across the full width. `now` is the id and label of
-/// what plays (None: nothing). It always has the same rows, so the layout does not jump.
+/// The now-playing bar shared by the library browser and the extract browser: the title (bold) with the time at the
+/// right, a progress gauge, the loop and volume state, and, when it has the rows, the level meters and the spectrum
+/// across the full width.
 pub fn draw_playbar(
     frame: &mut Frame<'_>,
     deck: &Deck,
@@ -1063,8 +1052,8 @@ pub fn draw_playbar(
     }
 }
 
-/// A theme color as a terminal color: the exact color where the terminal shows 24-bit color
-/// (`COLORTERM` is `truecolor` or `24bit`), else the nearest of the 256-color cube.
+/// A theme color as a terminal color: the exact color where the terminal shows 24-bit color (`COLORTERM` is `truecolor`
+/// or `24bit`), else the nearest of the 256-color cube.
 fn themed(rgb: u32) -> Color {
     static TRUECOLOR: OnceLock<bool> = OnceLock::new();
     let truecolor = *TRUECOLOR
@@ -1077,8 +1066,7 @@ fn themed(rgb: u32) -> Color {
     }
 }
 
-/// The nearest color of the 256-color palette's 6×6×6 cube, whose channel steps are 0, 95, 135,
-/// 175, 215 and 255.
+/// The nearest color of the 256-color palette's 6×6×6 cube, whose channel steps are 0, 95, 135, 175, 215 and 255.
 fn cube(rgb: u32) -> Color {
     let level = |shift: u32| match (rgb >> shift) & 0xff {
         0..48 => 0,
@@ -1088,9 +1076,8 @@ fn cube(rgb: u32) -> Color {
     Color::Indexed((16 + 36 * level(16) + 6 * level(8) + level(0)) as u8)
 }
 
-/// One row of the progress bar, `width` cells wide: the played part in the accent with a
-/// sub-cell edge, and, for a loop `window` (fractions of the track), a shaded span with thin
-/// markers at its start and end. The markers and the span show over the played part.
+/// One row of the progress bar, `width` cells wide: the played part in the accent with a sub-cell edge, and, for a loop
+/// `window` (fractions of the track), a shaded span with thin markers at its start and end.
 fn progress_line(width: usize, ratio: f64, window: Option<(f64, f64)>) -> Line<'static> {
     const EIGHTHS: [char; 7] = ['▏', '▎', '▍', '▌', '▋', '▊', '▉'];
     let band = themed(theme::LOOP_BAND);
@@ -1160,8 +1147,8 @@ pub fn draw_levels(frame: &mut Frame<'_>, meters: (f32, f32), spectrum: &mut Spe
     draw_spectrum(frame, spectrum, rows[1]);
 }
 
-/// The spectrum, one band per column: bars of eighth blocks colored by height and tinted by the
-/// music, with a cap above each bar.
+/// The spectrum, one band per column: bars of eighth blocks colored by height and tinted by the music, with a cap above
+/// each bar.
 fn draw_spectrum(frame: &mut Frame<'_>, spectrum: &mut Spectrum, area: Rect) {
     const BLOCKS: [char; 9] = [' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
     /// Caps below this level are not drawn, so silence shows no stray marks.
@@ -1238,8 +1225,8 @@ fn draw_help(frame: &mut Frame<'_>, area: Rect, export_dir: &std::path::Path) {
     );
 }
 
-/// The export menu: the item's name, the export folder and one row per format
-/// it supports, with the file each row writes.
+/// The export menu: the item's name, the export folder and one row per format it supports, with the file each row
+/// writes.
 fn draw_export_menu(frame: &mut Frame<'_>, app: &App, area: Rect) {
     let Some(menu) = &app.export else { return };
     let item = app.item(menu.item);
@@ -1295,14 +1282,10 @@ pub fn run(global: &Global, naming: &dyn Naming) -> Result<ExitCode, String> {
     let mut app = App::new(library, &global);
     let mut terminal = ratatui::init();
     let result = (|| -> std::io::Result<()> {
-        // Frames are paced from the last draw, so input waits at most until the next frame is due
-        // and a key press draws at once. Idle, the loop wakes four times a second.
         while !app.quit {
             let drawn = Instant::now();
             terminal.draw(|f| draw(f, &mut app))?;
             let frame = if app.animating() { FRAME } else { IDLE_FRAME };
-            // Wait for the next frame or a key, then take every event already queued before the
-            // next draw, so held keys never fall behind. A resize draws at once.
             let mut wait = frame.saturating_sub(drawn.elapsed());
             while !app.quit && !app.choose_folder && event::poll(wait)? {
                 wait = match event::read()? {
@@ -1342,7 +1325,6 @@ mod tests {
         assert_eq!(cube(0x000000), Color::Indexed(16));
         assert_eq!(cube(0xffffff), Color::Indexed(231));
         assert_eq!(cube(0xff0000), Color::Indexed(196));
-        // Each channel lands on the nearest step: 0x5f is 95, 0x87 is 135, 0xd7 is 215.
         assert_eq!(cube(0x5f87d7), Color::Indexed(16 + 36 + 2 * 6 + 4));
         assert_eq!(cube(0x1e88e5), Color::Indexed(16 + 2 * 6 + 4));
         assert_eq!(cube(0x3b0000), Color::Indexed(16 + 36));

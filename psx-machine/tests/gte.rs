@@ -52,9 +52,7 @@ fn rtps_projects_and_saturates_depth_cueing() {
     gte.command(RTPS).unwrap();
     assert_eq!([9, 10, 11].map(|r| gte.read_data(r) as i32), [100, -50, 200]);
     assert_eq!(gte.read_data(19), 200, "SZ3");
-    // H / SZ3 = 1.0, so the vertex lands at its x and y plus the screen offset.
     assert_eq!(signed(gte.read_data(14)), (260, 70));
-    // 10000h × 10h + 1000000h = 1100000h; IR0 = 1100h saturates to 1000h.
     assert_eq!(gte.read_data(24), 0x0110_0000);
     assert_eq!(gte.read_data(8), 0x1000);
     assert_eq!(gte.read_control(31), flag::IR0, "IR0 is not an error bit");
@@ -71,7 +69,6 @@ fn rtpt_fills_the_fifos_and_flags_a_vertex_at_the_near_plane() {
     assert_eq!([16, 17, 18, 19].map(|r| gte.read_data(r)), [0, 200, 400, 100]);
     assert_eq!(signed(gte.read_data(12)), (260, 70));
     assert_eq!(signed(gte.read_data(13)), (160, 120));
-    // SZ3 = H/2: the division saturates to 1FFFFh.
     assert_eq!(signed(gte.read_data(14)), (-40, 319));
     assert_eq!(gte.read_data(15), gte.read_data(14), "SXYP mirrors SXY2");
     assert_eq!(gte.read_data(8), 0x800, "depth cueing from the last vertex");
@@ -84,18 +81,15 @@ fn division_follows_the_unr_approximation() {
     gte.write_control(24, 0);
     gte.write_control(25, 0);
     gte.write_control(27, 1); // MAC0 = quotient × 1
-    // FE3Fh / 7F20h comes out of the reciprocal as 20000h and clamps to 1FFFFh without a flag.
     gte.write_control(26, 0xFE3F);
     vertex(&mut gte, 0, [0, 0, 0x7F20]);
     gte.command(RTPS).unwrap();
     assert_eq!(gte.read_data(24), 0x1_FFFF);
     assert_eq!(gte.read_control(31) & flag::DIVIDE, 0);
-    // 1 / 1 takes the largest seed and is exact.
     gte.write_control(26, 1);
     vertex(&mut gte, 0, [0, 0, 1]);
     gte.command(RTPS).unwrap();
     assert_eq!(gte.read_data(24), 0x1_0000);
-    // A vertex behind the camera saturates SZ3 to 0 and overflows the division.
     vertex(&mut gte, 0, [0, 0, -5]);
     gte.command(RTPS).unwrap();
     assert_eq!(gte.read_data(19), 0);
@@ -149,14 +143,11 @@ fn mvmva_multiplies_adds_and_saturates() {
     assert_eq!([25, 26, 27].map(|r| gte.read_data(r) as i32), [11, 42, -27]);
     assert_eq!([9, 10, 11].map(|r| gte.read_data(r) as i32), [11, 42, -27]);
     assert_eq!(gte.read_control(31), 0);
-    // lm clamps IR3 at 0 and flags it; bit 22 is outside the error summary.
     gte.command(mvmva(0, 1, 0) | SF | LM).unwrap();
     assert_eq!(gte.read_data(11), 0);
     assert_eq!(gte.read_control(31), flag::IR[2]);
-    // The far-colour translation keeps only the last two columns.
     gte.command(mvmva(0, 1, 2) | SF).unwrap();
     assert_eq!([25, 26, 27].map(|r| gte.read_data(r) as i32), [0, 40, -30]);
-    // A sum past 43 bits flags MAC1.
     gte.write_control(0, 0x7FFF);
     gte.write_control(5, 0x7FFF_FFFF);
     vertex(&mut gte, 0, [0x7FFF, 0, 0]);
@@ -169,7 +160,6 @@ fn mvmva_multiplies_adds_and_saturates() {
 fn ncds_lights_tints_and_fades_to_the_far_colour() {
     let mut gte = Gte::default();
     for register in [8, 16] {
-        // Light and light-colour matrices: identity.
         gte.write_control(register, 0x1000);
         gte.write_control(register + 2, 0x1000);
         gte.write_control(register + 4, 0x1000);
@@ -177,10 +167,8 @@ fn ncds_lights_tints_and_fades_to_the_far_colour() {
     vertex(&mut gte, 0, [0x1000, 0, 0]);
     gte.write_data(6, 0x3080_8080);
     gte.command(NCDS).unwrap();
-    // R × IR1 SHL 4 = 800000h, SAR 12 = 800h, / 16 = 80h.
     assert_eq!(gte.read_data(25), 0x800);
     assert_eq!(gte.read_data(22), 0x3000_0080);
-    // Halfway to a black far colour.
     gte.write_data(8, 0x800);
     gte.command(NCDS).unwrap();
     assert_eq!(gte.read_data(22), 0x3000_0040);
@@ -200,24 +188,19 @@ fn sqr_saturates_ir_and_sets_the_error_bit() {
 #[test]
 fn register_quirks() {
     let mut gte = Gte::default();
-    // H reads back sign-extended.
     gte.write_control(26, 0x8000);
     assert_eq!(gte.read_control(26), 0xFFFF_8000);
-    // IRGB expands to IR1–IR3; ORGB collapses them back, saturating.
     gte.write_data(28, 0x7FFF);
     assert_eq!([9, 10, 11].map(|r| gte.read_data(r)), [0xF80; 3]);
     gte.write_data(9, 0xFFFF_8000);
     assert_eq!(gte.read_data(29), 0x7FE0);
-    // LZCR counts leading zeroes, or ones for a negative value.
     gte.write_data(30, 0x0000_FFFF);
     assert_eq!(gte.read_data(31), 16);
     gte.write_data(30, 0xFF00_0000);
     assert_eq!(gte.read_data(31), 8);
-    // Writing SXYP pushes the screen FIFO.
     gte.write_data(14, pair(1, 2));
     gte.write_data(15, pair(3, 4));
     assert_eq!((gte.read_data(13), gte.read_data(14)), (pair(1, 2), pair(3, 4)));
-    // FLAG keeps bits 12–30 and derives bit 31.
     gte.write_control(31, 0xFFFF_FFFF);
     assert_eq!(gte.read_control(31), 0xFFFF_F000);
     gte.write_control(31, flag::IR0);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-//! Instruction tests on synthetic programs: arithmetic, loads and stores with their delay slot,
-//! branches and exceptions.
+//! Instruction tests on synthetic programs: arithmetic, loads and stores with their delay slot, branches and
+//! exceptions.
 
 mod common;
 
@@ -27,8 +27,7 @@ const RA: u32 = 31;
 
 const DATA: u32 = 0x8002_0000;
 
-/// An exception handler at 0x80000080 that copies EPC to t9 and CAUSE to t8, then returns to
-/// `EPC + skip`.
+/// An exception handler at 0x80000080 that copies EPC to t9 and CAUSE to t8, then returns to `EPC + skip`.
 fn install_handler(machine: &mut psx_machine::Machine, skip: i32) {
     machine.write_words(
         0x8000_0080,
@@ -227,7 +226,6 @@ fn unaligned_word_load_and_store() {
         lwl(T0, 4, A0),
         nop(),
         sw(T0, 0x10, A0),
-        // LWL right after LWR merges into the value still in flight.
         lwr(T1, 2, A0),
         lwl(T1, 5, A0),
         nop(),
@@ -281,10 +279,9 @@ fn register_jumps_and_conditional_branches() {
         bltz(T1, 2),      // CODE+20 taken -> CODE+32? no: +4+8 = CODE+32
         nop(),
         nop(),
-        jr(A0), // CODE+32: the callee returns through a0, first time
+        jr(A0),
         addiu(V0, V0, 1),
     ]);
-    // The second time through CODE+32 must end the program, so count visits in v0 and stop by pc.
     let (mut machine, _) = machine_with(&program);
     machine.run_until_pc(CODE + 20, 100).unwrap();
     assert_eq!(reg(&machine, A0), CODE + 16, "jalr links to the instruction after its delay slot");
@@ -398,7 +395,6 @@ fn gte_registers_move_when_enabled() {
     let mut program = Vec::new();
     program.extend(li(T0, 0x1234_5678));
     program.extend(li(A0, DATA));
-    // VXY0, TRX and MAC0 hold whole words.
     program.extend([mtc2(T0, 0), ctc2(T0, 5), mfc2(T1, 0), cfc2(T2, 5), lwc2(24, 0, A0), swc2(24, 4, A0), nop()]);
     let (mut machine, end) = machine_with(&program);
     machine.cpu_mut().set_cop0(cop0::SR, 1 << 30);

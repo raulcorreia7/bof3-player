@@ -1,9 +1,5 @@
 // SPDX-License-Identifier: MIT
 //! Audio output: a [`Deck`] owns the cpal stream and pulls PCM from one player.
-//!
-//! The library never resamples, so the deck adapts the item's rate and channel
-//! count to the device with a linear resampler. The audio callback shares a
-//! small state block with the UI thread; the UI only holds the lock briefly.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
@@ -146,9 +142,7 @@ impl Shared {
         self.inner.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    /// Keep the first non-xrun stream error for the UI; count xruns instead of
-    /// storing them. The stream stays open: cpal keeps delivering callbacks,
-    /// and a rebuild would drop queued audio on every underrun.
+    /// Keep the first non-xrun stream error for the UI; count xruns instead of storing them.
     fn record_error(&self, error: &cpal::Error) {
         if error.kind() == cpal::ErrorKind::Xrun {
             self.xruns.fetch_add(1, Ordering::Relaxed);
@@ -187,8 +181,6 @@ impl Shared {
                 inner.frac += ratio;
                 [inner.prev[0] + (inner.cur[0] - inner.prev[0]) * t, inner.prev[1] + (inner.cur[1] - inner.prev[1]) * t]
             };
-            // The analyzer and the meters tap the signal before volume and mute, so they keep
-            // moving when the output is quiet or off.
             if inner.scope.len() >= SCOPE_SAMPLES {
                 inner.scope.pop_front();
             }
@@ -214,8 +206,7 @@ impl Shared {
     }
 }
 
-/// The stream error callback: records the error for the UI instead of writing
-/// over the terminal with `eprintln!`.
+/// The stream error callback: records the error for the UI instead of writing over the terminal with `eprintln!`.
 fn error_sink(shared: Arc<Shared>) -> impl FnMut(cpal::Error) + Send + 'static {
     move |error| shared.record_error(&error)
 }
@@ -231,9 +222,8 @@ pub struct Deck {
 }
 
 impl Deck {
-    /// Open the default output device, or a silent real-time sink when no device can be opened
-    /// (the reason is in `device`). With `mute` the sound starts off; [`set_muted`](Self::set_muted)
-    /// turns it back on.
+    /// Open the default output device, or a silent real-time sink when no device can be opened (the reason is in
+    /// `device`).
     pub fn new(mute: bool) -> Self {
         let deck = Self::open_device().unwrap_or_else(|why| {
             let mut deck = Self::silent();

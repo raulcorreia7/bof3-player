@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: MIT
-//! The displayed picture, written from psx-spx "GPU Display Control Commands" (`GP1(05h)` to
-//! `GP1(08h)`), "GPU Video Memory (VRAM)" (15- and 24-bit display) and "GPU Timings" (dotclocks).
+//! The displayed picture, written from psx-spx "GPU Display Control Commands" (`GP1(05h)` to `GP1(08h)`), "GPU Video
+//! Memory (VRAM)" (15- and 24-bit display) and "GPU Timings" (dotclocks).
 
 use super::{Gpu, VRAM_HEIGHT, VRAM_WIDTH};
 
 /// The picture the GPU sends to the television, as 8-bit RGBA.
-///
-/// It is the display area of VRAM: `width` pixels from the `GP1(05h)` start, the count psx-spx
-/// gives for the `GP1(06h)` range, by `height` lines from the `GP1(07h)` range. In 480-line
-/// interlaced mode both fields are in VRAM and the frame weaves them, as a television shows two
-/// fields. Where the range puts the picture on the screen, and the border around it, is not
-/// part of the frame. A display turned off with `GP1(03h)` gives a black frame of the same size.
-///
-/// 15-bit pixels widen each 5-bit channel `c` to `c << 3 | c >> 2`, so that full white is 255;
-/// psx-spx does not give the console's analogue output levels. The mask bit is not shown and
-/// alpha is always 255.
+/// It is the display area of VRAM: `width` pixels from the `GP1(05h)` start, the count psx-spx gives for the `GP1(06h)`
+/// range, by `height` lines from the `GP1(07h)` range.
+/// 15-bit pixels widen each 5-bit channel `c` to `c << 3 | c >> 2`, so that full white is 255; psx-spx does not give
+/// the console's analogue output levels.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Frame {
     /// Pixels per line.
@@ -25,8 +19,8 @@ pub struct Frame {
     pub rgba: Vec<u8>,
 }
 
-/// psx-spx "GPU Timings", Dotclocks: video clocks per pixel for `GP1(08h)` horizontal
-/// resolutions 256, 320, 512 and 640.
+/// psx-spx "GPU Timings", Dotclocks: video clocks per pixel for `GP1(08h)` horizontal resolutions 256, 320, 512 and
+/// 640.
 const CLOCKS_PER_PIXEL: [u32; 4] = [10, 8, 5, 4];
 /// The same, for the 368-pixel resolution (`GP1(08h)` bit 6).
 const CLOCKS_PER_PIXEL_368: u32 = 7;

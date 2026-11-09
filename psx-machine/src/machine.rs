@@ -10,8 +10,7 @@ use crate::disc::{Disc, ImageDisc};
 use crate::exe::{Executable, SystemConfig};
 use crate::{Error, Halt};
 
-/// Cycles one instruction costs. The R3000A runs most instructions in one cycle from the
-/// instruction cache, but loads and uncached fetches stall; two is a common average.
+/// Cycles one instruction costs.
 const CYCLES_PER_INSTRUCTION: u64 = 2;
 /// Cycles between device updates.
 const SYNC_INTERVAL: u64 = 64;
@@ -72,13 +71,8 @@ impl Machine {
         machine
     }
 
-    /// Opens the disc image at `path` (CUE sheet, raw `.bin` or `.iso`), puts it in the drive,
-    /// and loads the executable `SYSTEM.CNF` names, ready to run from its entry point.
-    ///
-    /// # Errors
-    ///
-    /// [`Error::Disc`] when the image cannot be read, [`Error::Boot`] when `SYSTEM.CNF` or the
-    /// executable is missing or malformed.
+    /// Opens the disc image at `path` (CUE sheet, raw `.bin` or `.iso`), puts it in the drive, and loads the executable
+    /// `SYSTEM.CNF` names, ready to run from its entry point.
     pub fn boot_image(path: impl AsRef<Path>) -> Result<Self, Error> {
         let mut disc = ImageDisc::open(path)?;
         let image = disc.image_mut();
@@ -103,12 +97,8 @@ impl Machine {
         self.bus.cdrom.insert(disc);
     }
 
-    /// Loads a PS-X EXE and points the CPU at its entry, as the BIOS does after boot: the stack
-    /// from the header, else `stack`, else 0x801FFF00.
-    ///
-    /// # Errors
-    ///
-    /// [`Error::Boot`] when `bytes` is not a PS-X EXE.
+    /// Loads a PS-X EXE and points the CPU at its entry, as the BIOS does after boot: the stack from the header, else
+    /// `stack`, else 0x801FFF00.
     pub fn load_executable(&mut self, bytes: &[u8], stack: Option<u32>) -> Result<(), Error> {
         let exe = Executable::parse(bytes).map_err(|message| Error::Boot(message.into()))?;
         self.write_ram(exe.load_address, exe.body);
@@ -176,8 +166,7 @@ impl Machine {
         self.bus.gpu.display()
     }
 
-    /// Turns rasterizing draw commands into VRAM on (the default) or off; the GPU log records
-    /// every command either way.
+    /// Turns rasterizing draw commands into VRAM on (the default) or off; the GPU log records every command either way.
     pub fn set_rasterize(&mut self, on: bool) {
         self.bus.gpu.set_rasterize(on);
     }
@@ -222,10 +211,6 @@ impl Machine {
     }
 
     /// Runs one instruction, or one kernel call.
-    ///
-    /// # Errors
-    ///
-    /// The [`Halt`] that stopped the machine.
     pub fn step(&mut self) -> Result<(), Halt> {
         self.tick()
     }
@@ -247,10 +232,6 @@ impl Machine {
     }
 
     /// Runs until the next instruction is at `pc`, or `budget` instructions have run.
-    ///
-    /// # Errors
-    ///
-    /// The [`Halt`] that stopped the machine.
     pub fn run_until_pc(&mut self, pc: u32, budget: u64) -> Result<Stop, Halt> {
         for _ in 0..budget {
             if self.cpu.pc() == pc {
@@ -262,10 +243,6 @@ impl Machine {
     }
 
     /// Runs `frames` vertical blanks, or until `budget` instructions have run.
-    ///
-    /// # Errors
-    ///
-    /// The [`Halt`] that stopped the machine.
     pub fn run_frames(&mut self, frames: u64, budget: u64) -> Result<Stop, Halt> {
         let target = self.frame() + frames;
         self.run_until(|machine| machine.frame() >= target, budget).map(|stop| match stop {
@@ -275,10 +252,6 @@ impl Machine {
     }
 
     /// Runs until `condition` holds before an instruction, or `budget` instructions have run.
-    ///
-    /// # Errors
-    ///
-    /// The [`Halt`] that stopped the machine.
     pub fn run_until(&mut self, mut condition: impl FnMut(&Machine) -> bool, budget: u64) -> Result<Stop, Halt> {
         for _ in 0..budget {
             if condition(self) {

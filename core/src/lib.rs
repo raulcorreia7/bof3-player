@@ -1,19 +1,6 @@
 // SPDX-License-Identifier: MIT
-//! # bof3player
-//!
-//! PlayStation audio for *Breath of Fire III*: VAB soundbanks, SEP sequences,
-//! CD-ROM XA streams and CD-DA, rendered through an SPU-accurate voice engine.
-//!
-//! The engine owns the audio device and the mixing thread; this crate only
-//! produces samples. Open a [`Library`] over a [`Source`], look items up in its
-//! [`Catalog`], and pull PCM from a [`Player`]. The generic PlayStation audio
-//! (SPU, XA and CD-DA playback, file sources, WAV/FLAC/Ogg export) lives in
-//! `psx_audio` and is re-exported here.
-//!
-//! The catalog knows ids, paths and formats only. [`Library::open`] supplies
-//! ids and archive names; [`Library::open_with`] takes an embedder's [`Naming`]
-//! implementation.
-//!
+//! PlayStation audio for *Breath of Fire III*: VAB soundbanks, SEP sequences, CD-ROM XA streams and CD-DA, rendered
+//! through an SPU-accurate voice engine.
 //! ```no_run
 //! use bof3player::{Library, MemorySource};
 //!
@@ -30,18 +17,6 @@
 //! # Ok(())
 //! # }
 //! ```
-//!
-//! ## Features
-//!
-//! * `std` (default): folder and disc-image sources and `Read + Seek` adapters.
-//!   WAV and FLAC export work without it (`no_std + alloc`).
-//! * `ogg` (default): Ogg Vorbis export through the bundled libvorbis; adds a
-//!   C compiler at build time.
-//! * `names` (off): the names file reader, [`names::Names`].
-//! * `bundled-names` (off): the shipped names embedded as [`names::game_names`].
-//! * `audio` (off): the [`deck`] audio output through `cpal`.
-//! * `gui` (off): the `bof3player-gui` window.
-//! * `cli` (off): the `bof3player` binary and its terminal browser.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]

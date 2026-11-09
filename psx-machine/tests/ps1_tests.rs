@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-//! Runs programs from JaCzekanski's MIT-licensed `ps1-tests` suite when `PS1_TESTS_DIR` names an
-//! unpacked release (the folder holding `dma/`, `cpu/` and the rest): those that report their own
-//! results, and the GPU programs whose VRAM after drawing is compared with the `vram.png` the
-//! suite ships, a dump from a console. Skips otherwise; the suite is not part of the repository.
+//! Runs programs from JaCzekanski's MIT-licensed `ps1-tests` suite when `PS1_TESTS_DIR` names an unpacked release (the
+//! folder holding `dma/`, `cpu/` and the rest): those that report their own results, and the GPU programs whose VRAM
+//! after drawing is compared with the `vram.png` the suite ships, a dump from a console.
 
 use std::path::{Path, PathBuf};
 
@@ -45,9 +44,8 @@ type Area = (usize, usize, usize, usize);
 /// All of VRAM.
 const WHOLE_VRAM: Area = (0, 0, VRAM_WIDTH, VRAM_HEIGHT);
 
-/// Runs the GPU program `gpu/<name>/<name>.exe` and counts the pixels in `area` whose colour
-/// differs from its `vram.png`; the mask bit is not compared, the dumps do not carry it. On a
-/// difference the machine's VRAM is written to `target/tmp/ps1_tests/<name>.png` to look at.
+/// Runs the GPU program `gpu/<name>/<name>.exe` and counts the pixels in `area` whose colour differs from its
+/// `vram.png`; the mask bit is not compared, the dumps do not carry it.
 fn vram_differences(name: &str, area: Area) -> Option<usize> {
     let (machine, root) = run_machine(&format!("gpu/{name}/{name}.exe"), DRAW_FRAMES)?;
     let reference = reference_vram(&root.join("gpu").join(name).join("vram.png"));
@@ -128,9 +126,8 @@ fn gpu_clut_cache_matches_the_console() {
     assert_vram_matches("clut-cache", WHOLE_VRAM, 0);
 }
 
-/// The 64 pixels are the closing segments of the two Gouraud poly-lines, from vertex 3 back to
-/// vertex 1: the program never sets vertex 3's colour (it calls `setRGB2` twice), so the console
-/// drew it in whatever its stack held.
+/// The 64 pixels are the closing segments of the two Gouraud poly-lines, from vertex 3 back to vertex 1: the program
+/// never sets vertex 3's colour (it calls `setRGB2` twice), so the console drew it in whatever its stack held.
 #[test]
 fn gpu_lines_match_the_console() {
     assert_vram_matches("lines", WHOLE_VRAM, 64);
@@ -156,8 +153,8 @@ fn gpu_texture_overflow_matches_the_console() {
     assert_vram_matches("texture-overflow", WHOLE_VRAM, 0);
 }
 
-/// Only the 320x240 screen: the program clears nothing else, and the rest of the dump is VRAM
-/// the console held before the program ran.
+/// Only the 320x240 screen: the program clears nothing else, and the rest of the dump is VRAM the console held before
+/// the program ran.
 #[test]
 fn gpu_transparency_matches_the_console() {
     assert_vram_matches("transparency", (0, 0, 320, 240), 0);

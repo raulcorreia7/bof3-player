@@ -1,14 +1,4 @@
-//! Texture-page and CLUT words of the PlayStation GPU, and the packed texel rows of
-//! 4bpp and 8bpp textures.
-//!
-//! A textured primitive names the texture it samples with a `tpage` word and the
-//! palette row it reads with a `clut` word. [`Tpage`] and [`Clut`] decode and encode
-//! those words. [`texel_indices`] unpacks a texel row: each VRAM word holds
-//! `16 / depth` texel indices, the lowest bits first. The codec knows nothing of
-//! which texture or palette a draw uses; that association belongs to the caller.
-//!
-//! # Examples
-//!
+//! Texture-page and CLUT words of the PlayStation GPU, and the packed texel rows of 4bpp and 8bpp textures.
 //! ```
 //! use psx_formats::gfx::texture::{Depth, texel_indices, texel_words};
 //!
@@ -18,28 +8,10 @@
 //! ```
 
 /// VRAM words per texture-page column step (`tpage` bits 0-3).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::gfx::texture::PAGE_COLUMN_WORDS, 64);
-/// ```
 pub const PAGE_COLUMN_WORDS: u16 = 64;
 /// VRAM rows between the two texture-page rows (`tpage` bit 4).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::gfx::texture::PAGE_ROW_ROWS, 256);
-/// ```
 pub const PAGE_ROW_ROWS: u16 = 256;
 /// VRAM words per CLUT column step: a CLUT starts at a multiple of this.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::gfx::texture::CLUT_COLUMN_WORDS, 16);
-/// ```
 pub const CLUT_COLUMN_WORDS: u16 = 16;
 /// The CLUT word holds the VRAM row from this bit up (`clut` bits 6-14).
 const CLUT_ROW_SHIFT: u32 = 6;
@@ -55,9 +27,6 @@ const BLEND_SHIFT: u32 = 5;
 const TPAGE_FIELD_MASK: u16 = 0x1ff;
 
 /// The bit depth of a palettized texel.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::texture::Depth;
 ///
@@ -74,9 +43,6 @@ pub enum Depth {
 
 impl Depth {
     /// Bits per texel index.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// assert_eq!(psx_formats::gfx::texture::Depth::Eight.bits(), 8);
     /// ```
@@ -88,9 +54,6 @@ impl Depth {
     }
 
     /// Texel indices packed in one VRAM word.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// assert_eq!(psx_formats::gfx::texture::Depth::Four.texels_per_word(), 4);
     /// ```
@@ -99,9 +62,6 @@ impl Depth {
     }
 
     /// Colors in one CLUT row of this depth.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// assert_eq!(psx_formats::gfx::texture::Depth::Four.colors(), 16);
     /// ```
@@ -111,9 +71,6 @@ impl Depth {
 }
 
 /// The color mode a texture page selects (`tpage` bits 7-8).
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::texture::{Color, Depth, Tpage};
 ///
@@ -129,9 +86,6 @@ pub enum Color {
 }
 
 /// The fields of a texture-page word.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::texture::{Color, Depth, Tpage};
 ///
@@ -152,11 +106,7 @@ pub struct Tpage {
 }
 
 impl Tpage {
-    /// Decodes a texture-page word. Returns `None` for color mode `3`, which the GPU
-    /// reserves. Dither and display bits (9-15) are not part of the model.
-    ///
-    /// # Examples
-    ///
+    /// Decodes a texture-page word.
     /// ```
     /// use psx_formats::gfx::texture::Tpage;
     ///
@@ -179,9 +129,6 @@ impl Tpage {
     }
 
     /// Encodes the fields back to a texture-page word (bits 0-8 only).
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_formats::gfx::texture::Tpage;
     ///
@@ -201,9 +148,6 @@ impl Tpage {
 }
 
 /// A CLUT's VRAM position: `x` in words (a multiple of 16) and `y` in rows.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::texture::Clut;
 ///
@@ -221,9 +165,6 @@ pub struct Clut {
 
 impl Clut {
     /// Decodes a `clut` word (`x / 16` in bits 0-5, the row in bits 6-14).
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let clut = psx_formats::gfx::texture::Clut::from_word(0x0081);
     /// assert_eq!((clut.x, clut.y), (16, 2));
@@ -232,11 +173,7 @@ impl Clut {
         Self { x: (word & 0x3f) * CLUT_COLUMN_WORDS, y: (word >> CLUT_ROW_SHIFT) & CLUT_ROW_MASK }
     }
 
-    /// The position as a `clut` word, or `None` when `x` is not a multiple of 16 or
-    /// either field is outside VRAM.
-    ///
-    /// # Examples
-    ///
+    /// The position as a `clut` word, or `None` when `x` is not a multiple of 16 or either field is outside VRAM.
     /// ```
     /// use psx_formats::gfx::texture::Clut;
     ///
@@ -249,9 +186,6 @@ impl Clut {
     }
 
     /// Encodes the position as a `clut` word.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// assert_eq!(psx_formats::gfx::texture::Clut::new(32, 1).unwrap().word(), 0x0042);
     /// ```
@@ -260,12 +194,7 @@ impl Clut {
     }
 }
 
-/// Packs texel indices into VRAM words, lowest bits first: the inverse of
-/// [`texel_indices`]. A short last word keeps its low texels and reads zero above
-/// them.
-///
-/// # Examples
-///
+/// Packs texel indices into VRAM words, lowest bits first: the inverse of [`texel_indices`].
 /// ```
 /// use psx_formats::gfx::texture::{Depth, texel_words};
 ///
@@ -286,9 +215,6 @@ pub fn texel_words(indices: &[u8], depth: Depth) -> Vec<u16> {
 }
 
 /// Unpacks the texel indices of a row of VRAM words, lowest bits first.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::texture::{Depth, texel_indices};
 ///

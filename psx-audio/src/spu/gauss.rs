@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Generated from the psx-spx "4-Point Gaussian Interpolation" table. Hardware constants; do not edit.
+// Generated from the psx-spx "4-Point Gaussian Interpolation" table.
 /// The 512-entry SPU Gaussian interpolation table.
 pub(crate) const GAUSS: [i16; 512] = [
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3,

@@ -1,11 +1,4 @@
 //! Disc images: sector layout detection, the ISO9660 file table and file reads.
-//!
-//! An image is a cooked 2048-byte ISO, a raw 2352-byte Mode 1 or Mode 2 image,
-//! or a CUE sheet that names its data track. The layout is detected from the
-//! primary volume descriptor at sector 16.
-//!
-//! # Examples
-//!
 //! ```
 //! use psx_cd::{Image, rebuild};
 //!
@@ -30,20 +23,8 @@ use crate::error::{Error, Result};
 use crate::iso9660::{DirectoryRecord, XaAttributes, normalized_name, parse_record};
 
 /// User bytes in a cooked or Form 1 sector.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_cd::ISO_SECTOR_SIZE, 2048);
-/// ```
 pub const ISO_SECTOR_SIZE: u64 = 2048;
 /// Bytes in a raw CD sector: sync, header, subheader, user data and checksums.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_cd::RAW_SECTOR_SIZE, 2352);
-/// ```
 pub const RAW_SECTOR_SIZE: u64 = 2352;
 /// Sync pattern (12) plus sector header (4) before a Mode 2 sector's subheader.
 const RAW_HEADER_SIZE: u64 = 16;
@@ -55,22 +36,11 @@ const PVD_SECTOR: u64 = 16;
 const PVD_ROOT_RECORD: usize = 156;
 /// The raw sectors before the volume descriptors hold the license text.
 const LICENSE_SECTORS: u64 = 12;
-/// Bytes of an XA sector without sync and header: subheader, payload and EDC
-/// (`psx-spx` "CDROM XA Subheader, File, Channel, Interleave").
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_cd::XA_SECTOR_SIZE, 2336);
-/// ```
+/// Bytes of an XA sector without sync and header: subheader, payload and EDC (`psx-spx` "CDROM XA Subheader, File,
+/// Channel, Interleave").
 pub const XA_SECTOR_SIZE: usize = 2336;
 
 /// A source of image bytes: a file, memory or any other random-access reader.
-///
-/// The trait is implemented for every `Read + Seek + Send` type.
-///
-/// # Examples
-///
 /// ```
 /// let reader = std::io::Cursor::new(vec![0_u8; 2352]);
 /// fn accepts(_: &dyn psx_cd::ReadSeek) {}
@@ -86,11 +56,7 @@ struct SectorLayout {
     data_offset: u64,
 }
 
-/// An open disc image: a cooked 2048-byte or raw 2352-byte image, reached
-/// directly or through its CUE sheet.
-///
-/// # Examples
-///
+/// An open disc image: a cooked 2048-byte or raw 2352-byte image, reached directly or through its CUE sheet.
 /// ```no_run
 /// # fn main() -> Result<(), psx_cd::Error> {
 /// let mut image = psx_cd::Image::open("disc.cue")?;
@@ -108,9 +74,6 @@ pub struct Image {
 }
 
 /// One file or directory of the disc's file table.
-///
-/// # Examples
-///
 /// ```
 /// let entry = psx_cd::Entry {
 ///     path: "DIR/FILE.BIN".into(),
@@ -129,8 +92,7 @@ pub struct Entry {
     pub path: PathBuf,
     /// First sector of the entry, as the directory record stores it.
     pub lba: u32,
-    /// Size in bytes as the directory record stores it. A Form 2 file records
-    /// `sectors * 2048` bytes although each sector holds 2336.
+    /// Size in bytes as the directory record stores it.
     pub size: u32,
     /// Whether the record marks a directory.
     pub is_directory: bool,
@@ -143,11 +105,7 @@ pub struct Entry {
 }
 
 impl Entry {
-    /// Sectors the file occupies: its record size in 2048-byte units. A Form 2
-    /// file records `sectors * 2048` bytes although each sector holds 2336.
-    ///
-    /// # Examples
-    ///
+    /// Sectors the file occupies: its record size in 2048-byte units.
     /// ```
     /// # let entry = psx_cd::Entry { path: "A.BIN".into(), lba: 20, size: 2049,
     /// #     is_directory: false, extended_attributes: 0, is_xa: false, xa: None };
@@ -160,9 +118,6 @@ impl Entry {
 
 impl Image {
     /// Opens an image path, or the data track a CUE sheet names.
-    ///
-    /// # Examples
-    ///
     /// ```no_run
     /// # fn main() -> Result<(), psx_cd::Error> {
     /// let image = psx_cd::Image::open("disc.cue")?;
@@ -183,9 +138,6 @@ impl Image {
     }
 
     /// Opens a cooked or raw single-track image read from `reader`, which has no CUE sheet.
-    ///
-    /// # Examples
-    ///
     /// ```no_run
     /// # fn main() -> Result<(), psx_cd::Error> {
     /// let bytes = std::fs::read("disc.iso")?;
@@ -210,11 +162,8 @@ impl Image {
         Ok(Self { file, file_len, layout, root, cue_path })
     }
 
-    /// Writes the license sectors, every file and the audio tracks under
-    /// `output`, and returns the written files in path order.
-    ///
-    /// # Examples
-    ///
+    /// Writes the license sectors, every file and the audio tracks under `output`, and returns the written files in
+    /// path order.
     /// ```no_run
     /// # fn main() -> Result<(), psx_cd::Error> {
     /// let written = psx_cd::Image::open("disc.cue")?.extract("extracted")?;
@@ -250,9 +199,6 @@ impl Image {
     }
 
     /// The license sectors as 2336-byte XA sectors, or `None` on a cooked image.
-    ///
-    /// # Examples
-    ///
     /// ```no_run
     /// # fn main() -> Result<(), psx_cd::Error> {
     /// let mut image = psx_cd::Image::open("disc.bin")?;
@@ -268,9 +214,6 @@ impl Image {
     }
 
     /// The CUE sheet the image was opened through, if any.
-    ///
-    /// # Examples
-    ///
     /// ```no_run
     /// # fn main() -> Result<(), psx_cd::Error> {
     /// let image = psx_cd::Image::open("disc.cue")?;
@@ -283,9 +226,6 @@ impl Image {
     }
 
     /// Whether the image stores raw 2352-byte sectors.
-    ///
-    /// # Examples
-    ///
     /// ```no_run
     /// # fn main() -> Result<(), psx_cd::Error> {
     /// assert!(psx_cd::Image::open("disc.bin")?.is_raw());
@@ -298,12 +238,6 @@ impl Image {
     }
 
     /// Reads up to `out.len()` bytes of `entry` at `offset`.
-    ///
-    /// A Form 2 file on a raw image reads as 2336-byte sectors; any other file
-    /// reads its 2048-byte user data, after its extended attributes.
-    ///
-    /// # Examples
-    ///
     /// ```no_run
     /// # fn main() -> Result<(), psx_cd::Error> {
     /// # let mut image = psx_cd::Image::open("disc.iso")?;
@@ -352,9 +286,6 @@ impl Image {
     }
 
     /// Every file and directory of the file table, in path order.
-    ///
-    /// # Examples
-    ///
     /// ```no_run
     /// # fn main() -> Result<(), psx_cd::Error> {
     /// let mut image = psx_cd::Image::open("disc.iso")?;
@@ -383,11 +314,8 @@ impl Image {
         Ok(entries)
     }
 
-    /// The bytes of one file: 2048-byte sectors trimmed to the recorded size,
-    /// or whole 2336-byte sectors for an XA file on a raw image.
-    ///
-    /// # Examples
-    ///
+    /// The bytes of one file: 2048-byte sectors trimmed to the recorded size, or whole 2336-byte sectors for an XA file
+    /// on a raw image.
     /// ```no_run
     /// # fn main() -> Result<(), psx_cd::Error> {
     /// let mut image = psx_cd::Image::open("disc.iso")?;
@@ -430,14 +358,14 @@ impl Image {
             if end > bytes.len() {
                 return Err(Error::InvalidImage("directory record is truncated"));
             }
-            if let Some(record) = parse_record(&bytes[cursor..end])? {
-                // Identifiers 0 and 1 are the directory itself and its parent.
-                if record.name != [0] && record.name != [1] {
-                    let path = parent.join(normalized_name(&record.name)?);
-                    on_record(self, parent, &record, &path)?;
-                    if record.is_directory() {
-                        self.walk_directory(&record, &path, visited, on_record)?;
-                    }
+            if let Some(record) = parse_record(&bytes[cursor..end])?
+                && record.name != [0]
+                && record.name != [1]
+            {
+                let path = parent.join(normalized_name(&record.name)?);
+                on_record(self, parent, &record, &path)?;
+                if record.is_directory() {
+                    self.walk_directory(&record, &path, visited, on_record)?;
                 }
             }
             cursor = end;
@@ -491,11 +419,7 @@ impl Image {
     }
 }
 
-/// The one disc image in `directory`: a lone `.cue`, else a lone `.iso`, else a
-/// lone `.bin`. Several candidates of the first kind present are an error.
-///
-/// # Examples
-///
+/// The one disc image in `directory`: a lone `.cue`, else a lone `.iso`, else a lone `.bin`.
 /// ```
 /// let dir = tempfile::tempdir().unwrap();
 /// std::fs::write(dir.path().join("disc.iso"), b"").unwrap();

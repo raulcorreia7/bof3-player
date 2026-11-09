@@ -1,19 +1,9 @@
 // SPDX-License-Identifier: MIT
-//! The game's XA cue table: the start/end pairs `fcn.80163744` reads from
-//! `SLUS_004.22`, and the battle overlay's voice table that names a cue.
-//!
-//! Three `.STR` files have a pair array at `[0x8018323C + 4*file]` (file 0
-//! `S_XA00`, file 1 `MAGIC00`, file 2 `VOICE`). The scan consumes one u16 per
-//! cue and two for an entry with bit 15 set, so a flagged entry starts the next
-//! channel's last cue. A cue's first stream sector is `channel + period*start`;
-//! its audio sectors are that channel's sectors from `start` to `end`.
-//!
-//! A magic cue is asked for by `0x1000 | ordinal`, where the ordinal indexes
-//! the file and the ability index selects a record in the battle overlay's
-//! voice table (`0x800B6178`). The record's second byte is the voice slot the
-//! acting character or enemy passes. The overlay is entry 15 of
-//! `BIN/BATTLE/BATTLE.EMI`; ability names are the 228 records at `GAME.EMI`
-//! archive offset `0x3570C`.
+//! The game's XA cue table: the start/end pairs `fcn.80163744` reads from `SLUS_004.22`, and the battle overlay's voice
+//! table that names a cue.
+//! Three `.STR` files have a pair array at `[0x8018323C + 4*file]` (file 0 `S_XA00`, file 1 `MAGIC00`, file 2 `VOICE`).
+//! A magic cue is asked for by `0x1000 | ordinal`, where the ordinal indexes the file and the ability index selects a
+//! record in the battle overlay's voice table (`0x800B6178`).
 
 use alloc::borrow::Cow;
 use alloc::collections::BTreeMap;
@@ -95,9 +85,8 @@ pub(crate) struct CueTable {
 }
 
 impl CueTable {
-    /// Read the cue arrays from the executable and the voice names from the
-    /// battle archive; a source without them gets an empty table, and the
-    /// catalog keeps the EOF spans.
+    /// Read the cue arrays from the executable and the voice names from the battle archive; a source without them gets
+    /// an empty table, and the catalog keeps the EOF spans.
     pub fn new(source: &dyn Source, naming: &dyn Naming) -> Self {
         let mut table = Self::default();
         if let Some(bytes) = read(source, EXE) {
@@ -113,8 +102,7 @@ impl CueTable {
         self.files.get(index).map_or(&[], Vec::as_slice)
     }
 
-    /// The name the voice table gives a cue ordinal, when the ability and its
-    /// voice slot are known.
+    /// The name the voice table gives a cue ordinal, when the ability and its voice slot are known.
     #[must_use]
     pub fn name(&self, ordinal: u16) -> Option<&str> {
         self.names.get(&ordinal).map(String::as_str)
@@ -159,8 +147,7 @@ fn va_at(bytes: &[u8], va: u32) -> Option<usize> {
     (at < bytes.len()).then_some(at)
 }
 
-/// The pair arrays of the three files. A missing or malformed executable gives
-/// no cues, which leaves the catalog's EOF spans in place.
+/// The pair arrays of the three files.
 fn parse_exe(bytes: &[u8]) -> [Vec<Cue>; FILES] {
     let mut files = [Vec::new(), Vec::new(), Vec::new()];
     if bytes.get(..8) != Some(b"PS-X EXE") {
@@ -223,9 +210,7 @@ fn parse_cues(values: &[u16], file: usize) -> Vec<Cue> {
     cues
 }
 
-/// Cue ordinal to `"<ability> voice <slot>"`, from the battle overlay's slot
-/// table and the game's ability names. A source without the archives gives no
-/// names.
+/// Cue ordinal to `"<ability> voice <slot>"`, from the battle overlay's slot table and the game's ability names.
 fn voice_names(source: &dyn Source, naming: &dyn Naming) -> BTreeMap<u16, String> {
     let mut names = BTreeMap::new();
     let Some(battle) = read(source, BATTLE) else { return names };
@@ -252,8 +237,7 @@ fn voice_names(source: &dyn Source, naming: &dyn Naming) -> BTreeMap<u16, String
     names
 }
 
-/// The name field of one ability record, without its padding. `0xFF` is the
-/// name encoding's space; printable ASCII is itself.
+/// The name field of one ability record, without its padding.
 fn ability_name(payload: &[u8], index: usize) -> Option<String> {
     if index >= ABILITY_COUNT {
         return None;

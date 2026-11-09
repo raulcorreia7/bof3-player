@@ -1,12 +1,5 @@
-//! CD-ROM XA ADPCM streams (psx-spx, "CDROM XA Subheader, File, Channel,
-//! Interleave" and "CDROM XA Audio ADPCM Compression").
-//!
-//! A stream is a run of 2336-byte sectors (8-byte subheader, 2324 data bytes:
-//! eighteen 128-byte sound groups and 20 bytes of padding). Channels are
-//! interleaved by the subheader's channel byte.
-//!
-//! # Examples
-//!
+//! CD-ROM XA ADPCM streams (psx-spx, "CDROM XA Subheader, File, Channel, Interleave" and "CDROM XA Audio ADPCM
+//! Compression").
 //! ```
 //! let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
 //! sector[2] = 0x04;
@@ -19,28 +12,10 @@ use crate::adpcm::{self, BLOCK_SAMPLES, Rounding, State};
 use crate::error::{Error, Result};
 
 /// Bytes of one sector as stored in an extracted stream (subheader + data + EDC).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::xa::SECTOR_BYTES, 2336);
-/// ```
 pub const SECTOR_BYTES: usize = 2336;
 /// Normal sample rate (Hz).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::xa::RATE, 37_800);
-/// ```
 pub const RATE: u32 = 37_800;
 /// Low sample rate selected by coding bit 2 (Hz).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::xa::rate(0x04), psx_formats::xa::RATE_LOW);
-/// ```
 pub const RATE_LOW: u32 = 18_900;
 
 const SUBHEADER_BYTES: usize = 8;
@@ -66,9 +41,6 @@ const MONO_FRAMES_PER_GROUP: usize = BLOCKS_PER_GROUP * 2 * BLOCK_SAMPLES;
 const STEREO_FRAMES_PER_GROUP: usize = BLOCKS_PER_GROUP * BLOCK_SAMPLES;
 
 /// Sample rate for a coding byte.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::xa::{RATE, RATE_LOW, rate};
 ///
@@ -81,9 +53,6 @@ pub fn rate(coding: u8) -> u32 {
 }
 
 /// Output channels (1 or 2) for a coding byte.
-///
-/// # Examples
-///
 /// ```
 /// assert_eq!(psx_formats::xa::channels(0x00), 1);
 /// assert_eq!(psx_formats::xa::channels(0x01), 2);
@@ -94,9 +63,6 @@ pub fn channels(coding: u8) -> u32 {
 }
 
 /// Frames in one sector.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::xa::frames_per_sector;
 ///
@@ -110,9 +76,6 @@ pub fn frames_per_sector(coding: u8) -> u32 {
 }
 
 /// Duration of `sectors` sectors of one channel, in seconds.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::xa::{duration, frames_per_sector, rate};
 ///
@@ -125,9 +88,6 @@ pub fn duration(sectors: u32, coding: u8) -> f64 {
 }
 
 /// Whether `sector` (2336 bytes) is an audio sector.
-///
-/// # Examples
-///
 /// ```
 /// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
 /// sector[2] = 0x04;
@@ -139,9 +99,6 @@ pub fn is_audio(sector: &[u8]) -> bool {
 }
 
 /// Whether `sector` carries the end-of-file bit.
-///
-/// # Examples
-///
 /// ```
 /// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
 /// sector[2] = 0x80;
@@ -153,9 +110,6 @@ pub fn is_eof(sector: &[u8]) -> bool {
 }
 
 /// A run of one channel's sectors closed by an EOF marker.
-///
-/// # Examples
-///
 /// ```
 /// let span = psx_formats::xa::Span { first: 2, eof: 5, sectors: 4 };
 /// assert_eq!(span.eof - span.first, 3);
@@ -171,9 +125,6 @@ pub struct Span {
 }
 
 /// What a scan found for one (file, channel) pair.
-///
-/// # Examples
-///
 /// ```
 /// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
 /// sector[2] = 0x04;
@@ -203,9 +154,6 @@ pub struct Channel {
 }
 
 /// Incremental scanner: feed sectors in stream order.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::xa::{SECTOR_BYTES, Scanner};
 ///
@@ -223,9 +171,6 @@ pub struct Scanner {
 
 impl Scanner {
     /// A scanner at stream sector 0.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let scanner = psx_formats::xa::Scanner::new();
     /// assert!(scanner.finish().is_empty());
@@ -236,9 +181,6 @@ impl Scanner {
     }
 
     /// Account for the next sector of the stream.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
     /// sector[2] = 0x04;
@@ -279,9 +221,6 @@ impl Scanner {
     }
 
     /// Finish: every EOF closed one span, a span left over is the open run.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
     /// sector[2] = 0x04;
@@ -308,9 +247,6 @@ impl Scanner {
 }
 
 /// Scan a whole in-memory stream.
-///
-/// # Examples
-///
 /// ```
 /// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
 /// sector[2] = 0x04;
@@ -327,11 +263,7 @@ pub fn scan(stream: &[u8]) -> Vec<Channel> {
     scanner.finish()
 }
 
-/// Decodes the sectors of one channel, keeping the predictor chains running
-/// across sectors.
-///
-/// # Examples
-///
+/// Decodes the sectors of one channel, keeping the predictor chains running across sectors.
 /// ```
 /// use psx_formats::xa::{ChannelDecoder, SECTOR_BYTES, frames_per_sector};
 ///
@@ -352,9 +284,6 @@ pub struct ChannelDecoder {
 
 impl ChannelDecoder {
     /// A decoder for `channel`.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let decoder = psx_formats::xa::ChannelDecoder::new(3);
     /// assert_eq!(decoder.shape(), None);
@@ -365,9 +294,6 @@ impl ChannelDecoder {
     }
 
     /// Whether `sector` is an audio sector of this decoder's channel.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_formats::xa::{ChannelDecoder, SECTOR_BYTES};
     ///
@@ -382,9 +308,6 @@ impl ChannelDecoder {
     }
 
     /// `(channels, rate)` once a sector has been decoded.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_formats::xa::{ChannelDecoder, SECTOR_BYTES};
     ///
@@ -400,9 +323,6 @@ impl ChannelDecoder {
     }
 
     /// Decode one accepted sector, appending interleaved samples to `out`.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_formats::xa::{ChannelDecoder, SECTOR_BYTES};
     ///
@@ -453,9 +373,7 @@ impl ChannelDecoder {
 }
 
 /// One 28-sample run: block `block` (0..4) read with `nibble` (0 = low half).
-///
-/// psx-spx `decode_28_nibbles`: the header byte is at `4 + block*2 + nibble`,
-/// sample `j` at `16 + block + j*4`.
+/// psx-spx `decode_28_nibbles`: the header byte is at `4 + block*2 + nibble`, sample `j` at `16 + block + j*4`.
 fn decode_run(group: &[u8], block: usize, nibble: usize, out: &mut [i16], state: &mut State) {
     let header = group[HEADER_AT + block * 2 + nibble];
     let shift = header & 0x0F;
@@ -502,10 +420,8 @@ mod tests {
     fn stereo_group_layout_and_golden_samples() {
         let mut s = sector(1, 0, SUBMODE_AUDIO, 1);
         let group = &mut s[SUBHEADER_BYTES..SUBHEADER_BYTES + GROUP_BYTES];
-        // Headers: shift 12 for block 0 left and right, filter 0.
         group[HEADER_AT] = 0x0C;
         group[HEADER_AT + 1] = 0x0C;
-        // First data word, block 0: left nibble 3, right nibble 5.
         group[DATA_AT] = 0x53;
         let mut out = Vec::new();
         let mut decoder = ChannelDecoder::new(0);

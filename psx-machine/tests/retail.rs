@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-//! Boots the retail disc that `BOF3_DISC_DIR` names (a disc image, or a folder holding one): checks
-//! the first texture the game uploads against the EMI entry it came from, plays a new game with
-//! scripted buttons through the first battle, and checks that the first area displays the same
-//! frame on two runs. Skips when the variable is unset.
+//! Boots the retail disc that `BOF3_DISC_DIR` names (a disc image, or a folder holding one): checks the first texture
+//! the game uploads against the EMI entry it came from, plays a new game with scripted buttons through the first
+//! battle, and checks that the first area displays the same frame on two runs.
 
 use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -18,8 +17,7 @@ const DISTINCT_COLORS: usize = 64;
 /// Instructions the boot gets to reach its first texture upload: about 2000 frames.
 const BUDGET: u64 = 600_000_000;
 
-/// The disc image `BOF3_DISC_DIR` names, or `None` when it is unset. A folder without an image (an
-/// extracted disc, for example) fails the test instead of skipping it.
+/// The disc image `BOF3_DISC_DIR` names, or `None` when it is unset.
 fn disc_image() -> Option<PathBuf> {
     let path = PathBuf::from(std::env::var_os("BOF3_DISC_DIR").filter(|value| !value.is_empty())?);
     if !path.is_dir() {
@@ -92,7 +90,6 @@ fn first_texture_upload_matches_its_emi_entry() {
         .collect();
     assert_eq!(vram, pixels, "VRAM holds the uploaded rectangle");
 
-    // The EMI files under the sectors the game asked for.
     let mut disc = psx_cd::Image::open(&image).expect("the image opens");
     let entries = disc.entries().expect("the image has a file system");
     let mut files: Vec<psx_cd::Entry> = Vec::new();
@@ -132,8 +129,8 @@ fn first_texture_upload_matches_its_emi_entry() {
     );
 }
 
-/// Start through the title screen and the opening, then Cross to page through the dialogue and
-/// the first battle's commands.
+/// Start through the title screen and the opening, then Cross to page through the dialogue and the first battle's
+/// commands.
 fn buttons(frame: u64) -> u16 {
     const START: u16 = 1 << 3;
     const CROSS: u16 = 1 << 14;
@@ -147,9 +144,8 @@ fn buttons(frame: u64) -> u16 {
 /// Frames the scripted game gets to win its first battle and return to the field (about 8050).
 const NEW_GAME_FRAMES: u64 = 9000;
 
-/// Plays a new game with [`buttons`] until the game has read a `BIN/WORLD00` area after a
-/// `BIN/BOSS` battle, or [`NEW_GAME_FRAMES`] have run. Returns the machine and, when it got
-/// there, the frame of that read and the area file.
+/// Plays a new game with [`buttons`] until the game has read a `BIN/WORLD00` area after a `BIN/BOSS` battle, or
+/// [`NEW_GAME_FRAMES`] have run.
 fn play_through_the_first_battle(image: &Path, entries: &[psx_cd::Entry]) -> (Machine, Option<(u64, psx_cd::Entry)>) {
     let mut machine = Machine::boot_image(image).expect("the disc boots");
     let under = |entry: &psx_cd::Entry, folder: &str| entry.path.starts_with(Path::new(folder));
@@ -241,7 +237,6 @@ fn first_area_displays_the_same_frame_on_every_run() {
     };
     assert_eq!(hash(&frame), hash(&again), "two runs of the same buttons display the same frame");
 
-    // For a person to look at; not compared and not part of the repository.
     let folder = Path::new(env!("CARGO_TARGET_TMPDIR")).join("retail");
     std::fs::create_dir_all(&folder).expect("the temporary folder is writable");
     let png = psx_formats::gfx::png::rgba_png(frame.width as u32, frame.height as u32, &frame.rgba);

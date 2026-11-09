@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! EMI archives as the audio library reads them: the container table of `emi` bound to the
-//! bytes it was parsed from.
+//! EMI archives as the audio library reads them: the container table of `emi` bound to the bytes it was parsed from.
 
 use alloc::format;
 
