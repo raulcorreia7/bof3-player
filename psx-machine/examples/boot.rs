@@ -3,7 +3,8 @@
 //! prints what the game told the GPU.
 //!
 //! ```sh
-//! BOF3_DISC_DIR=/path/to/disc cargo run --release -p psx-machine --example boot -- 600
+//! cargo build --release -p psx-machine --example boot
+//! BOF3_DISC_DIR=/path/to/disc target/release/examples/boot 600
 //! ```
 
 use std::collections::BTreeMap;

@@ -64,8 +64,8 @@ machine) run it; a `Halt` names what stopped it, such as a kernel function with 
 `gpu_log`, `vram`, `display`, `ram`, `key_ons` and `kernel().tty` read the results.
 `Machine::new` gives a bare machine with no kernel, for tests on synthetic programs.
 
-With `BOF3_DISC_DIR` naming a *Breath of Fire III* (USA) image, `cargo run --release -p
-psx-machine --example boot -- 600` prints the frames run, GPU command counts and the VRAM
+With `BOF3_DISC_DIR` naming a *Breath of Fire III* (USA) image, `cargo build --release -p
+psx-machine --example boot`, then `target/release/examples/boot 600`, prints the frames run, GPU command counts and the VRAM
 rectangles written. `tests/retail.rs` checks that the game's first 32×32 texture upload equals
 the type-3 EMI entry it came from, and plays a new game with scripted buttons: Start through the
 title screen and the opening, then Cross every second. The game loads the first area

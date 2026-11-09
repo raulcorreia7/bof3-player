@@ -39,10 +39,11 @@ In the browser, Enter opens, `h` goes up, `o` uses the current folder and `q` qu
 `bof3player-gui` is a window with the terminal browser's features: the catalog as a tree of kind,
 family and item, ranked search, play, pause, seek, volume (click the speaker to mute), loop, play on, level meters, a spectrum
 analyzer, and export to WAV, FLAC, Ogg Vorbis and native files. It uses [gpui](https://gpui.rs)
-and runs on Linux, macOS and Windows. Build and run it from the repository root:
+and runs on Linux, macOS and Windows. Build it, then run it from the repository root:
 
 ```sh
-cargo run --release -p bof3player --features gui --bin bof3player-gui -- -i "Breath of Fire III.cue"
+make build-gui
+bin/bof3player-gui -i "Breath of Fire III.cue"
 ```
 
 On Linux, gpui needs the Wayland or X11, xkbcommon, fontconfig and Vulkan development packages.
