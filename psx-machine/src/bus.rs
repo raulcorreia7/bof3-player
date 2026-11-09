@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-//! The memory map: 2 MB of RAM and its mirrors, the 1 KB scratchpad, the I/O ports, the (empty)
-//! BIOS region and the cache control register, reached through KUSEG, KSEG0 and KSEG1
-//! (psx-spx "Memory Map").
+//! The memory map: 2 MB of RAM and its mirrors, the 1 KB scratchpad, the I/O ports, the (empty) BIOS region and the
+//! cache control register, reached through KUSEG, KSEG0 and KSEG1 (psx-spx "Memory Map").
 
 use crate::cdrom::Cdrom;
 use crate::dma::{Dma, channel};
@@ -36,8 +35,7 @@ pub enum Width {
     Word,
 }
 
-/// Physical address of a CPU address: KSEG2 stays as it is, the other segments drop their top
-/// three bits.
+/// Physical address of a CPU address: KSEG2 stays as it is, the other segments drop their top three bits.
 #[must_use]
 pub fn physical(address: u32) -> u32 {
     if address >= 0xC000_0000 { address } else { address & 0x1FFF_FFFF }
@@ -199,8 +197,8 @@ impl Bus {
         }
     }
 
-    /// Brings the timers and the CD-ROM controller up to the current cycle and stamps the frame
-    /// count on the device logs.
+    /// Brings the timers and the CD-ROM controller up to the current cycle and stamps the frame count on the device
+    /// logs.
     pub fn sync(&mut self) {
         let elapsed = self.timers.sync(self.cycles, &mut self.irq);
         if elapsed.vblanks > 0 {

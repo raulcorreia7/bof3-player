@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-//! PS-X EXE files: a 2 KB header with the entry point, the global pointer, the load address and
-//! the stack, then the code and data (psx-spx "CDROM File Formats", "PS-X EXE").
+//! PS-X EXE files: a 2 KB header with the entry point, the global pointer, the load address and the stack, then the
+//! code and data (psx-spx "CDROM File Formats", "PS-X EXE").
 
 /// The magic at the start of the header.
 pub const MAGIC: &[u8; 8] = b"PS-X EXE";
@@ -30,10 +30,6 @@ pub struct Executable<'a> {
 
 impl<'a> Executable<'a> {
     /// Parses `bytes`.
-    ///
-    /// # Errors
-    ///
-    /// A fixed message when the magic is missing or the body is shorter than the header says.
     pub fn parse(bytes: &'a [u8]) -> Result<Self, &'static str> {
         if bytes.len() < HEADER_SIZE || &bytes[..8] != MAGIC {
             return Err("not a PS-X EXE");

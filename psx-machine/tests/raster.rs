@@ -124,8 +124,8 @@ fn too_tall_polygons_are_not_drawn() {
     assert_eq!(written(&gpu, 8, 512), 0);
 }
 
-/// Uploads a 4-bit texel row (indices 0, 1, 2, 3 at page 1) and a CLUT at line 500, then draws
-/// a raw 4x1 textured rectangle from it.
+/// Uploads a 4-bit texel row (indices 0, 1, 2, 3 at page 1) and a CLUT at line 500, then draws a raw 4x1 textured
+/// rectangle from it.
 fn textured_rect(gpu: &mut Gpu, clut: [u16; 4]) {
     gpu.gp0(0xA000_0000);
     gpu.gp0(xy(0, 500));
