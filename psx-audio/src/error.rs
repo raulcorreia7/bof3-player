@@ -5,9 +5,6 @@ use alloc::string::String;
 use core::fmt;
 
 /// Result alias used across the crate.
-///
-/// # Examples
-///
 /// ```
 /// fn first(bytes: &[u8]) -> psx_audio::Result<u8> {
 ///     bytes.first().copied().ok_or_else(|| psx_audio::Error::invalid("empty input"))
@@ -19,13 +16,6 @@ use core::fmt;
 pub type Result<T> = core::result::Result<T, Error>;
 
 /// Why an operation failed.
-///
-/// Every variant carries a human-readable message that names the offending
-/// file, item or field. Match on the variant to decide what to do; show the
-/// message to the user.
-///
-/// # Examples
-///
 /// ```
 /// let error = psx_audio::Error::Unsupported("no encoder".into());
 /// assert_eq!(error.to_string(), "unsupported: no encoder");
@@ -47,9 +37,6 @@ pub enum Error {
 
 impl Error {
     /// A malformed or truncated input.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let error = psx_audio::Error::format("bad block header");
     /// assert_eq!(error.message(), "bad block header");
@@ -59,9 +46,6 @@ impl Error {
     }
 
     /// A caller-supplied argument that is out of range or names nothing.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let error = psx_audio::Error::invalid("channel 9 does not exist");
     /// assert!(matches!(error, psx_audio::Error::Invalid(_)));
@@ -71,9 +55,6 @@ impl Error {
     }
 
     /// A failed read or write on the underlying storage.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let error = psx_audio::Error::io("unexpected end of file");
     /// assert_eq!(error.message(), "unexpected end of file");
@@ -83,9 +64,6 @@ impl Error {
     }
 
     /// Prefix the message with where the error happened.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let error = psx_audio::Error::io("unexpected end").context("BGM/TRACK.STR");
     /// assert_eq!(error.message(), "BGM/TRACK.STR: unexpected end");
@@ -103,9 +81,6 @@ impl Error {
     }
 
     /// The message without the category.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let error = psx_audio::Error::Format("bad block".into());
     /// assert_eq!(error.message(), "bad block");

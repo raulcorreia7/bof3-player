@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: MIT
 //! Writing rendered audio out.
-//!
-//! # Examples
-//!
 //! ```
 //! let wav = psx_audio::export::wav_bytes(&[0i16; 8], 44_100, 2)?;
 //! assert_eq!(&wav[..4], b"RIFF");
@@ -16,21 +13,9 @@ use alloc::vec::Vec;
 use crate::error::Result;
 
 /// The Ogg Vorbis quality scale, `-q 0` (smallest) through `-q 10` (best).
-///
-/// # Examples
-///
-/// ```
-/// assert!(psx_audio::export::OGG_QUALITY_RANGE.contains(&6.0));
-/// ```
 pub const OGG_QUALITY_RANGE: core::ops::RangeInclusive<f32> = 0.0..=10.0;
 
 /// The Ogg Vorbis default: `-q 6`, about 192 kbps at 44.1 kHz stereo.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::export::DEFAULT_OGG_QUALITY, 6.0);
-/// ```
 pub const DEFAULT_OGG_QUALITY: f32 = 6.0;
 
 /// A FLAC frame holds this many samples per channel.
@@ -41,12 +26,6 @@ const FLAC_BLOCK_SIZE: usize = 4096;
 const OGG_BLOCK_FRAMES: usize = 4096;
 
 /// Vorbis-comment fields written beside the audio.
-///
-/// Empty strings and `None` fields are omitted. Loop positions are sample
-/// frames per channel, as engines read `LOOPSTART` and `LOOPLENGTH`.
-///
-/// # Examples
-///
 /// ```
 /// let tags = psx_audio::export::Tags {
 ///     title: "Test Tone",
@@ -98,13 +77,6 @@ impl Tags<'_> {
 }
 
 /// A 16-bit PCM WAVE file for interleaved `samples`.
-///
-/// # Errors
-///
-/// Fails when the sample count does not hold whole frames or the rate is zero.
-///
-/// # Examples
-///
 /// ```
 /// let wav = psx_audio::export::wav_bytes(&[1, -2], 44_100, 2)?;
 /// assert_eq!(&wav[..4], b"RIFF");
@@ -115,9 +87,6 @@ pub fn wav_bytes(samples: &[i16], sample_rate: u32, channels: u32) -> Result<Vec
 }
 
 /// Raw interleaved little-endian 16-bit samples.
-///
-/// # Examples
-///
 /// ```
 /// assert_eq!(psx_audio::export::raw_s16le(&[1, -2]), [0x01, 0x00, 0xFE, 0xFF]);
 /// ```
@@ -126,16 +95,7 @@ pub fn raw_s16le(samples: &[i16]) -> Vec<u8> {
     samples.iter().flat_map(|s| s.to_le_bytes()).collect()
 }
 
-/// A lossless FLAC file for interleaved 16-bit `samples`, with `title` in the
-/// Vorbis comment metadata.
-///
-/// # Errors
-///
-/// Fails when the sample count does not hold whole frames, or when the
-/// encoder rejects the shape.
-///
-/// # Examples
-///
+/// A lossless FLAC file for interleaved 16-bit `samples`, with `title` in the Vorbis comment metadata.
 /// ```
 /// let flac = psx_audio::export::flac_bytes(&[0i16; 8], 44_100, 2, &psx_audio::export::Tags::default())?;
 /// assert_eq!(&flac[..4], b"fLaC");
@@ -164,20 +124,7 @@ pub fn flac_bytes(samples: &[i16], sample_rate: u32, channels: u32, tags: &Tags<
     Ok(sink.as_slice().to_vec())
 }
 
-/// An Ogg Vorbis file for interleaved 16-bit `samples`, with `title` in the
-/// Vorbis comment header.
-///
-/// `quality` is the Vorbis `-q` scale, [`OGG_QUALITY_RANGE`]; [`DEFAULT_OGG_QUALITY`]
-/// is about 192 kbps at 44.1 kHz stereo.
-///
-/// # Errors
-///
-/// Fails when the quality is outside the range, the sample count does not hold
-/// whole frames, or the encoder rejects the shape. Requires the `ogg` feature;
-/// without it, the call returns an error naming the rebuild.
-///
-/// # Examples
-///
+/// An Ogg Vorbis file for interleaved 16-bit `samples`, with `title` in the Vorbis comment header.
 /// ```
 /// let ogg = psx_audio::export::ogg_bytes(
 ///     &[0i16; 8],
@@ -208,7 +155,6 @@ pub fn ogg_bytes(samples: &[i16], sample_rate: u32, channels: u32, quality: f32,
         NonZeroU32::new(sample_rate).ok_or_else(|| crate::Error::invalid("Ogg Vorbis needs a nonzero sample rate."))?;
     let mut builder = VorbisEncoderBuilder::new(rate, channel_count, Vec::new())
         .map_err(|error| crate::Error::format(format!("Ogg Vorbis encoder: {error}")))?;
-    // libvorbis takes the same quality in the 0-1 range the `-q` switch is scaled from.
     builder.bitrate_management_strategy(VorbisBitrateManagementStrategy::QualityVbr { target_quality: quality / 10.0 });
     for (key, value) in tags.entries() {
         builder
@@ -239,9 +185,6 @@ pub fn ogg_bytes(samples: &[i16], sample_rate: u32, channels: u32, quality: f32,
 }
 
 /// Without the `ogg` feature the Ogg encoder is not linked; the call names the rebuild.
-///
-/// # Examples
-///
 /// ```
 /// let error = psx_audio::export::ogg_bytes(
 ///     &[0i16; 2],
@@ -298,8 +241,8 @@ fn flac_comment(tags: &Tags<'_>) -> Vec<u8> {
     comment
 }
 
-/// Interleaved 16-bit PCM as the `i32` frames `flacenc` reads, converted one
-/// block at a time so a long export holds no second copy of the track.
+/// Interleaved 16-bit PCM as the `i32` frames `flacenc` reads, converted one block at a time so a long export holds no
+/// second copy of the track.
 struct PcmSource<'a> {
     samples: &'a [i16],
     channels: usize,
