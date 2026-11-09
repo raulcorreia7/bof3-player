@@ -1,7 +1,4 @@
 //! EMI container: header, table of contents and sector-aligned payloads.
-//!
-//! [`Archive::parse`] reads the table from bytes and needs no `std`; the file operations
-//! ([`Archive::open`], extraction, [`read_entry`]) are behind the `std` feature.
 
 use alloc::vec::Vec;
 
@@ -65,8 +62,8 @@ impl Archive {
         Self::read_table(bytes, bytes.len() as u64)
     }
 
-    /// Reads and validates the table from `head`, the first bytes of a container of `file_len`
-    /// bytes: at least the header and the table, which end before the first payload.
+    /// Reads and validates the table from `head`, the first bytes of a container of `file_len` bytes: at least the
+    /// header and the table, which end before the first payload.
     fn read_table(head: &[u8], file_len: u64) -> Result<Self> {
         if head.len() < HEADER_SIZE as usize {
             return Err(Error::InvalidArchive("file is shorter than the header"));
@@ -121,8 +118,7 @@ impl Archive {
         &self.entries
     }
 
-    /// The payload of entry `index` inside `container`, the bytes this table was
-    /// parsed from.
+    /// The payload of entry `index` inside `container`, the bytes this table was parsed from.
     pub fn payload<'a>(&self, container: &'a [u8], index: usize) -> Result<&'a [u8]> {
         let entry = self.entry(index)?;
         let start = entry.offset as usize;
@@ -146,8 +142,7 @@ impl Archive {
         Ok(archive)
     }
 
-    /// Reads and validates the table of a container read from `reader`; only the first sector is
-    /// read. Payloads are read later with [`Archive::read_payload`].
+    /// Reads and validates the table of a container read from `reader`; only the first sector is read.
     pub fn from_reader<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         let file_len = reader.seek(SeekFrom::End(0))?;
         reader.seek(SeekFrom::Start(0))?;
