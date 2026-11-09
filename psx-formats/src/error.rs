@@ -182,11 +182,7 @@ impl fmt::Display for Error {
                 write!(f, "{rectangles} rectangles do not divide into rows of {chunks_per_row}")
             }
             #[cfg(feature = "std")]
-            Self::VramGridShape { width, height, words } => write!(
-                f,
-                "a {width}x{height} word grid is not whole {}-word rectangles, or holds {words} words",
-                crate::gfx::vram::RECTANGLE_SIDE
-            ),
+            Self::VramGridShape { width, height, words } => write!(f, "a {width}x{height} word grid is not whole {}-word rectangles, or holds {words} words", crate::gfx::vram::RECTANGLE_SIDE),
             #[cfg(feature = "std")]
             Self::PngPicture(reason) => write!(f, "PNG: {reason}"),
             #[cfg(feature = "std")]

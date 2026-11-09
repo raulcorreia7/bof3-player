@@ -146,9 +146,7 @@ impl From<psx_formats::Error> for Error {
     fn from(error: psx_formats::Error) -> Self {
         use psx_formats::Error as Source;
         match error {
-            Source::VagOutOfRange { .. } | Source::SepSequenceOutOfRange { .. } => {
-                Self::Invalid(alloc::format!("{error}"))
-            }
+            Source::VagOutOfRange { .. } | Source::SepSequenceOutOfRange { .. } => Self::Invalid(alloc::format!("{error}")),
             _ => Self::Format(alloc::format!("{error}")),
         }
     }

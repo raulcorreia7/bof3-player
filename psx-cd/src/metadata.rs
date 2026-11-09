@@ -159,13 +159,7 @@ pub fn write_project(path: &Path, entries: &[Entry], image_name: &str) -> Result
 /// .unwrap();
 /// assert!(std::fs::read_to_string(path).unwrap().contains("\"lba\": 21"));
 /// ```
-pub fn write_lba_json_with(
-    path: &Path,
-    entries: &[Entry],
-    raw_root: &Path,
-    extracted_root: &Path,
-    naming: ArchiveNaming<'_>,
-) -> Result<(), Error> {
+pub fn write_lba_json_with(path: &Path, entries: &[Entry], raw_root: &Path, extracted_root: &Path, naming: ArchiveNaming<'_>) -> Result<(), Error> {
     crate::ensure_parent(path)?;
     let mut files = entries.iter().filter(|entry| !entry.is_directory).collect::<Vec<_>>();
     files.sort_by_key(|entry| entry.lba);
@@ -195,17 +189,14 @@ pub fn write_lba_json_with(
             }
         })
         .collect();
-    let mut json = serde_json::to_string_pretty(&LbaDocument { entries: rows })
-        .map_err(|error| Error::InvalidImageDetail(error.to_string()))?;
+    let mut json = serde_json::to_string_pretty(&LbaDocument { entries: rows }).map_err(|error| Error::InvalidImageDetail(error.to_string()))?;
     json.push('\n');
     fs::write(path, json)?;
     Ok(())
 }
 
 fn manifest_path(raw_root: &Path, extracted_root: &Path, entry_path: &Path, manifest_name: &str) -> String {
-    let has_bin_component = entry_path
-        .components()
-        .any(|part| matches!(part, std::path::Component::Normal(value) if value.eq_ignore_ascii_case("BIN")));
+    let has_bin_component = entry_path.components().any(|part| matches!(part, std::path::Component::Normal(value) if value.eq_ignore_ascii_case("BIN")));
     let mut manifest = if has_bin_component { raw_root.join(entry_path) } else { extracted_root.join(entry_path) };
     manifest.set_extension("");
     manifest.join(manifest_name).to_string_lossy().replace('\\', "/")
@@ -219,10 +210,7 @@ fn family(path: &Path) -> String {
             _ => None,
         })
         .collect();
-    parts
-        .windows(2)
-        .find(|pair| pair[0].eq_ignore_ascii_case("BIN"))
-        .map_or_else(|| "unknown".to_owned(), |pair| pair[1].to_owned())
+    parts.windows(2).find(|pair| pair[0].eq_ignore_ascii_case("BIN")).map_or_else(|| "unknown".to_owned(), |pair| pair[1].to_owned())
 }
 
 fn write_xml(writer: &mut Writer<Vec<u8>>, event: Event<'_>) -> Result<(), Error> {

@@ -146,18 +146,12 @@ pub fn flac_bytes(samples: &[i16], sample_rate: u32, channels: u32, tags: &Tags<
     use flacenc::error::Verify;
 
     let channels_usize = check_shape(samples, sample_rate, channels, "FLAC")?;
-    let config = flacenc::config::Encoder::default()
-        .into_verified()
-        .map_err(|(_, error)| crate::Error::format(format!("FLAC encoder configuration: {error}")))?;
+    let config = flacenc::config::Encoder::default().into_verified().map_err(|(_, error)| crate::Error::format(format!("FLAC encoder configuration: {error}")))?;
     let source = PcmSource { samples, channels: channels_usize, rate: sample_rate, read: 0, converted: Vec::new() };
-    let mut stream = flacenc::encode_with_fixed_block_size(&config, source, FLAC_BLOCK_SIZE)
-        .map_err(|error| crate::Error::format(format!("FLAC encoder: {error}")))?;
+    let mut stream = flacenc::encode_with_fixed_block_size(&config, source, FLAC_BLOCK_SIZE).map_err(|error| crate::Error::format(format!("FLAC encoder: {error}")))?;
     let comment = flac_comment(tags);
     if !comment.is_empty() {
-        stream.add_metadata_block(
-            MetadataBlockData::new_unknown(4, &comment)
-                .map_err(|error| crate::Error::format(format!("FLAC comments: {error}")))?,
-        );
+        stream.add_metadata_block(MetadataBlockData::new_unknown(4, &comment).map_err(|error| crate::Error::format(format!("FLAC comments: {error}")))?);
     }
     let mut sink = flacenc::bitsink::ByteSink::new();
     stream.write(&mut sink).map_err(|error| crate::Error::format(format!("FLAC stream: {error}")))?;
@@ -196,24 +190,16 @@ pub fn ogg_bytes(samples: &[i16], sample_rate: u32, channels: u32, quality: f32,
     use vorbis_rs::{VorbisBitrateManagementStrategy, VorbisEncoderBuilder};
 
     if !OGG_QUALITY_RANGE.contains(&quality) {
-        return Err(crate::Error::invalid(format!(
-            "Ogg quality {quality} is outside 0-10: pass --quality 0 (smallest) to 10 (best), for example --quality 6."
-        )));
+        return Err(crate::Error::invalid(format!("Ogg quality {quality} is outside 0-10: pass --quality 0 (smallest) to 10 (best), for example --quality 6.")));
     }
     let channels_usize = check_shape(samples, sample_rate, channels, "Ogg Vorbis")?;
-    let channel_count = u8::try_from(channels).ok().and_then(NonZeroU8::new).ok_or_else(|| {
-        crate::Error::invalid(format!("Ogg Vorbis needs 1-255 channels, this render has {channels}."))
-    })?;
-    let rate =
-        NonZeroU32::new(sample_rate).ok_or_else(|| crate::Error::invalid("Ogg Vorbis needs a nonzero sample rate."))?;
-    let mut builder = VorbisEncoderBuilder::new(rate, channel_count, Vec::new())
-        .map_err(|error| crate::Error::format(format!("Ogg Vorbis encoder: {error}")))?;
+    let channel_count = u8::try_from(channels).ok().and_then(NonZeroU8::new).ok_or_else(|| crate::Error::invalid(format!("Ogg Vorbis needs 1-255 channels, this render has {channels}.")))?;
+    let rate = NonZeroU32::new(sample_rate).ok_or_else(|| crate::Error::invalid("Ogg Vorbis needs a nonzero sample rate."))?;
+    let mut builder = VorbisEncoderBuilder::new(rate, channel_count, Vec::new()).map_err(|error| crate::Error::format(format!("Ogg Vorbis encoder: {error}")))?;
     // libvorbis takes the same quality in the 0-1 range the `-q` switch is scaled from.
     builder.bitrate_management_strategy(VorbisBitrateManagementStrategy::QualityVbr { target_quality: quality / 10.0 });
     for (key, value) in tags.entries() {
-        builder
-            .comment_tag(key, value.as_str())
-            .map_err(|error| crate::Error::format(format!("Ogg Vorbis comments: {error}")))?;
+        builder.comment_tag(key, value.as_str()).map_err(|error| crate::Error::format(format!("Ogg Vorbis comments: {error}")))?;
     }
     let mut encoder = builder.build().map_err(|error| crate::Error::format(format!("Ogg Vorbis encoder: {error}")))?;
     let mut planar: Vec<Vec<f32>> = (0..channels_usize).map(|_| Vec::with_capacity(OGG_BLOCK_FRAMES)).collect();
@@ -222,18 +208,14 @@ pub fn ogg_bytes(samples: &[i16], sample_rate: u32, channels: u32, quality: f32,
             channel.push(f32::from(sample) / 32768.0);
         }
         if planar[0].len() == OGG_BLOCK_FRAMES {
-            encoder
-                .encode_audio_block(planar.iter().map(Vec::as_slice).collect::<Vec<_>>())
-                .map_err(|error| crate::Error::format(format!("Ogg Vorbis encoder: {error}")))?;
+            encoder.encode_audio_block(planar.iter().map(Vec::as_slice).collect::<Vec<_>>()).map_err(|error| crate::Error::format(format!("Ogg Vorbis encoder: {error}")))?;
             for channel in &mut planar {
                 channel.clear();
             }
         }
     }
     if !planar[0].is_empty() {
-        encoder
-            .encode_audio_block(planar.iter().map(Vec::as_slice).collect::<Vec<_>>())
-            .map_err(|error| crate::Error::format(format!("Ogg Vorbis encoder: {error}")))?;
+        encoder.encode_audio_block(planar.iter().map(Vec::as_slice).collect::<Vec<_>>()).map_err(|error| crate::Error::format(format!("Ogg Vorbis encoder: {error}")))?;
     }
     encoder.finish().map_err(|error| crate::Error::format(format!("Ogg Vorbis encoder: {error}")))
 }
@@ -254,13 +236,7 @@ pub fn ogg_bytes(samples: &[i16], sample_rate: u32, channels: u32, quality: f32,
 /// assert!(error.message().contains("ogg feature"));
 /// ```
 #[cfg(not(feature = "ogg"))]
-pub fn ogg_bytes(
-    _samples: &[i16],
-    _sample_rate: u32,
-    _channels: u32,
-    _quality: f32,
-    _tags: &Tags<'_>,
-) -> Result<Vec<u8>> {
+pub fn ogg_bytes(_samples: &[i16], _sample_rate: u32, _channels: u32, _quality: f32, _tags: &Tags<'_>) -> Result<Vec<u8>> {
     Err(crate::Error::Unsupported("Ogg export is not built in: rebuild with the ogg feature".into()))
 }
 
@@ -321,11 +297,7 @@ impl flacenc::source::Source for PcmSource<'_> {
         self.rate as usize
     }
 
-    fn read_samples<F: flacenc::source::Fill>(
-        &mut self,
-        block_size: usize,
-        dest: &mut F,
-    ) -> core::result::Result<usize, flacenc::error::SourceError> {
+    fn read_samples<F: flacenc::source::Fill>(&mut self, block_size: usize, dest: &mut F) -> core::result::Result<usize, flacenc::error::SourceError> {
         let begin = self.read * self.channels;
         let end = (begin + block_size * self.channels).min(self.samples.len());
         self.converted.clear();

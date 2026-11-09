@@ -76,10 +76,8 @@ impl OggQuality {
 /// Characters a file name cannot carry on Linux, macOS or Windows.
 const UNSAFE: [char; 9] = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
 /// Windows device names, reserved whatever the extension.
-const RESERVED: [&str; 22] = [
-    "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2",
-    "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
-];
+const RESERVED: [&str; 22] =
+    ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"];
 
 /// A title with the characters no file system accepts removed and the trailing
 /// dots and spaces Windows rejects trimmed.
@@ -149,13 +147,7 @@ pub struct ExportOptions {
 
 impl Default for ExportOptions {
     fn default() -> Self {
-        Self {
-            loops: None,
-            fade: 10.0,
-            format: ExportFormat::Wav,
-            quality: crate::export::DEFAULT_OGG_QUALITY,
-            seconds: None,
-        }
+        Self { loops: None, fade: 10.0, format: ExportFormat::Wav, quality: crate::export::DEFAULT_OGG_QUALITY, seconds: None }
     }
 }
 
@@ -186,26 +178,14 @@ impl Save {
     /// `loops` passes of its loop window, or of the whole item when it has no
     /// window, then the `fade` seconds at the end fade out. Other kinds
     /// render once, without fade.
-    pub fn start(
-        library: &'static Library<'static>,
-        item: &Item,
-        player_options: PlayerOptions,
-        dir: &Path,
-        export: ExportOptions,
-    ) -> Result<Self, String> {
+    pub fn start(library: &'static Library<'static>, item: &Item, player_options: PlayerOptions, dir: &Path, export: ExportOptions) -> Result<Self, String> {
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         Self::start_to(library, item, player_options, export_path(dir, item, export.format.extension()), export)
     }
 
     /// Start exporting `item` into the file `file`; the options act as in [`Save::start`]. The
     /// folder of `file` must exist.
-    pub fn start_to(
-        library: &'static Library<'static>,
-        item: &Item,
-        player_options: PlayerOptions,
-        file: PathBuf,
-        export: ExportOptions,
-    ) -> Result<Self, String> {
+    pub fn start_to(library: &'static Library<'static>, item: &Item, player_options: PlayerOptions, file: PathBuf, export: ExportOptions) -> Result<Self, String> {
         if !item.playable {
             return Err(format!("{} carries no audio: {}", item.id, item.detail));
         }
@@ -213,8 +193,7 @@ impl Save {
         let music = item.kind == crate::catalog::Kind::Music;
         let window = player.loop_window().filter(|_| music);
         let requested = export.loops.unwrap_or(1).max(1);
-        let intro_loop =
-            matches!(export.format, ExportFormat::Flac | ExportFormat::Ogg) && window.is_some() && requested == 1;
+        let intro_loop = matches!(export.format, ExportFormat::Flac | ExportFormat::Ogg) && window.is_some() && requested == 1;
         let extra = if intro_loop { 0 } else { requested - 1 };
         if music {
             player.set_loop(Loop::Times(extra));
@@ -223,11 +202,7 @@ impl Save {
         let rate = player.sample_rate();
         let loop_seconds = window.map_or(player.duration(), |(begin, end)| (end - begin).max(0.0));
         let intro_end = window.filter(|_| intro_loop).map(|(_, end)| end);
-        let duration = if let Some(end) = intro_end {
-            end
-        } else {
-            player.duration() + if music { f64::from(extra) * loop_seconds } else { 0.0 }
-        };
+        let duration = if let Some(end) = intro_end { end } else { player.duration() + if music { f64::from(extra) * loop_seconds } else { 0.0 } };
         let fade = if window.is_some() && !intro_loop { export.fade.max(0.0) } else { 0.0 };
         let cap = export.seconds.map(|seconds| (seconds.max(0.0) * f64::from(rate)).round() as usize);
         let stop_at = match (intro_end.map(|end| (end * f64::from(rate)).round() as usize), cap) {
@@ -236,9 +211,7 @@ impl Save {
         };
         let duration = export.seconds.map_or(duration, |seconds| duration.min(seconds.max(0.0)));
         let title = if item.title.is_empty() { item.name.clone() } else { item.title.clone() };
-        let (loop_start, loop_length) = window.map_or((None, None), |(begin, end)| {
-            (Some((begin * f64::from(rate)).round() as u64), Some(((end - begin) * f64::from(rate)).round() as u64))
-        });
+        let (loop_start, loop_length) = window.map_or((None, None), |(begin, end)| (Some((begin * f64::from(rate)).round() as u64), Some(((end - begin) * f64::from(rate)).round() as u64)));
         Ok(Self {
             file,
             id: item.id.clone(),
@@ -291,14 +264,7 @@ impl Save {
     fn finish(&mut self) -> Step {
         apply_fade(&mut self.pcm, self.channels, self.rate, self.fade);
         let channels = self.channels as u32;
-        let tags = crate::export::Tags {
-            title: &self.title,
-            artist: &self.artist,
-            album: &self.album,
-            track: self.track,
-            loop_start: self.loop_start,
-            loop_length: self.loop_length,
-        };
+        let tags = crate::export::Tags { title: &self.title, artist: &self.artist, album: &self.album, track: self.track, loop_start: self.loop_start, loop_length: self.loop_length };
         let bytes = match self.format {
             ExportFormat::Wav => crate::export::wav_bytes(&self.pcm, self.rate, channels),
             ExportFormat::Flac => crate::export::flac_bytes(&self.pcm, self.rate, channels, &tags),
@@ -373,11 +339,7 @@ pub fn absolute(path: &Path) -> PathBuf {
 
 /// The bytes and file extension of an item's native package: MIDI for music, VAG for a sample,
 /// VAB for a bank, or with `sequence` the game's own sequence package of a music item.
-pub fn native_package(
-    library: &Library<'static>,
-    item: &Item,
-    sequence: bool,
-) -> Result<(Vec<u8>, &'static str), String> {
+pub fn native_package(library: &Library<'static>, item: &Item, sequence: bool) -> Result<(Vec<u8>, &'static str), String> {
     let (result, extension) = match (item.kind, sequence) {
         (Kind::Music, true) => (library.export_sequence(item), "seq"),
         (_, true) => return Err("only music items have a sequence package".to_string()),
@@ -572,11 +534,9 @@ mod tests {
 
     #[test]
     fn a_silent_item_cannot_start_an_export() {
-        let library: &'static Library<'static> =
-            Box::leak(Box::new(Library::open_with(MemorySource::new(), &NoNaming).unwrap()));
+        let library: &'static Library<'static> = Box::leak(Box::new(Library::open_with(MemorySource::new(), &NoNaming).unwrap()));
         let dir = scratch("export-silent");
-        let result =
-            Save::start(library, &item("music:A#0", ""), PlayerOptions::default(), &dir, ExportOptions::default());
+        let result = Save::start(library, &item("music:A#0", ""), PlayerOptions::default(), &dir, ExportOptions::default());
         assert!(result.err().is_some_and(|message| message.contains("carries no audio")));
         let message = export_native(library, &item("xa:S#ch0@0", ""), &dir, false);
         assert!(message.contains("no native package"), "{message}");

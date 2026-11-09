@@ -174,12 +174,7 @@ fn parse_exe(bytes: &[u8]) -> [Vec<Cue>; FILES] {
     }
     for index in 0..FILES {
         let start = starts[index];
-        let limit = starts
-            .iter()
-            .copied()
-            .filter(|&other| other > start)
-            .min()
-            .map_or(MAX_ENTRIES, |next| ((next - start) / 2) as usize);
+        let limit = starts.iter().copied().filter(|&other| other > start).min().map_or(MAX_ENTRIES, |next| ((next - start) / 2) as usize);
         let Some(base) = va_at(bytes, start) else { continue };
         let mut values = Vec::with_capacity(limit);
         for at in 0..limit {

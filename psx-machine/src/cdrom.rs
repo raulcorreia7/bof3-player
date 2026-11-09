@@ -240,12 +240,7 @@ impl Cdrom {
         match command {
             0x01 => self.respond(FIRST_RESPONSE, 3, vec![stat]),
             0x02 => {
-                self.seek_target = disc::from_msf(
-                    disc::from_bcd(parameter(0)),
-                    disc::from_bcd(parameter(1)),
-                    disc::from_bcd(parameter(2)),
-                )
-                .saturating_sub(disc::LEAD_IN);
+                self.seek_target = disc::from_msf(disc::from_bcd(parameter(0)), disc::from_bcd(parameter(1)), disc::from_bcd(parameter(2))).saturating_sub(disc::LEAD_IN);
                 self.respond(FIRST_RESPONSE, 3, vec![stat]);
             }
             0x03 => {
@@ -306,16 +301,7 @@ impl Cdrom {
                 let (track, start) = self.track_of(self.position);
                 let (rm, rs, rf) = disc::to_msf(self.position.saturating_sub(start).saturating_sub(disc::LEAD_IN));
                 let (am, as_, af) = disc::to_msf(self.position);
-                let response = vec![
-                    disc::bcd(track),
-                    1,
-                    disc::bcd(rm),
-                    disc::bcd(rs),
-                    disc::bcd(rf),
-                    disc::bcd(am),
-                    disc::bcd(as_),
-                    disc::bcd(af),
-                ];
+                let response = vec![disc::bcd(track), 1, disc::bcd(rm), disc::bcd(rs), disc::bcd(rf), disc::bcd(am), disc::bcd(as_), disc::bcd(af)];
                 self.respond(FIRST_RESPONSE, 3, response);
             }
             0x13 => {
@@ -324,13 +310,7 @@ impl Cdrom {
             }
             0x14 => {
                 let track = disc::from_bcd(parameter(0));
-                let start = self.disc.as_ref().map_or(0, |disc| {
-                    if track == 0 {
-                        disc.end()
-                    } else {
-                        disc.tracks().iter().find(|t| t.number == track).map_or(0, |t| t.start)
-                    }
-                });
+                let start = self.disc.as_ref().map_or(0, |disc| if track == 0 { disc.end() } else { disc.tracks().iter().find(|t| t.number == track).map_or(0, |t| t.start) });
                 let (minute, second, _) = disc::to_msf(start);
                 self.respond(FIRST_RESPONSE, 3, vec![stat, disc::bcd(minute), disc::bcd(second)]);
             }
@@ -345,13 +325,7 @@ impl Cdrom {
             0x1A => {
                 self.respond(FIRST_RESPONSE, 3, vec![stat]);
                 let due = self.pending.back().map_or(self.now, |last| last.due) + SECOND_RESPONSE;
-                self.pending.push_back(Pending {
-                    due,
-                    interrupt: 2,
-                    response: vec![0x02, 0x00, 0x20, 0x00, b'S', b'C', b'E', b'A'],
-                    sector: None,
-                    finish: None,
-                });
+                self.pending.push_back(Pending { due, interrupt: 2, response: vec![0x02, 0x00, 0x20, 0x00, b'S', b'C', b'E', b'A'], sector: None, finish: None });
             }
             0x1E => {
                 self.respond(FIRST_RESPONSE, 3, vec![stat]);
@@ -362,10 +336,7 @@ impl Cdrom {
     }
 
     fn track_of(&self, position: u32) -> (u8, u32) {
-        self.disc
-            .as_ref()
-            .and_then(|disc| disc.tracks().into_iter().rev().find(|track| track.start <= position))
-            .map_or((1, 0), |track| (track.number, track.start))
+        self.disc.as_ref().and_then(|disc| disc.tracks().into_iter().rev().find(|track| track.start <= position)).map_or((1, 0), |track| (track.number, track.start))
     }
 
     fn sector_cycles(&self) -> u64 {
@@ -407,13 +378,7 @@ impl Cdrom {
         self.position += 1;
         let Some(sector) = self.disc.as_mut().and_then(|disc| disc.sector(position)) else {
             self.activity = Activity::Idle;
-            self.pending.push_back(Pending {
-                due: self.now,
-                interrupt: 5,
-                response: vec![self.stat() | STAT_ERROR, 0x04],
-                sector: None,
-                finish: None,
-            });
+            self.pending.push_back(Pending { due: self.now, interrupt: 5, response: vec![self.stat() | STAT_ERROR, 0x04], sector: None, finish: None });
             return;
         };
         let submode = sector[18];
@@ -426,12 +391,6 @@ impl Cdrom {
         if audio && self.mode & MODE_XA_FILTER != 0 {
             return;
         }
-        self.pending.push_back(Pending {
-            due: self.now,
-            interrupt: 1,
-            response: vec![self.stat()],
-            sector: Some(sector),
-            finish: None,
-        });
+        self.pending.push_back(Pending { due: self.now, interrupt: 1, response: vec![self.stat()], sector: Some(sector), finish: None });
     }
 }

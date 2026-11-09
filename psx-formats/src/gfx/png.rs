@@ -104,14 +104,7 @@ pub enum Picture {
 ///
 /// The writer is a `Vec`, and `data` is sized from `width`, `height` and the
 /// pixel format by every caller in this crate, so encoding cannot fail.
-fn encode(
-    width: u32,
-    height: u32,
-    color: ColorType,
-    depth: BitDepth,
-    palette: Option<(Vec<u8>, Vec<u8>)>,
-    data: &[u8],
-) -> Vec<u8> {
+fn encode(width: u32, height: u32, color: ColorType, depth: BitDepth, palette: Option<(Vec<u8>, Vec<u8>)>, data: &[u8]) -> Vec<u8> {
     let mut out = Cursor::new(Vec::new());
     let mut encoder = Encoder::new(&mut out, width, height);
     encoder.set_color(color);
@@ -202,28 +195,16 @@ pub fn read(bytes: &[u8]) -> Result<Picture, Error> {
     let info = reader.info();
     match (frame.color_type, frame.bit_depth) {
         (ColorType::Rgba, BitDepth::Eight) => Ok(Picture::Rgba(Rgba { width, height, pixels: buffer })),
-        (ColorType::Rgb, BitDepth::Eight) => Ok(Picture::Rgba(Rgba {
-            width,
-            height,
-            pixels: buffer.as_chunks::<3>().0.iter().flat_map(|px| [px[0], px[1], px[2], 0xff]).collect(),
-        })),
+        (ColorType::Rgb, BitDepth::Eight) => Ok(Picture::Rgba(Rgba { width, height, pixels: buffer.as_chunks::<3>().0.iter().flat_map(|px| [px[0], px[1], px[2], 0xff]).collect() })),
         (ColorType::Indexed, BitDepth::Four | BitDepth::Eight) => {
             let bits = if frame.bit_depth == BitDepth::Four { 4 } else { 8 };
             let palette = info.palette.as_deref().unwrap_or_default();
             let alpha = info.trns.as_deref().unwrap_or_default();
-            let colors = palette
-                .as_chunks::<3>()
-                .0
-                .iter()
-                .enumerate()
-                .map(|(index, rgb)| [rgb[0], rgb[1], rgb[2], alpha.get(index).copied().unwrap_or(0xff)])
-                .collect();
+            let colors = palette.as_chunks::<3>().0.iter().enumerate().map(|(index, rgb)| [rgb[0], rgb[1], rgb[2], alpha.get(index).copied().unwrap_or(0xff)]).collect();
             let indices = unpack_rows(width as usize, height as usize, bits, line, &buffer);
             Ok(Picture::Indexed(Indexed { width, height, bits, colors, indices }))
         }
-        (color, depth) => {
-            Err(Error::PngPicture(format!("{color:?} at {depth:?} bits is not a picture the importer reads")))
-        }
+        (color, depth) => Err(Error::PngPicture(format!("{color:?} at {depth:?} bits is not a picture the importer reads"))),
     }
 }
 
@@ -242,9 +223,7 @@ fn pack_rows(width: usize, bits: u8, indices: &[u8]) -> Vec<u8> {
     let mut packed = Vec::new();
     for row in indices.chunks(width) {
         for group in row.chunks(per_byte) {
-            packed.push(group.iter().enumerate().fold(0u8, |byte, (slot, &index)| {
-                byte | ((index & mask) << (8 - u32::from(bits) * (slot as u32 + 1)))
-            }));
+            packed.push(group.iter().enumerate().fold(0u8, |byte, (slot, &index)| byte | ((index & mask) << (8 - u32::from(bits) * (slot as u32 + 1)))));
         }
     }
     packed

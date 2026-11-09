@@ -38,21 +38,10 @@ impl<'a> Executable<'a> {
         if bytes.len() < HEADER_SIZE || &bytes[..8] != MAGIC {
             return Err("not a PS-X EXE");
         }
-        let word = |offset: usize| {
-            u32::from_le_bytes([bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]])
-        };
+        let word = |offset: usize| u32::from_le_bytes([bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]]);
         let size = word(0x1C) as usize;
         let body = bytes.get(HEADER_SIZE..HEADER_SIZE + size).ok_or("PS-X EXE body is shorter than its header says")?;
-        Ok(Self {
-            pc: word(0x10),
-            gp: word(0x14),
-            load_address: word(0x18),
-            bss: word(0x28),
-            bss_size: word(0x2C),
-            stack: word(0x30),
-            stack_size: word(0x34),
-            body,
-        })
+        Ok(Self { pc: word(0x10), gp: word(0x14), load_address: word(0x18), bss: word(0x28), bss_size: word(0x2C), stack: word(0x30), stack_size: word(0x34), body })
     }
 }
 

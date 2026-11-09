@@ -10,9 +10,8 @@ use std::collections::VecDeque;
 
 /// Raster position of each zigzag index.
 const ZAGZIG: [usize; 64] = [
-    0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7, 14, 21,
-    28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54,
-    47, 55, 62, 63,
+    0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52,
+    45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63,
 ];
 /// The halfword that ends a block, and pads the stream between blocks.
 const END_OF_BLOCK: u16 = 0xFE00;
@@ -47,17 +46,7 @@ pub struct Mdec {
 
 impl Default for Mdec {
     fn default() -> Self {
-        Self {
-            command: 0,
-            remaining: 0,
-            parameters: Vec::new(),
-            luma: [1; 64],
-            chroma: [1; 64],
-            scale: [0; 64],
-            output: VecDeque::new(),
-            control: 0,
-            macroblocks: 0,
-        }
+        Self { command: 0, remaining: 0, parameters: Vec::new(), luma: [1; 64], chroma: [1; 64], scale: [0; 64], output: VecDeque::new(), control: 0, macroblocks: 0 }
     }
 }
 
@@ -147,8 +136,7 @@ impl Mdec {
     }
 
     fn decode(&mut self) {
-        let halfwords: Vec<u16> =
-            self.parameters.iter().flat_map(|word| [*word as u16, (*word >> 16) as u16]).collect();
+        let halfwords: Vec<u16> = self.parameters.iter().flat_map(|word| [*word as u16, (*word >> 16) as u16]).collect();
         let mut stream = halfwords.into_iter();
         let signed = self.command & (1 << 26) != 0;
         let bit15 = if self.command & (1 << 25) != 0 { 0x8000 } else { 0 };
@@ -240,8 +228,7 @@ impl Mdec {
         for _ in 0..2 {
             for x in 0..8 {
                 for y in 0..8 {
-                    let sum: i64 =
-                        (0..8).map(|z| i64::from(source[y + z * 8]) * i64::from(self.scale[x + z * 8] >> 3)).sum();
+                    let sum: i64 = (0..8).map(|z| i64::from(source[y + z * 8]) * i64::from(self.scale[x + z * 8] >> 3)).sum();
                     target[x + y * 8] = ((sum + 0xFFF) >> 13) as i32;
                 }
             }
@@ -252,15 +239,7 @@ impl Mdec {
 }
 
 /// Converts one luma block and the macroblock's chroma into RGB at (`x0`, `y0`).
-fn colour(
-    pixels: &mut [[u8; 3]; 256],
-    y: &[i32; 64],
-    cr: &[i32; 64],
-    cb: &[i32; 64],
-    x0: usize,
-    y0: usize,
-    signed: bool,
-) {
+fn colour(pixels: &mut [[u8; 3]; 256], y: &[i32; 64], cr: &[i32; 64], cb: &[i32; 64], x0: usize, y0: usize, signed: bool) {
     for row in 0..8 {
         for column in 0..8 {
             let chroma = (x0 + column) / 2 + ((y0 + row) / 2) * 8;

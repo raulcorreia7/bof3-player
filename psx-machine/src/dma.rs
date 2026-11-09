@@ -133,8 +133,7 @@ impl Bus {
             0x0 => channel.address = merged & 0x00FF_FFFF,
             0x4 => channel.block = merged,
             0x8 => {
-                channel.control =
-                    if index == channel::OTC { (merged & 0x5100_0000) | 0x2 } else { merged & 0x7177_0703 };
+                channel.control = if index == channel::OTC { (merged & 0x5100_0000) | 0x2 } else { merged & 0x7177_0703 };
                 self.start_dma(index);
             }
             _ => {}

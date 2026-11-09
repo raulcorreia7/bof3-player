@@ -18,11 +18,7 @@ fn palette() -> Vec<u16> {
 
 #[test]
 fn a_tim_reads_back_what_it_writes() {
-    let tim = File {
-        mode: Mode::Four,
-        clut: Some(Block { x: 160, y: 483, width: 16, height: 1, words: palette() }),
-        image: Block { x: 704, y: 256, width: 32, height: 32, words: texture() },
-    };
+    let tim = File { mode: Mode::Four, clut: Some(Block { x: 160, y: 483, width: 16, height: 1, words: palette() }), image: Block { x: 704, y: 256, width: 32, height: 32, words: texture() } };
     let bytes = tim.write();
     assert_eq!(&bytes[..4], &[0x10, 0x00, 0x00, 0x00], "the ID word is 0x10");
     assert_eq!(bytes[4], 0x10, "the flag word names the 4-bit mode and the CLUT");
@@ -39,11 +35,7 @@ fn a_tim_reads_back_what_it_writes() {
     fs::write(out.join("texture.tim"), &bytes).unwrap();
     fs::write(
         out.join("blocks.json"),
-        format!(
-            "{{\"mode\":\"4-bit\",\"clut\":{{\"x\":160,\"y\":483,\"words\":{}}},\"image\":{{\"x\":704,\"y\":256,\"words\":{}}}}}",
-            clut.words.len(),
-            read.image.words.len()
-        ),
+        format!("{{\"mode\":\"4-bit\",\"clut\":{{\"x\":160,\"y\":483,\"words\":{}}},\"image\":{{\"x\":704,\"y\":256,\"words\":{}}}}}", clut.words.len(), read.image.words.len()),
     )
     .unwrap();
 }

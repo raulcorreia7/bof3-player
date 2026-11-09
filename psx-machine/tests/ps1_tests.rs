@@ -52,20 +52,12 @@ fn vram_differences(name: &str, area: Area) -> Option<usize> {
     let (machine, root) = run_machine(&format!("gpu/{name}/{name}.exe"), DRAW_FRAMES)?;
     let reference = reference_vram(&root.join("gpu").join(name).join("vram.png"));
     let (left, top, width, height) = area;
-    let differences = (top..top + height)
-        .flat_map(|y| (left..left + width).map(move |x| y * VRAM_WIDTH + x))
-        .filter(|&at| machine.vram()[at] & 0x7FFF != reference[at])
-        .count();
+    let differences = (top..top + height).flat_map(|y| (left..left + width).map(move |x| y * VRAM_WIDTH + x)).filter(|&at| machine.vram()[at] & 0x7FFF != reference[at]).count();
     if differences > 0 {
         let folder = Path::new(env!("CARGO_TARGET_TMPDIR")).join("ps1_tests");
         std::fs::create_dir_all(&folder).expect("the temporary folder is writable");
-        let rgba: Vec<u8> = machine
-            .vram()
-            .iter()
-            .flat_map(|&pixel| [0, 5, 10].map(|shift| (((pixel >> shift) & 0x1F) as u8) << 3).into_iter().chain([0xFF]))
-            .collect();
-        std::fs::write(folder.join(format!("{name}.png")), png::rgba_png(VRAM_WIDTH as u32, VRAM_HEIGHT as u32, &rgba))
-            .expect("the VRAM picture is written");
+        let rgba: Vec<u8> = machine.vram().iter().flat_map(|&pixel| [0, 5, 10].map(|shift| (((pixel >> shift) & 0x1F) as u8) << 3).into_iter().chain([0xFF])).collect();
+        std::fs::write(folder.join(format!("{name}.png")), png::rgba_png(VRAM_WIDTH as u32, VRAM_HEIGHT as u32, &rgba)).expect("the VRAM picture is written");
     }
     Some(differences)
 }

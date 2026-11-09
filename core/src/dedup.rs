@@ -60,12 +60,7 @@ impl Groups {
                 continue;
             }
             let canonical = self.canonical.get(key).cloned().unwrap_or_else(|| members[0].clone());
-            result.push(Group {
-                key: key.clone(),
-                canonical_id: canonical,
-                member_ids: members.clone(),
-                count: members.len(),
-            });
+            result.push(Group { key: key.clone(), canonical_id: canonical, member_ids: members.clone(), count: members.len() });
         }
         result
     }

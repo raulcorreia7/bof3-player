@@ -73,14 +73,7 @@ impl Spu {
     /// An SPU with cleared registers and sound RAM.
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            regs: vec![0; 0x200],
-            ram: vec![0; SPU_RAM_SIZE],
-            transfer: 0,
-            key_ons: Vec::new(),
-            uploads: Vec::new(),
-            frame: 0,
-        }
+        Self { regs: vec![0; 0x200], ram: vec![0; SPU_RAM_SIZE], transfer: 0, key_ons: Vec::new(), uploads: Vec::new(), frame: 0 }
     }
 
     /// Sound RAM.

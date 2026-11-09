@@ -51,14 +51,7 @@ impl Machine {
     /// A machine at power-on with cleared memory and no kernel: the CPU starts at the empty BIOS.
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            cpu: Cpu::new(),
-            bus: Bus::new(),
-            kernel: Kernel::default(),
-            kernel_enabled: false,
-            next_sync: SYNC_INTERVAL,
-            instructions: 0,
-        }
+        Self { cpu: Cpu::new(), bus: Bus::new(), kernel: Kernel::default(), kernel_enabled: false, next_sync: SYNC_INTERVAL, instructions: 0 }
     }
 
     /// A machine with the stand-in kernel installed, ready to load an executable.
@@ -83,14 +76,12 @@ impl Machine {
         let mut disc = ImageDisc::open(path)?;
         let image = disc.image_mut();
         let entries = image.entries()?;
-        let find =
-            |name: &str| entries.iter().find(|entry| entry.path.to_string_lossy().eq_ignore_ascii_case(name)).cloned();
+        let find = |name: &str| entries.iter().find(|entry| entry.path.to_string_lossy().eq_ignore_ascii_case(name)).cloned();
         let config = match find("SYSTEM.CNF") {
             Some(entry) => SystemConfig::parse(&String::from_utf8_lossy(&image.read_file(&entry)?)),
             None => return Err(Error::Boot("the disc has no SYSTEM.CNF".into())),
         };
-        let entry =
-            find(&config.boot).ok_or_else(|| Error::Boot(format!("boot file {} is not on the disc", config.boot)))?;
+        let entry = find(&config.boot).ok_or_else(|| Error::Boot(format!("boot file {} is not on the disc", config.boot)))?;
         let exe = image.read_file(&entry)?;
         let mut machine = Self::with_kernel();
         machine.load_executable(&exe, config.stack)?;

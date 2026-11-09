@@ -92,9 +92,7 @@ pub fn iso_with_labels(input: &Path, output: &Path, labels: VolumeLabels<'_>) ->
     let mut sector = FIRST_FILE_SECTOR;
     for file in &mut files {
         file.sector = sector;
-        sector = sector
-            .checked_add(file.bytes.len().div_ceil(SECTOR_SIZE))
-            .ok_or(Error::InvalidInput("rebuilt image is too large"))?;
+        sector = sector.checked_add(file.bytes.len().div_ceil(SECTOR_SIZE)).ok_or(Error::InvalidInput("rebuilt image is too large"))?;
     }
     if sector > u32::MAX as usize {
         return Err(Error::InvalidInput("rebuilt image is too large"));
@@ -140,8 +138,7 @@ fn read_input(input: &Path) -> Result<Vec<FileEntry>, Error> {
     let mut total = 0_usize;
     for entry in fs::read_dir(input)? {
         let entry = entry?;
-        let name =
-            entry.file_name().into_string().map_err(|_| Error::InvalidInput("rebuild input name is not UTF-8"))?;
+        let name = entry.file_name().into_string().map_err(|_| Error::InvalidInput("rebuild input name is not UTF-8"))?;
         validate_name(&name)?;
         if !entry.file_type()?.is_file() {
             return Err(Error::InvalidInput("rebuild input supports only top-level regular files"));
@@ -161,13 +158,8 @@ fn read_input(input: &Path) -> Result<Vec<FileEntry>, Error> {
 }
 
 fn validate_name(name: &str) -> Result<(), Error> {
-    if name.is_empty()
-        || name.len() > 220
-        || !name.bytes().all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || matches!(byte, b'.' | b'_'))
-    {
-        return Err(Error::InvalidInput(
-            "rebuild filenames must be uppercase ASCII letters, digits, dot, or underscore",
-        ));
+    if name.is_empty() || name.len() > 220 || !name.bytes().all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || matches!(byte, b'.' | b'_')) {
+        return Err(Error::InvalidInput("rebuild filenames must be uppercase ASCII letters, digits, dot, or underscore"));
     }
     Ok(())
 }
@@ -197,18 +189,9 @@ fn write_label(field: &mut [u8], value: &str) -> Result<(), Error> {
     Ok(())
 }
 
-fn write_record(
-    destination: &mut [u8],
-    offset: usize,
-    extent: u32,
-    size: u32,
-    flags: u8,
-    name: &[u8],
-) -> Result<(), Error> {
+fn write_record(destination: &mut [u8], offset: usize, extent: u32, size: u32, flags: u8, name: &[u8]) -> Result<(), Error> {
     let length = record_len(name.len());
-    let record = destination
-        .get_mut(offset..offset + length)
-        .ok_or(Error::InvalidInput("synthetic ISO directory record overflows"))?;
+    let record = destination.get_mut(offset..offset + length).ok_or(Error::InvalidInput("synthetic ISO directory record overflows"))?;
     record[0] = length as u8;
     write_both_endian(&mut record[2..10], extent);
     write_both_endian(&mut record[10..18], size);

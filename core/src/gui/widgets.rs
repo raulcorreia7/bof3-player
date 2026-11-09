@@ -6,8 +6,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use gpui::{
-    Bounds, Context, Div, FontWeight, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, Pixels, SharedString,
-    Stateful, canvas, div, fill, linear_color_stop, linear_gradient, point, prelude::*, px, relative, rgb, size,
+    Bounds, Context, Div, FontWeight, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, Pixels, SharedString, Stateful, canvas, div, fill, linear_color_stop, linear_gradient, point, prelude::*, px,
+    relative, rgb, size,
 };
 
 use super::icons::icon;
@@ -111,22 +111,12 @@ pub fn button(id: &'static str, icon_name: Option<&'static str>, label: &str, en
     if !label.is_empty() {
         base = base.child(label.to_string());
     }
-    if enabled {
-        base.cursor_pointer().hover(|style| style.bg(palette.hover)).active(|style| style.bg(palette.border))
-    } else {
-        base.border_color(palette.border)
-    }
+    if enabled { base.cursor_pointer().hover(|style| style.bg(palette.hover)).active(|style| style.bg(palette.border)) } else { base.border_color(palette.border) }
 }
 
 /// A round transport button of `diameter` pixels with an icon. `primary` is the accent-colored
 /// play button, the only filled accent control. The caller adds `on_click`.
-pub fn transport(
-    id: &'static str,
-    icon_name: &'static str,
-    diameter: f32,
-    enabled: bool,
-    primary: bool,
-) -> Stateful<Div> {
+pub fn transport(id: &'static str, icon_name: &'static str, diameter: f32, enabled: bool, primary: bool) -> Stateful<Div> {
     let palette = Palette::get();
     let color = match (enabled, primary) {
         (false, _) => palette.disabled,
@@ -147,14 +137,10 @@ pub fn transport(
         .child(icon(icon_name, diameter * 0.42).text_color(color));
     match (enabled, primary) {
         (false, _) => base,
-        (true, true) => base
-            .cursor_pointer()
-            .hover(|style| style.bg(palette.accent_hover).border_color(palette.accent_hover))
-            .active(|style| style.bg(palette.accent_pressed).border_color(palette.accent_pressed)),
-        (true, false) => base
-            .cursor_pointer()
-            .hover(|style| style.bg(palette.hover).border_color(palette.border_strong))
-            .active(|style| style.bg(palette.border)),
+        (true, true) => {
+            base.cursor_pointer().hover(|style| style.bg(palette.accent_hover).border_color(palette.accent_hover)).active(|style| style.bg(palette.accent_pressed).border_color(palette.accent_pressed))
+        }
+        (true, false) => base.cursor_pointer().hover(|style| style.bg(palette.hover).border_color(palette.border_strong)).active(|style| style.bg(palette.border)),
     }
 }
 
@@ -208,14 +194,7 @@ pub fn field(id: &'static str, text: &str, hint: &'static str, active: bool) -> 
 /// bar's last painted area, which maps the pointer to the value. `marks` are `(start, end)`
 /// fractions for the loop window: a band under the fill, a tint over the played part of it, and
 /// markers above everything.
-pub fn slider<T: 'static>(
-    id: &'static str,
-    fraction: f32,
-    mark: Option<(f32, f32)>,
-    bounds: &Rc<Cell<Bounds<Pixels>>>,
-    cx: &mut Context<T>,
-    set: fn(&mut T, f32),
-) -> Stateful<Div> {
+pub fn slider<T: 'static>(id: &'static str, fraction: f32, mark: Option<(f32, f32)>, bounds: &Rc<Cell<Bounds<Pixels>>>, cx: &mut Context<T>, set: fn(&mut T, f32)) -> Stateful<Div> {
     let palette = Palette::get();
     let fraction_at = {
         let bounds = Rc::clone(bounds);
@@ -228,52 +207,16 @@ pub fn slider<T: 'static>(
     let dragged = fraction_at;
     let measure = Rc::clone(bounds);
     let fraction = fraction.clamp(0.0, 1.0);
-    let window =
-        mark.filter(|(start, end)| end > start).map(|(start, end)| (start.clamp(0.0, 1.0), end.clamp(0.0, 1.0)));
-    let mut bar = div()
-        .id(id)
-        .relative()
-        .h(px(10.0))
-        .rounded_full()
-        .bg(palette.raised)
-        .cursor_pointer()
-        .child(canvas(move |area, _, _| measure.set(area), |_, (), _, _| {}).absolute().size_full());
+    let window = mark.filter(|(start, end)| end > start).map(|(start, end)| (start.clamp(0.0, 1.0), end.clamp(0.0, 1.0)));
+    let mut bar = div().id(id).relative().h(px(10.0)).rounded_full().bg(palette.raised).cursor_pointer().child(canvas(move |area, _, _| measure.set(area), |_, (), _, _| {}).absolute().size_full());
     if let Some((start, end)) = window {
-        bar = bar.child(
-            div()
-                .absolute()
-                .top_0()
-                .h_full()
-                .left(relative(start))
-                .w(relative(end - start))
-                .rounded_full()
-                .bg(palette.loop_band),
-        );
+        bar = bar.child(div().absolute().top_0().h_full().left(relative(start)).w(relative(end - start)).rounded_full().bg(palette.loop_band));
     }
     bar = bar.child(div().absolute().top_0().left_0().h_full().w(relative(fraction)).rounded_full().bg(palette.accent));
     if let Some((start, end)) = window.filter(|(start, _)| *start < fraction) {
-        bar = bar.child(
-            div()
-                .absolute()
-                .top_0()
-                .h_full()
-                .left(relative(start))
-                .w(relative(end.min(fraction) - start))
-                .bg(palette.loop_band_played),
-        );
+        bar = bar.child(div().absolute().top_0().h_full().left(relative(start)).w(relative(end.min(fraction) - start)).bg(palette.loop_band_played));
     }
-    bar = bar.child(
-        div()
-            .absolute()
-            .top(px(-2.0))
-            .left(relative(fraction))
-            .ml(px(-7.0))
-            .size(px(14.0))
-            .rounded_full()
-            .border_1()
-            .border_color(palette.border_strong)
-            .bg(palette.text),
-    );
+    bar = bar.child(div().absolute().top(px(-2.0)).left(relative(fraction)).ml(px(-7.0)).size(px(14.0)).rounded_full().border_1().border_color(palette.border_strong).bg(palette.text));
     if let Some((start, end)) = window {
         for edge in [start, end] {
             let color = if edge <= fraction { palette.loop_mark_played } else { palette.loop_mark };
@@ -303,11 +246,7 @@ pub fn meter(level: f32) -> Div {
         l if l > 0.6 => palette.warning,
         _ => palette.success,
     };
-    div()
-        .h(px(6.0))
-        .rounded_full()
-        .bg(palette.raised)
-        .child(div().h_full().w(relative(level.clamp(0.0, 1.0))).rounded_full().bg(color))
+    div().h(px(6.0)).rounded_full().bg(palette.raised).child(div().h_full().w(relative(level.clamp(0.0, 1.0))).rounded_full().bg(color))
 }
 
 /// The spectrum: rounded bars colored by height from the theme's gradient and tinted by the

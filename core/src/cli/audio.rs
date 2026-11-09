@@ -31,9 +31,7 @@ impl FileSource {
         let mut reader = hound::WavReader::open(path).map_err(|e| e.to_string())?;
         let spec = reader.spec();
         let samples = match (spec.sample_format, spec.bits_per_sample) {
-            (hound::SampleFormat::Int, 16) => {
-                reader.samples::<i16>().map(|s| s.map(|v| f32::from(v) / 32768.0)).collect::<Result<Vec<_>, _>>()
-            }
+            (hound::SampleFormat::Int, 16) => reader.samples::<i16>().map(|s| s.map(|v| f32::from(v) / 32768.0)).collect::<Result<Vec<_>, _>>(),
             (hound::SampleFormat::Float, 32) => reader.samples::<f32>().collect::<Result<Vec<_>, _>>(),
             (format, bits) => return Err(format!("unsupported WAV layout: {format:?} {bits}-bit")),
         }
@@ -49,11 +47,7 @@ impl FileSource {
             return Err(format!("unsupported FLAC depth: {}-bit", info.bits_per_sample));
         }
         let scale = (1u32 << (info.bits_per_sample - 1)) as f32;
-        let samples = reader
-            .samples()
-            .map(|sample| sample.map(|value| value as f32 / scale))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| e.to_string())?;
+        let samples = reader.samples().map(|sample| sample.map(|value| value as f32 / scale)).collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
         Ok(Self { samples, rate: info.sample_rate, channels: info.channels as usize, at: 0 })
     }
 

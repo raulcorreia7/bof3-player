@@ -222,9 +222,7 @@ impl<'a> XaEngine<'a> {
             }
             self.decoded_sectors += 1;
             // The EOF bit closes this channel's span: deliver the samples, then stop.
-            if (self.piece.sector_count == 0 && eof)
-                || (self.piece.sector_count != 0 && self.decoded_sectors >= self.piece.sector_count)
-            {
+            if (self.piece.sector_count == 0 && eof) || (self.piece.sector_count != 0 && self.decoded_sectors >= self.piece.sector_count) {
                 self.ended = true;
             }
             return Ok(());
@@ -238,8 +236,7 @@ impl<'a> XaEngine<'a> {
         while written < requested {
             if self.pending_cursor < self.pending.len() {
                 let take = (self.pending.len() - self.pending_cursor).min((requested - written) * channels);
-                out[written * channels..written * channels + take]
-                    .copy_from_slice(&self.pending[self.pending_cursor..self.pending_cursor + take]);
+                out[written * channels..written * channels + take].copy_from_slice(&self.pending[self.pending_cursor..self.pending_cursor + take]);
                 self.pending_cursor += take;
                 written += take / channels;
                 continue;
@@ -324,15 +321,7 @@ impl<'a> CddaEngine<'a> {
         if frame_bytes == 0 || data_bytes < frame_bytes {
             return Err(Error::format("CD-DA track holds no audio"));
         }
-        Ok(Self {
-            blob,
-            channels,
-            rate,
-            data_offset,
-            total_frames: data_bytes / frame_bytes,
-            frames: 0,
-            window: alloc::vec![0u8; CDDA_WINDOW_FRAMES * frame_bytes as usize],
-        })
+        Ok(Self { blob, channels, rate, data_offset, total_frames: data_bytes / frame_bytes, frames: 0, window: alloc::vec![0u8; CDDA_WINDOW_FRAMES * frame_bytes as usize] })
     }
 }
 
@@ -350,9 +339,7 @@ impl Engine for CddaEngine<'_> {
             if got == 0 {
                 break;
             }
-            for (sample, pair) in
-                out[written * channels..(written + got) * channels].iter_mut().zip(bytes.as_chunks::<2>().0)
-            {
+            for (sample, pair) in out[written * channels..(written + got) * channels].iter_mut().zip(bytes.as_chunks::<2>().0) {
                 *sample = i16::from_le_bytes(*pair);
             }
             written += got;
@@ -414,11 +401,7 @@ pub struct Player<'a> {
 
 impl core::fmt::Debug for Player<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Player")
-            .field("rate", &self.engine.rate())
-            .field("channels", &self.engine.channels())
-            .field("position", &self.engine.position())
-            .finish_non_exhaustive()
+        f.debug_struct("Player").field("rate", &self.engine.rate()).field("channels", &self.engine.channels()).field("position", &self.engine.position()).finish_non_exhaustive()
     }
 }
 

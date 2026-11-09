@@ -79,26 +79,14 @@ impl Envelope {
         let a1 = i32::from(self.adsr1);
         let a2 = i32::from(self.adsr2);
         match self.phase {
-            Phase::Attack => Rate {
-                exponential: a1 & 0x8000 != 0,
-                decrease: false,
-                shift: (a1 >> 10) & 0x1F,
-                step: 7 - ((a1 >> 8) & 3),
-            },
+            Phase::Attack => Rate { exponential: a1 & 0x8000 != 0, decrease: false, shift: (a1 >> 10) & 0x1F, step: 7 - ((a1 >> 8) & 3) },
             Phase::Decay => Rate { exponential: true, decrease: true, shift: (a1 >> 4) & 0x0F, step: -8 },
             Phase::Sustain => {
                 let decrease = a2 & 0x4000 != 0;
                 let bits = (a2 >> 6) & 3;
-                Rate {
-                    exponential: a2 & 0x8000 != 0,
-                    decrease,
-                    shift: (a2 >> 8) & 0x1F,
-                    step: if decrease { -8 + bits } else { 7 - bits },
-                }
+                Rate { exponential: a2 & 0x8000 != 0, decrease, shift: (a2 >> 8) & 0x1F, step: if decrease { -8 + bits } else { 7 - bits } }
             }
-            Phase::Release | Phase::Off => {
-                Rate { exponential: a2 & 0x20 != 0, decrease: true, shift: a2 & 0x1F, step: -8 }
-            }
+            Phase::Release | Phase::Off => Rate { exponential: a2 & 0x20 != 0, decrease: true, shift: a2 & 0x1F, step: -8 },
         }
     }
 
