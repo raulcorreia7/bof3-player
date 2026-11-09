@@ -398,7 +398,8 @@ fn gte_registers_move_when_enabled() {
     let mut program = Vec::new();
     program.extend(li(T0, 0x1234_5678));
     program.extend(li(A0, DATA));
-    program.extend([mtc2(T0, 1), ctc2(T0, 3), mfc2(T1, 1), cfc2(T2, 3), lwc2(5, 0, A0), swc2(5, 4, A0), nop()]);
+    // VXY0, TRX and MAC0 hold whole words.
+    program.extend([mtc2(T0, 0), ctc2(T0, 5), mfc2(T1, 0), cfc2(T2, 5), lwc2(24, 0, A0), swc2(24, 4, A0), nop()]);
     let (mut machine, end) = machine_with(&program);
     machine.cpu_mut().set_cop0(cop0::SR, 1 << 30);
     machine.write_words(DATA, &[0xDEAD_BEEF]);

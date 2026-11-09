@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-//! Boots the retail disc that `BOF3_DISC_DIR` names (a disc image, or a folder holding one) and
-//! checks the first texture the game uploads against the EMI entry it came from. Skips when the
-//! variable is unset.
+//! Boots the retail disc that `BOF3_DISC_DIR` names (a disc image, or a folder holding one): checks
+//! the first texture the game uploads against the EMI entry it came from, and plays a new game with
+//! scripted buttons through the first battle. Skips when the variable is unset.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use psx_formats::gfx::vram::{self, Descriptor};
 use psx_machine::Machine;
@@ -35,6 +35,25 @@ fn chunk_upload(machine: &Machine, from: usize) -> Option<(VramRect, Vec<u16>)> 
 
 fn from_bcd(value: u8) -> u32 {
     u32::from(value >> 4) * 10 + u32::from(value & 0xF)
+}
+
+/// The disc file under each `Setloc` the game sent, with the frame it was sent in.
+fn files_read<'a>(machine: &Machine, entries: &'a [psx_cd::Entry]) -> Vec<(u64, &'a psx_cd::Entry)> {
+    machine
+        .bus()
+        .cdrom
+        .commands
+        .iter()
+        .filter(|record| record.command == 0x02 && record.parameters.len() == 3)
+        .filter_map(|record| {
+            let [minute, second, frame] = [0, 1, 2].map(|index| from_bcd(record.parameters[index]));
+            let sector = ((minute * 60 + second) * 75 + frame).checked_sub(150)?;
+            let entry = entries.iter().find(|entry| {
+                !entry.is_directory && (entry.lba..entry.lba + entry.size.div_ceil(2048).max(1)).contains(&sector)
+            })?;
+            Some((record.frame, entry))
+        })
+        .collect()
 }
 
 #[test]
@@ -70,27 +89,13 @@ fn first_texture_upload_matches_its_emi_entry() {
     // The EMI files under the sectors the game asked for.
     let mut disc = psx_cd::Image::open(&image).expect("the image opens");
     let entries = disc.entries().expect("the image has a file system");
-    let mut sectors: Vec<u32> = machine
-        .bus()
-        .cdrom
-        .commands
-        .iter()
-        .filter(|record| record.command == 0x02 && record.parameters.len() == 3)
-        .map(|record| {
-            let [minute, second, frame] = [0, 1, 2].map(|index| from_bcd(record.parameters[index]));
-            (minute * 60 + second) * 75 + frame - 150
-        })
-        .collect();
-    sectors.dedup();
-    let files: Vec<_> = entries
-        .iter()
-        .filter(|entry| {
-            !entry.is_directory
-                && entry.path.extension().is_some_and(|extension| extension.eq_ignore_ascii_case("emi"))
-                && sectors.iter().any(|&sector| (entry.lba..entry.lba + entry.size.div_ceil(2048)).contains(&sector))
-        })
-        .cloned()
-        .collect();
+    let mut files: Vec<psx_cd::Entry> = Vec::new();
+    for (_, entry) in files_read(&machine, &entries) {
+        let emi = entry.path.extension().is_some_and(|extension| extension.eq_ignore_ascii_case("emi"));
+        if emi && !files.contains(entry) {
+            files.push(entry.clone());
+        }
+    }
     assert!(!files.is_empty(), "the game read no EMI file before its first upload");
 
     let mut found = None;
@@ -118,5 +123,65 @@ fn first_texture_upload_matches_its_emi_entry() {
         rect.x,
         rect.y,
         path.display()
+    );
+}
+
+/// Start through the title screen and the opening, then Cross to page through the dialogue and
+/// the first battle's commands.
+fn buttons(frame: u64) -> u16 {
+    const START: u16 = 1 << 3;
+    const CROSS: u16 = 1 << 14;
+    match frame {
+        900..2300 if (frame - 900) % 90 < 4 => START,
+        2400.. if (frame - 2400) % 60 < 4 => CROSS,
+        _ => 0,
+    }
+}
+
+/// Frames the scripted game gets to win its first battle and return to the field (about 8050).
+const NEW_GAME_FRAMES: u64 = 9000;
+
+#[test]
+fn new_game_reaches_the_field_through_the_first_battle() {
+    let Some(image) = disc_image() else {
+        eprintln!("BOF3_DISC_DIR is not set; skipping");
+        return;
+    };
+    let mut disc = psx_cd::Image::open(&image).expect("the image opens");
+    let entries = disc.entries().expect("the image has a file system");
+    let mut machine = Machine::boot_image(&image).expect("the disc boots");
+    let under = |entry: &psx_cd::Entry, folder: &str| entry.path.starts_with(Path::new(folder));
+    let mut back_in_the_field = None;
+    while machine.frame() < NEW_GAME_FRAMES {
+        let next = machine.frame() + 1;
+        machine.kernel_mut().buttons = buttons(machine.frame());
+        machine.run_until(|machine| machine.frame() >= next, 50_000_000).expect("the game runs without a halt");
+        if !next.is_multiple_of(60) {
+            continue;
+        }
+        let files = files_read(&machine, &entries);
+        let battle = files.iter().position(|(_, entry)| under(entry, "BIN/BOSS"));
+        back_in_the_field = battle.and_then(|battle| {
+            files[battle..].iter().find(|(_, entry)| under(entry, "BIN/WORLD00")).map(|(frame, entry)| (*frame, *entry))
+        });
+        if back_in_the_field.is_some() {
+            break;
+        }
+    }
+    let files = files_read(&machine, &entries);
+    let (frame, area) = back_in_the_field.unwrap_or_else(|| {
+        let names: Vec<_> = files.iter().map(|(frame, entry)| format!("{frame}: {}", entry.path.display())).collect();
+        panic!("no return to the field from a boss battle by frame {}; files read: {names:#?}", machine.frame())
+    });
+    let textured_polygons = machine
+        .gpu_log()
+        .iter()
+        .filter(|logged| matches!(&logged.command, Command::Draw(draw) if draw.texture.is_some() && draw.opcode < 0x40))
+        .count();
+    assert!(textured_polygons > 0, "the field and the battle draw textured polygons");
+    eprintln!(
+        "frame {frame}: back in {} after the first battle; {textured_polygons} textured polygons, {} key-ons",
+        area.path.display(),
+        machine.key_ons().len()
     );
 }

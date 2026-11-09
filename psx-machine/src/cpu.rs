@@ -176,7 +176,7 @@ impl Cpu {
     ///
     /// # Errors
     ///
-    /// [`Halt::Gte`] when the instruction is a GTE command the machine does not implement.
+    /// [`Halt::Gte`] when the instruction is a GTE command with an opcode that has no function.
     pub fn step(&mut self, bus: &mut Bus) -> Result<(), Halt> {
         if self.take_interrupt(bus) {
             return Ok(());

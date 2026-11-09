@@ -29,7 +29,7 @@ use std::fmt;
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum Halt {
-    /// The code ran a GTE command, which the machine does not implement yet.
+    /// The code ran a GTE command with an opcode that has no function.
     Gte {
         /// The command field of the `COP2` instruction.
         command: u32,
@@ -71,7 +71,7 @@ pub enum Halt {
 impl fmt::Display for Halt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Gte { command } => write!(f, "GTE command {command:#09x} is not implemented"),
+            Self::Gte { command } => write!(f, "GTE command {command:#09x} has no function"),
             Self::Bios { table, function, caller } => {
                 write!(f, "kernel function {table:02X}:{function:02X}h has no stand-in (called from {caller:#010x})")
             }

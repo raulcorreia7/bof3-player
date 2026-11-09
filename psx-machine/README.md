@@ -17,7 +17,7 @@ Guide: [psx-machine](../docs/crates.md#psx-machine). The hardware sources are in
 | Part | Model                                                                                                       |
 | ---- | ----------------------------------------------------------------------------------------------------------- |
 | CPU  | R3000A: every MIPS I instruction, branch and load delay slots, coprocessor 0, exceptions and the interrupt line |
-| GTE  | the coprocessor 2 registers; a GTE command stops the run with `Halt::Gte`                                   |
+| GTE  | every register and command, flags and saturation, the hardware's reciprocal for the perspective division; no cycle counts |
 | Bus  | 2 MB RAM with its mirrors, 1 KB scratchpad, I/O ports, an empty BIOS region; KUSEG, KSEG0 and KSEG1           |
 | GPU  | `GP0`, `GP1`, `GPUSTAT`, `GPUREAD`; a 1024×512 16-bit VRAM and a log of every command                       |
 | DMA  | seven channels in block, request and linked-list modes, `DPCR`, `DICR` and its interrupt                     |
@@ -54,15 +54,18 @@ machine) run it; a `Halt` names what stopped it, such as a kernel function with 
 
 With `BOF3_DISC_DIR` naming a *Breath of Fire III* (USA) image, `cargo run --release -p
 psx-machine --example boot -- 600` prints the frames run, GPU command counts and the VRAM
-rectangles written, and `tests/retail.rs` checks that the game's first 32×32 texture upload equals
-the type-3 EMI entry it came from. The game boots through its logo movie to the title screen and,
-with Start pressed, to the title menu. The tty shows one `VSync: timeout`, at frame 481 just after
+rectangles written. `tests/retail.rs` checks that the game's first 32×32 texture upload equals
+the type-3 EMI entry it came from, and plays a new game with scripted buttons: Start through the
+title screen and the opening, then Cross every second. The game loads the first area
+(`WORLD00/AREA024`), fights the first boss battle (`BOSS/BOSS001`) and is back in the field at
+frame 8054, where it waits for the player to walk. The run is deterministic, so the same buttons
+give the same frames. The tty shows one `VSync: timeout`, at frame 481 just after
 the logo returns: `VSync` gives its wait for the next vertical blank 32768 polls, about one frame
 at the machine's flat two cycles per instruction, and the run carries on.
 
 `PS1_TESTS_DIR`, naming an unpacked release of the MIT-licensed
 [ps1-tests](https://github.com/JaCzekanski/ps1-tests) suite, turns on `tests/ps1_tests.rs`, which
-runs the suite's self-checking DMA programs.
+runs the suite's self-checking DMA and GTE programs.
 
 ## No BIOS image
 
@@ -96,6 +99,7 @@ a BIOS replaced by stubs. These were checked first (November 2026):
 | Candidate                | Licence | Why it is not used                                                                                                 |
 | ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------ |
 | `trapezoid-core` 0.3.0   | MIT     | The bus trait and the GTE are in private modules, so another crate cannot plug in its own bus; `Psx::new` requires a BIOS file. |
+| `trapezoid-core` GTE     | MIT (Amjad Alsharafi) | Considered on its own for the GTE. Its history records that the author consulted DuckStation's (GPL) code for the RTPS/RTPT flag behaviour (upstream commit 72d2d2d), so the GTE is written here from psx-spx instead. |
 | `rsemu` 0.0.8            | MIT     | Needs Rust 1.91 (the workspace supports 1.88); a pre-1.0 framework with no GTE and no PlayStation board.             |
 | `playastation` 0.1.0     | WTFPL   | Not on the `cargo deny` licence list.                                                                              |
 | rustation, Mednafen/Beetle, PCSX-Redux, Avocado, DuckStation | GPL, unclear or non-commercial | Not MIT-compatible; nothing was copied from them. |

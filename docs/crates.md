@@ -91,7 +91,7 @@ needs no BIOS image.
 | Module    | Contents                                                                  |
 | --------- | ------------------------------------------------------------------------- |
 | `cpu`     | R3000A interpreter: MIPS I, delay slots, coprocessor 0 and exceptions      |
-| `gte`     | coprocessor 2 registers                                                   |
+| `gte`     | the geometry transformation engine: registers and commands               |
 | `bus`     | RAM and its mirrors, scratchpad, I/O ports, KUSEG/KSEG0/KSEG1             |
 | `irq`     | `I_STAT` and `I_MASK`                                                     |
 | `gpu`     | `GP0`/`GP1`, VRAM, and the command log: draws with page, CLUT and UVs, uploads |
@@ -106,6 +106,7 @@ needs no BIOS image.
 | Part | Reference                                                         |
 | ---- | ----------------------------------------------------------------- |
 | CPU  | psx-spx "CPU Specifications", "COP0 - Exception Handling"; MIPS I |
+| GTE  | psx-spx "Geometry Transformation Engine (GTE)"                    |
 | Bus  | psx-spx "Memory Map", "Interrupts"                                |
 | GPU  | psx-spx "GPU Render Polygon/Line/Rectangle Commands", "GPU Memory Transfer Commands", "GPU Rendering Attributes", "GPU Display Control Commands", "GPU Status Register" |
 | DMA  | psx-spx "DMA Channels"                                            |
