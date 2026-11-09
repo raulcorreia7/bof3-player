@@ -3,9 +3,12 @@
 //! BIOS region and the cache control register, reached through KUSEG, KSEG0 and KSEG1
 //! (psx-spx "Memory Map").
 
+use crate::cdrom::Cdrom;
 use crate::dma::{Dma, channel};
 use crate::gpu::Gpu;
 use crate::irq::{Irq, Line};
+use crate::spu::Spu;
+use crate::timers::Timers;
 
 /// Bytes of main RAM.
 pub const RAM_SIZE: usize = 2 * 1024 * 1024;
@@ -49,6 +52,12 @@ pub struct Bus {
     pub dma: Dma,
     /// The GPU.
     pub gpu: Gpu,
+    /// The beam and the root counters.
+    pub timers: Timers,
+    /// The SPU.
+    pub spu: Spu,
+    /// The CD-ROM controller.
+    pub cdrom: Cdrom,
     /// GPU linked lists cut short because they did not end.
     pub dma_list_overruns: u64,
     io: Vec<u8>,
@@ -73,6 +82,9 @@ impl Bus {
             irq: Irq::default(),
             dma: Dma::default(),
             gpu: Gpu::new(),
+            timers: Timers::default(),
+            spu: Spu::new(),
+            cdrom: Cdrom::new(),
             dma_list_overruns: 0,
             io: vec![0; (IO_END - IO) as usize],
             cache_control: 0,
@@ -183,9 +195,42 @@ impl Bus {
         }
     }
 
+    /// Brings the timers and the CD-ROM controller up to the current cycle and stamps the frame
+    /// count on the device logs.
+    pub fn sync(&mut self) {
+        let elapsed = self.timers.sync(self.cycles, &mut self.irq);
+        if elapsed.vblanks > 0 {
+            for _ in 0..elapsed.vblanks {
+                self.gpu.vblank();
+            }
+            let frame = self.timers.frame;
+            self.gpu.frame = frame;
+            self.spu.frame = frame;
+            self.cdrom.frame = frame;
+        }
+        self.cdrom.sync(self.cycles, &mut self.irq);
+    }
+
     fn read_io(&mut self, p: u32, width: Width) -> u32 {
         let shift = (p & 3) * 8;
+        if (0x1F80_1C00..0x1F80_2000).contains(&p) {
+            let offset = p - 0x1F80_1C00;
+            return match width {
+                Width::Word => u32::from(self.spu.read(offset)) | (u32::from(self.spu.read(offset + 2)) << 16),
+                Width::Half => u32::from(self.spu.read(offset)),
+                Width::Byte => u32::from(self.spu.read(offset & !1) >> ((p & 1) * 8)) & 0xFF,
+            };
+        }
+        if (0x1F80_1800..0x1F80_1804).contains(&p) {
+            return u32::from(self.cdrom.read(p & 3, self.cycles));
+        }
         match p & !3 {
+            0x1F80_1044 => 0x0000_0005 >> shift,
+            0x1F80_1040 => 0xFFFF_FFFF >> shift,
+            0x1F80_1100..=0x1F80_112F => {
+                self.timers.sync(self.cycles, &mut self.irq);
+                self.timers.read((p & !3) - 0x1F80_1100) >> shift
+            }
             0x1F80_1070 => u32::from(self.irq.status()) >> shift,
             0x1F80_1074 => u32::from(self.irq.mask()) >> shift,
             0x1F80_1080..=0x1F80_10FF => self.dma.read((p & !3) - 0x1F80_1080) >> shift,
@@ -202,8 +247,28 @@ impl Bus {
             Width::Half => 0xFFFF << shift,
             Width::Word => 0xFFFF_FFFF,
         };
+        if (0x1F80_1C00..0x1F80_2000).contains(&p) {
+            let offset = p - 0x1F80_1C00;
+            match width {
+                Width::Word => {
+                    self.spu.write(offset, value as u16);
+                    self.spu.write(offset + 2, (value >> 16) as u16);
+                }
+                _ => self.spu.write(offset, value as u16),
+            }
+            return;
+        }
+        if (0x1F80_1800..0x1F80_1804).contains(&p) {
+            self.cdrom.write(p & 3, value as u8, self.cycles);
+            self.cdrom.sync(self.cycles, &mut self.irq);
+            return;
+        }
         let value = value << shift;
         match p & !3 {
+            0x1F80_1100..=0x1F80_112F => {
+                self.timers.sync(self.cycles, &mut self.irq);
+                self.timers.write((p & !3) - 0x1F80_1100, (value & mask) >> shift);
+            }
             0x1F80_1070 => self.irq.acknowledge((value | !mask) as u16),
             0x1F80_1074 => self.irq.set_mask(((u32::from(self.irq.mask()) & !mask) | (value & mask)) as u16),
             0x1F80_1080..=0x1F80_10FF => self.dma_write((p & !3) - 0x1F80_1080, value, mask),
@@ -220,11 +285,15 @@ impl Bus {
 
     /// A word a DMA channel moves from RAM to its device.
     pub(crate) fn dma_to_device(&mut self, index: usize, value: u32) {
-        if index == channel::GPU {
-            self.gpu.gp0(value);
-            if self.gpu.take_irq() {
-                self.irq.raise(Line::Gpu);
+        match index {
+            channel::GPU => {
+                self.gpu.gp0(value);
+                if self.gpu.take_irq() {
+                    self.irq.raise(Line::Gpu);
+                }
             }
+            channel::SPU => self.spu.write_ram(&value.to_le_bytes()),
+            _ => {}
         }
     }
 
@@ -232,6 +301,8 @@ impl Bus {
     pub(crate) fn dma_from_device(&mut self, index: usize) -> u32 {
         match index {
             channel::GPU => self.gpu.read(),
+            channel::CDROM => self.cdrom.read_data_word(),
+            channel::SPU => self.spu.read_word(),
             _ => 0,
         }
     }

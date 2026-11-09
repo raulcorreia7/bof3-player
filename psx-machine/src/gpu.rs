@@ -325,6 +325,11 @@ impl Gpu {
         std::mem::take(&mut self.raised_irq)
     }
 
+    /// Flips the interlace field, once per vertical blank.
+    pub(crate) fn vblank(&mut self) {
+        self.field = !self.field;
+    }
+
     /// `GPUSTAT`.
     #[must_use]
     pub fn status(&self) -> u32 {

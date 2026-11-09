@@ -41,3 +41,10 @@ Avocado, DuckStation) and rustation, whose licence is unclear, were not used as 
 | Page, CLUT, window bits   | GPU Rendering Attributes                               |
 | `GP1`, `GPUSTAT`          | GPU Display Control Commands; GPU Status Register      |
 | DMA modes, `DPCR`, `DICR` | DMA Channels                                           |
+| Beam and root counters    | Timers; GPU Timings (263 lines of 3413 video cycles at 53.693175 MHz) |
+| CD-ROM ports and commands | CDROM Controller I/O Ports; CDROM Controller Command Summary; CDROM - Response Timings |
+| SPU registers, transfers  | SPU Voice Registers; SPU Control and Status Register; SPU Memory Access |
+| Kernel functions          | BIOS Function Summary; BIOS Event, Thread and Joypad Functions |
+| Exception dispatch, chains | BIOS Interrupt/Exception Handling                     |
+| Kernel RAM layout         | BIOS Memory Map; BIOS Patches (`_patch_pad` offsets)   |
+| PS-X EXE, `SYSTEM.CNF`    | CDROM File Formats                                     |

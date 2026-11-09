@@ -248,3 +248,33 @@ pub fn run(program: &[u32]) -> Machine {
     assert_eq!(machine.run_until_pc(end, 100_000), Ok(psx_machine::Stop::Pc));
     machine
 }
+
+/// Calls kernel function `function` of table `table` (0xA0, 0xB0 or 0xC0): the three-instruction
+/// sequence the libraries use.
+pub fn bios(table: u32, function: u32) -> [u32; 3] {
+    [addiu(10, 0, table as i32), jalr(31, 10), addiu(9, 0, function as i32)]
+}
+
+/// A machine with the stand-in kernel, `program` at [`CODE`] and a stack; returns the end address.
+pub fn kernel_with(program: &[u32]) -> (Machine, u32) {
+    let mut machine = Machine::with_kernel();
+    let mut words = program.to_vec();
+    let end = CODE + 4 * words.len() as u32;
+    words.push(j(end));
+    words.push(nop());
+    machine.write_words(CODE, &words);
+    machine.cpu_mut().set_reg(29, 0x801F_FF00);
+    machine.cpu_mut().set_pc(CODE);
+    (machine, end)
+}
+
+/// The bytes of a PS-X EXE that loads `words` at `address` and starts there.
+pub fn exe(address: u32, words: &[u32]) -> Vec<u8> {
+    let mut bytes = vec![0u8; 0x800];
+    bytes[..8].copy_from_slice(b"PS-X EXE");
+    bytes[0x10..0x14].copy_from_slice(&address.to_le_bytes());
+    bytes[0x18..0x1C].copy_from_slice(&address.to_le_bytes());
+    bytes[0x1C..0x20].copy_from_slice(&(4 * words.len() as u32).to_le_bytes());
+    bytes.extend(words.iter().flat_map(|word| word.to_le_bytes()));
+    bytes
+}

@@ -21,6 +21,10 @@ Guide: [psx-machine](../docs/crates.md#psx-machine). The hardware sources are in
 | Bus  | 2 MB RAM with its mirrors, 1 KB scratchpad, I/O ports, an empty BIOS region; KUSEG, KSEG0 and KSEG1           |
 | GPU  | `GP0`, `GP1`, `GPUSTAT`, `GPUREAD`; a 1024×512 16-bit VRAM and a log of every command                       |
 | DMA  | seven channels in block, request and linked-list modes, `DPCR`, `DICR` and its interrupt                     |
+| Timers | the NTSC beam (263 lines, vertical blank at line 240, `IRQ0`) and the three root counters                 |
+| CD-ROM | the controller ports, the commands libcd sends, responses and interrupts, sectors to the CPU or DMA 3     |
+| SPU  | registers, 512 KB sound RAM through the transfer port and DMA 4, a log of key-ons and sound RAM writes        |
+| Kernel | stand-ins for the `A0`, `B0` and `C0` functions the game calls, exceptions, events, threads, pads, `Exec`  |
 
 The GPU log is the point of the crate. Each draw records its shape, vertices (before the drawing
 offset), colours, UVs, texture page, CLUT, depth, texture window, the drawing offset and the
@@ -29,8 +33,45 @@ commands are logged too. Uploads, fills and copies change VRAM; draws are record
 rasterized, so VRAM holds what the game loaded, not what it drew. A renderer can come later behind
 a feature; the log and VRAM do not depend on one.
 
+The SPU log records each key-on with the voice's start address, loop address, pitch, ADSR and
+volume, the fields `psx_audio::spu::VoiceSetup` takes; together with `Spu::ram` it is enough to
+render the sounds with `psx-audio`. The machine itself mixes no audio, and CD-DA and XA sectors are
+counted, not played.
+
 Unmapped reads return 0 and unmapped writes are dropped; the machine raises no bus errors. A DMA
 transfer runs to its end the moment it starts.
+
+## Running code
+
+`Machine::boot_image(path)` opens a disc image, reads `SYSTEM.CNF`, loads the boot executable and
+points the CPU at its entry. `run_frames`, `run_until_pc` and `run_until` (any condition on the
+machine) run it; a `Halt` names what stopped it, such as a kernel function with no stand-in.
+`gpu_log`, `vram`, `ram`, `key_ons` and `kernel().tty` read the results.
+`Machine::new` gives a bare machine with no kernel, for tests on synthetic programs.
+
+## No BIOS image
+
+The kernel is a set of stand-ins written from psx-spx, added as the game calls them. Its tables and
+control blocks sit in RAM where the BIOS keeps them (function tables at 0x200, 0x674 and 0x874, the
+table of tables at 0x100, thread control blocks), because PsyQ library code reads and patches them:
+`_patch_pad` derives the pad enable and disable routines from the `ChangeClearPAD` entry, and the
+game's thread scheduler presets `SR` in the control blocks. Fetches from kernel RAM are traps the
+machine handles; a fetch it has no routine for stops the run with `Halt::KernelPc`.
+
+## The CD drive is hardware, not the libcd boundary
+
+The plan was to serve the disc at the libcd call boundary. The game's code argued against it:
+
+- the EMI loader reads through `CdControl(CdlReadN)` with a ready callback that pulls each sector
+  with `CdGetSector`, not through `CdRead`;
+- the logo program streams its movie through `StCdInterrupt`, which moves sectors with its own DMA
+  calls (`dma_execute`) below the public functions;
+- the logo program links its own copy of libcd at other addresses, so a symbol map per executable
+  would be needed.
+
+So the machine models the controller instead: its ports, the commands libcd sends, the response
+and interrupt order, and sector reads at single or double speed. It needs no game addresses and no
+symbol map, and both executables boot through it unchanged.
 
 ## Why the crate writes its own core
 

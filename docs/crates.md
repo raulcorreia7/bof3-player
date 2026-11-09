@@ -96,6 +96,11 @@ needs no BIOS image.
 | `irq`     | `I_STAT` and `I_MASK`                                                     |
 | `gpu`     | `GP0`/`GP1`, VRAM, and the command log: draws with page, CLUT and UVs, uploads |
 | `dma`     | the seven DMA channels, `DPCR` and `DICR`                                 |
+| `timers`  | the NTSC beam, vertical blank and the three root counters                 |
+| `cdrom`   | the CD-ROM controller and its command set                                 |
+| `disc`    | raw sectors and tracks from a `psx-cd` image or from memory               |
+| `spu`     | SPU registers, sound RAM and the key-on log                               |
+| `exe`     | PS-X EXE headers and `SYSTEM.CNF`                                         |
 
 | Part | Reference                                                         |
 | ---- | ----------------------------------------------------------------- |
@@ -103,8 +108,14 @@ needs no BIOS image.
 | Bus  | psx-spx "Memory Map", "Interrupts"                                |
 | GPU  | psx-spx "GPU Render Polygon/Line/Rectangle Commands", "GPU Memory Transfer Commands", "GPU Rendering Attributes", "GPU Display Control Commands", "GPU Status Register" |
 | DMA  | psx-spx "DMA Channels"                                            |
+| Timers | psx-spx "Timers", "GPU Timings"                                 |
+| CD-ROM | psx-spx "CDROM Controller I/O Ports", "CDROM Controller Command Summary", "CDROM - Response Timings" |
+| SPU  | psx-spx "SPU Voice Registers", "SPU Control and Status Register", "SPU Memory Access" |
+| Kernel | psx-spx "BIOS Function Summary", "BIOS Interrupt/Exception Handling", "BIOS Memory Map", "BIOS Patches" |
 
-The crate README says why it writes its own core instead of depending on an emulator crate.
+`Machine::boot_image` boots a disc image; the run API reads back the GPU log, VRAM, RAM and the
+SPU key-on log. The crate README says why it writes its own core instead of depending on an
+emulator crate, and why the CD drive is modelled as hardware.
 
 ## psx-formats
 

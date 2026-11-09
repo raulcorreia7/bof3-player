@@ -124,6 +124,12 @@ impl Cpu {
         self.lo
     }
 
+    /// Sets `HI` and `LO`.
+    pub fn set_hi_lo(&mut self, hi: u32, lo: u32) {
+        self.hi = hi;
+        self.lo = lo;
+    }
+
     /// The address of the next instruction to run.
     #[must_use]
     pub fn pc(&self) -> u32 {
@@ -172,20 +178,9 @@ impl Cpu {
     ///
     /// [`Halt::Gte`] when the instruction is a GTE command the machine does not implement.
     pub fn step(&mut self, bus: &mut Bus) -> Result<(), Halt> {
-        if bus.irq.pending() {
-            self.cop0[cop0::CAUSE] |= CAUSE_HARDWARE_IRQ;
-        } else {
-            self.cop0[cop0::CAUSE] &= !CAUSE_HARDWARE_IRQ;
-        }
-        let sr = self.cop0[cop0::SR];
-        if sr & 1 != 0 && (sr & self.cop0[cop0::CAUSE] & 0xFF00) != 0 && !self.next_is_gte_command(bus) {
-            self.flush_load();
-            self.current_pc = self.pc;
-            self.delay_slot = self.branch;
-            self.exception(Exception::Interrupt);
+        if self.take_interrupt(bus) {
             return Ok(());
         }
-
         let pc = self.pc;
         self.current_pc = pc;
         self.delay_slot = self.branch;
@@ -208,6 +203,24 @@ impl Cpu {
         }
         self.regs[0] = 0;
         result
+    }
+
+    /// Enters the interrupt handler when an enabled interrupt is pending; returns whether it did.
+    pub fn take_interrupt(&mut self, bus: &mut Bus) -> bool {
+        if bus.irq.pending() {
+            self.cop0[cop0::CAUSE] |= CAUSE_HARDWARE_IRQ;
+        } else {
+            self.cop0[cop0::CAUSE] &= !CAUSE_HARDWARE_IRQ;
+        }
+        let sr = self.cop0[cop0::SR];
+        if sr & 1 == 0 || (sr & self.cop0[cop0::CAUSE] & 0xFF00) == 0 || self.next_is_gte_command(bus) {
+            return false;
+        }
+        self.flush_load();
+        self.current_pc = self.pc;
+        self.delay_slot = self.branch;
+        self.exception(Exception::Interrupt);
+        true
     }
 
     /// Whether the instruction at `pc` is a GTE command. Hardware runs a GTE command before it
