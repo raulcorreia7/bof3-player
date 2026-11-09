@@ -31,7 +31,7 @@ The workspace selects stable Rust; run `rustup update stable` to update an insta
 ```sh
 git clone https://github.com/raulcorreia7/bof3-player.git
 cd bof3-player
-make build   # release builds of the three tools into target/release
+make build   # release builds into target/release, linked into bin/
 make check   # format, clippy, cargo deny, tests and no-default-features check
 ```
 
