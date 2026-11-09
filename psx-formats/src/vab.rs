@@ -19,6 +19,8 @@
 //! assert_eq!(bank.decode_vag(&body, 1).unwrap(), vec![0i16; 28]);
 //! ```
 
+pub mod file;
+
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;

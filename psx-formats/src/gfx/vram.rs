@@ -109,6 +109,86 @@ impl Descriptor {
     }
 }
 
+/// The bits of a load argument that [`Descriptor`] owns: column, row and rectangles per row.
+const PLACEMENT_BITS: u32 = 0x3f1f_3f00;
+
+/// Where a type-3 upload lands, as a name for the three load-argument fields: the same value as
+/// [`Descriptor`], read as a placement (`x`, `y`, `load_argument`, `moved`).
+///
+/// # Examples
+///
+/// ```
+/// use psx_formats::gfx::vram::Placement;
+///
+/// let place = Placement::from_load_argument(0x1a08_0200);
+/// assert_eq!((place.x(), place.y()), (0x1a * 32, 8 * 32));
+/// ```
+pub type Placement = Descriptor;
+
+impl Descriptor {
+    /// The left edge in VRAM words.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let descriptor = psx_formats::gfx::vram::Descriptor { column: 22, row: 0, chunks_per_row: 1 };
+    /// assert_eq!(descriptor.x(), 704);
+    /// ```
+    pub fn x(self) -> u16 {
+        u16::from(self.column) * RECTANGLE_SIDE as u16
+    }
+
+    /// The top edge in VRAM rows.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let descriptor = psx_formats::gfx::vram::Descriptor { column: 0, row: 8, chunks_per_row: 1 };
+    /// assert_eq!(descriptor.y(), 256);
+    /// ```
+    pub fn y(self) -> u16 {
+        u16::from(self.row) * RECTANGLE_SIDE as u16
+    }
+
+    /// `base` with this placement in the bits it owns (column, row, rectangles per row); every
+    /// other bit of `base` stays, so an unknown field of the load argument survives an edit.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use psx_formats::gfx::vram::Descriptor;
+    ///
+    /// let descriptor = Descriptor { column: 1, row: 2, chunks_per_row: 3 };
+    /// assert_eq!(descriptor.load_argument(0x00c0_00ff), 0x01c2_03ff);
+    /// ```
+    pub fn load_argument(self, base: u32) -> u32 {
+        base & !PLACEMENT_BITS
+            | u32::from(self.column) << 24
+            | u32::from(self.row) << 16
+            | u32::from(self.chunks_per_row) << 8
+    }
+
+    /// The same upload with its top-left rectangle at VRAM `column` and `row` (32-word and 32-row
+    /// units), or `None` when `rectangles` of it would leave the frame buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use psx_formats::gfx::vram::Descriptor;
+    ///
+    /// let place = Descriptor { column: 22, row: 8, chunks_per_row: 1 };
+    /// assert!(place.moved(30, 14, 2).is_some());
+    /// assert_eq!(place.moved(32, 0, 1), None, "column 32 is past the right edge");
+    /// ```
+    pub fn moved(self, column: u8, row: u8, rectangles: usize) -> Option<Self> {
+        let per_row = usize::from(self.chunks_per_row).max(1);
+        let rows = rectangles.div_ceil(per_row);
+        let fits = usize::from(column) + per_row <= VRAM_WIDTH / RECTANGLE_SIDE
+            && usize::from(row) + rows <= VRAM_HEIGHT / RECTANGLE_SIDE;
+        fits.then_some(Self { column, row, ..self })
+    }
+}
+
 /// One 32x32-word upload rectangle: its VRAM destination and its words.
 ///
 /// # Examples
