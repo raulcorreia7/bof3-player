@@ -60,6 +60,10 @@ with Start pressed, to the title menu. The tty shows one `VSync: timeout`, at fr
 the logo returns: `VSync` gives its wait for the next vertical blank 32768 polls, about one frame
 at the machine's flat two cycles per instruction, and the run carries on.
 
+`PS1_TESTS_DIR`, naming an unpacked release of the MIT-licensed
+[ps1-tests](https://github.com/JaCzekanski/ps1-tests) suite, turns on `tests/ps1_tests.rs`, which
+runs the suite's self-checking DMA programs.
+
 ## No BIOS image
 
 The kernel is a set of stand-ins written from psx-spx, added as the game calls them. Its tables and

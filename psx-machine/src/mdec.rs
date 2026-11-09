@@ -2,8 +2,9 @@
 //! The MDEC: the motion decoder that turns run-length coded DCT blocks into pixels for movies
 //! (psx-spx "MDEC I/O Ports", "MDEC Commands", "MDEC Decompression"). A command decodes as soon as
 //! its last parameter arrives, and its pixels wait in an output queue that has no size limit.
-//! The inverse DCT follows psx-spx's reference decoder; pixel values can differ from the hardware
-//! in the last bit.
+//! The inverse DCT follows psx-spx's reference decoder, so a pixel can differ from the console's
+//! by a step or two: against the console dumps of the `ps1-tests` MDEC programs, 49 of 64 bytes of
+//! an 8-bit block and 30 of 32 bytes of a 4-bit block match.
 
 use std::collections::VecDeque;
 
@@ -163,7 +164,8 @@ impl Mdec {
                         if depth == Depth::Mono8 {
                             out.byte(value);
                         } else {
-                            out.nibble(value >> 4);
+                            // Four-bit output rounds to the nearest step and saturates.
+                            out.nibble(((u16::from(value) + 8) >> 4).min(15) as u8);
                         }
                     }
                 }
@@ -216,16 +218,22 @@ impl Mdec {
                 value = signed10(halfword) * 2;
             }
             coefficients[if q_scale > 0 { ZAGZIG[k] } else { k }] = value.clamp(-0x400, 0x3FF);
+            // The 64th coefficient completes the block without an end code.
+            if k == 63 {
+                break;
+            }
             halfword = stream.next()?;
             k += usize::from(halfword >> 10) + 1;
             if k > 63 {
                 break;
             }
-            value = (signed10(halfword) * i32::from(table[k]) * q_scale + 4) / 8;
+            value = (signed10(halfword) * i32::from(table[k]) * q_scale + 4) >> 3;
         }
         Some(self.idct(coefficients))
     }
 
+    /// The inverse DCT of psx-spx "MDEC Decompression": two passes over the scale table, each
+    /// rounded to 13 fraction bits.
     fn idct(&self, block: [i32; 64]) -> [i32; 64] {
         let mut source = block;
         let mut target = [0i32; 64];

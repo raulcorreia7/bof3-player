@@ -49,3 +49,9 @@ Avocado, DuckStation) and rustation, whose licence is unclear, were not used as 
 | Exception dispatch, chains | BIOS Interrupt/Exception Handling                     |
 | Kernel RAM layout         | BIOS Memory Map; BIOS Patches (`_patch_pad` offsets)   |
 | PS-X EXE, `SYSTEM.CNF`    | CDROM File Formats                                     |
+
+The MIT-licensed [ps1-tests](https://github.com/JaCzekanski/ps1-tests) suite (release build 158)
+checks the model from outside the repository; none of it is committed. `tests/ps1_tests.rs` runs
+the DMA programs that report their own results when `PS1_TESTS_DIR` names an unpacked release. The
+MDEC programs' console dumps (`psx.log`) set the dequantization rounding (an arithmetic shift) and
+the 4-bit output rounding, and their 15- and 24-bit frames match the reference VRAM images by eye.
