@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: MIT
 //! The GPU as the code sees it: the `GP0` and `GP1` ports, `GPUSTAT`, a 1024×512 16-bit VRAM and a
-//! log of every command. Transfers and fills change VRAM; draw commands are recorded, not
-//! rasterized. Command formats follow psx-spx "GPU Render Polygon/Line/Rectangle Commands",
-//! "GPU Memory Transfer Commands", "GPU Rendering Attributes" and "GPU Display Control Commands".
+//! log of every command. Transfers and fills change VRAM, and draw commands are rasterized into
+//! it unless [`Gpu::set_rasterize`] turns that off; every command is logged either way. Command
+//! formats follow psx-spx "GPU Render Polygon/Line/Rectangle Commands", "GPU Memory Transfer
+//! Commands", "GPU Rendering Attributes" and "GPU Display Control Commands".
+
+mod display;
+mod raster;
+
+pub use display::Frame;
 
 /// VRAM width in 16-bit pixels.
 pub const VRAM_WIDTH: usize = 1024;
@@ -253,14 +259,56 @@ pub struct Gpu {
     check_mask: bool,
     display_disabled: bool,
     dma_direction: u32,
+    /// `GP1(09h)` bit 0: `GP0(E1h)` bit 11 (texture page Y base 2) may be written.
+    upper_vram: bool,
     display_mode: u32,
     irq: bool,
     field: bool,
     read: u32,
     /// The display start, `GP1(05h)`.
     pub display_start: (u16, u16),
+    /// `GP1(06h)`: the first and the end video clock of a displayed line.
+    pub horizontal_range: (u16, u16),
+    /// `GP1(07h)`: the first and the end scanline of the display.
+    pub vertical_range: (u16, u16),
     raised_irq: bool,
+    rasterize: bool,
+    clut_cache: ClutCache,
 }
+
+/// psx-spx "GPU Texture Caching": the CLUT entries the GPU holds while it draws 4- and 8-bit
+/// textures. It reloads them when a draw names another CLUT position or needs more entries
+/// than were loaded (16 for 4-bit, 256 for 8-bit), and after `GP0(01h)` or `GP1(01h)`; until
+/// then, VRAM writes over the CLUT do not reach the cache.
+struct ClutCache {
+    /// The CLUT position and the entries loaded from it; `None` when invalidated.
+    key: Option<(Clut, usize)>,
+    colors: [u16; 256],
+}
+
+impl ClutCache {
+    fn load(&mut self, vram: &[u16], clut: Clut, depth: Depth) -> &[u16; 256] {
+        let needed = match depth {
+            Depth::Bits4 => 16,
+            Depth::Bits8 => 256,
+            Depth::Bits15 => return &self.colors,
+        };
+        if self.key.is_none_or(|(at, loaded)| at != clut || loaded < needed) {
+            let row = usize::from(clut.y) % VRAM_HEIGHT * VRAM_WIDTH;
+            for (index, color) in self.colors[..needed].iter_mut().enumerate() {
+                *color = vram[row + (usize::from(clut.x) + index) % VRAM_WIDTH];
+            }
+            self.key = Some((clut, needed));
+        }
+        &self.colors
+    }
+}
+
+/// psx-spx "GP1(00h) - Reset GPU": the horizontal display range after a reset, a 256-pixel line
+/// of 10 video clocks per pixel from clock 200h.
+const RESET_HORIZONTAL_RANGE: (u16, u16) = (0x200, 0x200 + 256 * 10);
+/// psx-spx "GP1(00h) - Reset GPU": 240 lines from scanline 10h.
+const RESET_VERTICAL_RANGE: (u16, u16) = (0x10, 0x10 + 240);
 
 impl Default for Gpu {
     fn default() -> Self {
@@ -288,13 +336,36 @@ impl Gpu {
             check_mask: false,
             display_disabled: true,
             dma_direction: 0,
+            upper_vram: false,
             display_mode: 0,
             irq: false,
             field: false,
             read: 0,
             display_start: (0, 0),
+            horizontal_range: RESET_HORIZONTAL_RANGE,
+            vertical_range: RESET_VERTICAL_RANGE,
             raised_irq: false,
+            rasterize: true,
+            clut_cache: ClutCache { key: None, colors: [0; 256] },
         }
+    }
+
+    /// Whether draw commands are rasterized into VRAM (the default). Without it they are only
+    /// logged, which is faster when only the log is read.
+    #[must_use]
+    pub fn rasterizes(&self) -> bool {
+        self.rasterize
+    }
+
+    /// Turns rasterizing draw commands into VRAM on or off.
+    pub fn set_rasterize(&mut self, on: bool) {
+        self.rasterize = on;
+    }
+
+    /// The picture the GPU shows: the display area of VRAM, see [`Frame`].
+    #[must_use]
+    pub fn display(&self) -> Frame {
+        display::frame(self)
     }
 
     /// VRAM, row-major, 1024 pixels per line.
@@ -443,8 +514,11 @@ impl Gpu {
                 self.display_mode = 0;
                 self.irq = false;
                 self.display_start = (0, 0);
+                self.horizontal_range = RESET_HORIZONTAL_RANGE;
+                self.vertical_range = RESET_VERTICAL_RANGE;
             }
             0x01 => {
+                self.clut_cache.key = None;
                 self.buffer.clear();
                 self.polyline = false;
                 self.transfer = Transfer::None;
@@ -453,7 +527,10 @@ impl Gpu {
             0x03 => self.display_disabled = value & 1 != 0,
             0x04 => self.dma_direction = value & 3,
             0x05 => self.display_start = ((value & 0x3FE) as u16, ((value >> 10) & 0x1FF) as u16),
+            0x06 => self.horizontal_range = ((value & 0xFFF) as u16, ((value >> 12) & 0xFFF) as u16),
+            0x07 => self.vertical_range = ((value & 0x3FF) as u16, ((value >> 10) & 0x3FF) as u16),
             0x08 => self.display_mode = value & 0xFF,
+            0x09 => self.upper_vram = value & 1 != 0,
             0x10..=0x1F => {
                 self.read = match value & 7 {
                     2 => {
@@ -483,6 +560,7 @@ impl Gpu {
     fn execute(&mut self, words: &[u32]) {
         let opcode = words[0] >> 24;
         match opcode {
+            0x01 => self.clut_cache.key = None,
             0x02 => self.fill(words),
             0x1F => {
                 self.irq = true;
@@ -502,7 +580,7 @@ impl Gpu {
                 self.transfer = Transfer::Download { rect, index: 0 };
                 self.record(Command::Download { rect });
             }
-            0xE1 => self.draw_mode = words[0] & 0x3FFF,
+            0xE1 => self.draw_mode = words[0] & self.draw_mode_bits(0x3FFF),
             0xE2 => {
                 let w = words[0];
                 self.window = TextureWindow {
@@ -540,7 +618,34 @@ impl Gpu {
             offset: self.offset,
             area: self.area,
         };
+        if self.rasterize {
+            let mode = raster::Mode {
+                blend: ((self.draw_mode >> 5) & 3) as u8,
+                dither: self.draw_mode & (1 << 9) != 0,
+                set_mask: self.set_mask,
+                check_mask: self.check_mask,
+                skip_parity: self.skipped_parity(),
+            };
+            let palette = match draw.texture {
+                Some(texture) => self.clut_cache.load(&self.vram, texture.clut, texture.page.depth),
+                None => &self.clut_cache.colors,
+            };
+            raster::draw(&mut self.vram, palette, &draw, mode);
+        }
         self.record(Command::Draw(draw));
+    }
+
+    /// The `GP0(E1h)` bits of `bits` a write may set: bit 11 only while `GP1(09h)` allows it, as
+    /// the ps1-tests `gpu/gp0-e1` program checks.
+    fn draw_mode_bits(&self, bits: u32) -> u32 {
+        if self.upper_vram { bits } else { bits & !(1 << 11) }
+    }
+
+    /// psx-spx "GPU (MISC)", Draw to display enable: in 480-line interlaced mode with
+    /// `GP0(E1h)` bit 10 clear, rows whose parity equals `GPUSTAT` bit 31 are not drawn.
+    fn skipped_parity(&self) -> Option<usize> {
+        let interlaced_480 = self.display_mode & 0x24 == 0x24;
+        (interlaced_480 && self.draw_mode & (1 << 10) == 0).then_some(usize::from(self.field))
     }
 
     fn polygon(&mut self, words: &[u32]) {
@@ -578,7 +683,8 @@ impl Gpu {
         }
         let texture = textured.then(|| {
             // A textured polygon's page attribute replaces the page bits of the draw mode.
-            self.draw_mode = (self.draw_mode & !0x09FF) | (page_bits & 0x09FF);
+            let bits = self.draw_mode_bits(PAGE_ATTRIBUTE_BITS);
+            self.draw_mode = (self.draw_mode & !PAGE_ATTRIBUTE_BITS) | (page_bits & bits);
             Texture {
                 page: TexturePage::from_bits(page_bits),
                 clut: Clut::from_bits(clut_bits),
@@ -654,8 +760,12 @@ impl Gpu {
             height: ((words[2] >> 16) & 0x1FF) as u16,
         };
         let pixel = to_15bit(color);
+        let skipped = self.skipped_parity();
         for row in 0..usize::from(rect.height) {
             let y = (usize::from(rect.y) + row) % VRAM_HEIGHT;
+            if skipped == Some(y % 2) {
+                continue;
+            }
             for column in 0..usize::from(rect.width) {
                 let x = (usize::from(rect.x) + column) % VRAM_WIDTH;
                 self.vram[y * VRAM_WIDTH + x] = pixel;
@@ -668,9 +778,16 @@ impl Gpu {
         let from_x = (words[1] & 0x3FF) as u16;
         let from_y = ((words[1] >> 16) & 0x1FF) as u16;
         let size = transfer_rect(words[2], words[3]);
+        // Each row is read before it is written, so a copy onto itself shifted sideways does not
+        // smear: the ps1-tests `gpu/vram-to-vram-overlap` reference (rows up to 16 pixels).
+        let mut line = Vec::with_capacity(usize::from(size.width));
         for row in 0..usize::from(size.height) {
-            for column in 0..usize::from(size.width) {
-                let source = self.pixel(usize::from(from_x) + column, usize::from(from_y) + row);
+            line.clear();
+            line.extend(
+                (0..usize::from(size.width))
+                    .map(|column| self.pixel(usize::from(from_x) + column, usize::from(from_y) + row)),
+            );
+            for (column, &source) in line.iter().enumerate() {
                 self.put(usize::from(size.x) + column, usize::from(size.y) + row, source);
             }
         }
@@ -694,6 +811,10 @@ impl Gpu {
         self.vram[at] = if self.set_mask { pixel | 0x8000 } else { pixel };
     }
 }
+
+/// psx-spx "GPU Rendering Attributes", TPage Attribute: the `GP0(E1h)` bits a textured polygon's
+/// page attribute replaces (0-8 and 11).
+const PAGE_ATTRIBUTE_BITS: u32 = 0x09FF;
 
 /// Words a `GP0` command takes, its parameters included; image data follows separately.
 fn command_words(opcode: u32) -> usize {
