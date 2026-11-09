@@ -139,7 +139,7 @@ impl fmt::Display for Error {
             #[cfg(feature = "std")]
             Self::PaletteNotRowAligned(words) => write!(
                 f,
-                "palette holds {words} color words; a CLUT bank is a whole number of \
+                "palette holds {words} color words; a CLUT block is a whole number of \
                  {}-color rows",
                 crate::gfx::clut::ROW_WORDS_4BPP
             ),

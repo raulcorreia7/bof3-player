@@ -1,4 +1,4 @@
-//! Graphics: VRAM uploads, CLUT banks, texture-page words, the standard TIM
+//! Graphics: VRAM uploads, CLUT blocks, texture-page words, the standard TIM
 //! file, the conversion between a TIM and an upload, and the PNG output they share.
 //!
 //! # Examples
