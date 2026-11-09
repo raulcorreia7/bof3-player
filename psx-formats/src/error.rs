@@ -28,6 +28,15 @@ pub enum Error {
         /// Bytes its program count gives.
         expected: usize,
     },
+    /// A VAB file or header and body pair that does not hold together, and why.
+    VabFile(&'static str),
+    /// A VAB header sizes more sample bytes than the body holds.
+    VabSamplesPastBody {
+        /// Bytes of samples the header sizes.
+        sized: usize,
+        /// Bytes the body holds.
+        body: usize,
+    },
     /// A VAG number names no sample of the bank.
     VagOutOfRange {
         /// The 1-based number asked for.
@@ -57,6 +66,10 @@ pub enum Error {
         /// What is wrong.
         reason: &'static str,
     },
+    /// A package parses but breaks a rule of the format beyond its layout.
+    SepRule(crate::sep::Problem),
+    /// A SEQ file that the reader does not take, and why.
+    SeqFile(&'static str),
     /// A sequence number names no sequence of the package.
     SepSequenceOutOfRange {
         /// The position asked for.
@@ -134,6 +147,10 @@ impl fmt::Display for Error {
             Self::VabHeaderSize { length, expected } => {
                 write!(f, "VAB header is {length} bytes; its program count gives {expected}")
             }
+            Self::VabFile(reason) => write!(f, "VAB: {reason}"),
+            Self::VabSamplesPastBody { sized, body } => {
+                write!(f, "VAB header sizes {sized} bytes of samples; the body holds {body}")
+            }
             Self::VagOutOfRange { index, count } => {
                 write!(f, "VAG {index} is out of range (bank has {count})")
             }
@@ -146,6 +163,8 @@ impl fmt::Display for Error {
                 write!(f, "SEP sequence {sequence} runs past the end of the package")
             }
             Self::SepEvent { sequence, reason } => write!(f, "SEP sequence {sequence}: {reason}"),
+            Self::SepRule(problem) => write!(f, "SEP breaks the format: {problem}"),
+            Self::SeqFile(reason) => write!(f, "SEQ: {reason}"),
             Self::SepSequenceOutOfRange { index, count } => {
                 write!(f, "sequence {index} is out of range (package has {count})")
             }
