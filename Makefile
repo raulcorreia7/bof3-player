@@ -27,8 +27,8 @@ help:
 	@echo "  format   cargo fmt; CHECK=1 only checks."
 	@echo "  lint     cargo clippy -D warnings, then cargo deny."
 	@echo "  check    format, lint, test and no-default-features check."
-	@echo "  run-tui  Run the terminal browser; pass ARGS='...'."
-	@echo "  run-gui  Run the window; pass ARGS='...'."
+	@echo "  run-tui  Build, then run bin/bof3player-tui; pass ARGS='...'."
+	@echo "  run-gui  Build, then run bin/bof3player-gui; pass ARGS='...'."
 	@echo "  clean    cargo clean and remove the bin/ links."
 	@echo ""
 	@echo "Without make, run these cargo lines:"
@@ -66,11 +66,11 @@ check:
 	$(MAKE) test
 	cargo check -p psx-formats -p emi -p psx-audio -p bof3player --no-default-features --locked
 
-run-tui:
-	cargo run --release --locked -p bof3player --features cli --bin bof3player-tui -- $(ARGS)
+run-tui: build-cli
+	$(BIN_DIR)/bof3player-tui $(ARGS)
 
-run-gui:
-	cargo run --release --locked -p bof3player --features gui --bin bof3player-gui -- $(ARGS)
+run-gui: build-gui
+	$(BIN_DIR)/bof3player-gui $(ARGS)
 
 clean:
 	cargo clean
