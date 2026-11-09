@@ -170,6 +170,18 @@ impl Machine {
         self.bus.gpu.vram()
     }
 
+    /// The picture on the screen: the display area of VRAM as RGBA.
+    #[must_use]
+    pub fn display(&self) -> crate::gpu::Frame {
+        self.bus.gpu.display()
+    }
+
+    /// Turns rasterizing draw commands into VRAM on (the default) or off; the GPU log records
+    /// every command either way.
+    pub fn set_rasterize(&mut self, on: bool) {
+        self.bus.gpu.set_rasterize(on);
+    }
+
     /// The GPU command log.
     #[must_use]
     pub fn gpu_log(&self) -> &[crate::gpu::Logged] {

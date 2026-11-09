@@ -41,7 +41,10 @@ Avocado, DuckStation) and rustation, whose licence is unclear, were not used as 
 | GTE perspective division  | GTE Division Inaccuracy (the UNR table is generated from its formula) |
 | `GP0` command formats     | GPU Render Polygon, Line and Rectangle Commands; GPU Memory Transfer Commands |
 | Page, CLUT, window bits   | GPU Rendering Attributes                               |
+| Rasterizing draws         | GPU Render Polygon, Line and Rectangle Commands (fill rules, line end points, flips); GPU Rendering Attributes (size restriction, texture window, mask bit, drawing area and offset); GPU (MISC) (dithering table, semi-transparency, modulation, draw to display) |
+| Texels and the CLUT cache | GPU Video Memory (VRAM); GPU Texture Caching           |
 | `GP1`, `GPUSTAT`          | GPU Display Control Commands; GPU Status Register      |
+| Displayed frame           | GPU Display Control Commands (`GP1(05h)`-`GP1(08h)`, the displayed width); GPU Video Memory (VRAM) (24-bit pixels); GPU Timings (dotclocks) |
 | DMA modes, `DPCR`, `DICR` | DMA Channels                                           |
 | Beam and root counters    | Timers; GPU Timings (263 lines of 3413 video cycles at 53.693175 MHz) |
 | CD-ROM ports and commands | CDROM Controller I/O Ports; CDROM Controller Command Summary; CDROM - Response Timings |
@@ -54,7 +57,17 @@ Avocado, DuckStation) and rustation, whose licence is unclear, were not used as 
 
 The MIT-licensed [ps1-tests](https://github.com/JaCzekanski/ps1-tests) suite (release build 158)
 checks the model from outside the repository; none of it is committed. `tests/ps1_tests.rs` runs
-the DMA programs and the GTE program (`gte/test-all`, 1150 register and command checks) that
-report their own results when `PS1_TESTS_DIR` names an unpacked release. The
+the DMA, GTE (`gte/test-all`, 1150 register and command checks) and GPU programs that report
+their own results, and the GPU programs that ship a reference VRAM dump, when `PS1_TESTS_DIR`
+names an unpacked release. The
 MDEC programs' console dumps (`psx.log`) set the dequantization rounding (an arithmetic shift) and
 the 4-bit output rounding, and their 15- and 24-bit frames match the reference VRAM images by eye.
+
+psx-spx does not give the GPU's interpolation and line-stepping precision, the x-flip start, how
+an overlapping VRAM copy reads, or exactly when the CLUT cache reloads. These were chosen by
+matching the GPU programs' reference VRAM dumps (`vram.png`, from a console) pixel for pixel;
+the [crate README](../psx-machine/README.md#rasterizer) lists each choice, its evidence and the
+results. The general shape of the fixed-point line stepping and polygon planes is the one
+Mednafen's GPU is known for, used as an idea only; no Mednafen code was read or copied. The
+`gpu/gp0-e1` program's checks set when `GP0(E1h)` bit 11 can be written (only while `GP1(09h)`
+bit 0 is set).
