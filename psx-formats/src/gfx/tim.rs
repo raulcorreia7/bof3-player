@@ -13,7 +13,7 @@
 //! 4-bit mode holds four pixels per word with the leftmost pixel in the low
 //! nibble, and the 8-bit mode holds two.
 //!
-//! A TIM is what a raw VRAM upload and a raw CLUT bank make when they are
+//! A TIM is what a raw VRAM upload and a raw CLUT block make when they are
 //! read together; [`write`] builds that file.
 //!
 //! # Examples

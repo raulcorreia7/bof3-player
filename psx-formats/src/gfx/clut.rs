@@ -47,7 +47,7 @@ pub const ROW_WORDS_8BPP: usize = 256;
 const STP: u16 = 0x8000;
 /// Swatch edge of the PNG strip, in pixels.
 const SWATCH_PIXELS: u32 = 16;
-/// Rejects a color-word count that cannot be a CLUT bank.
+/// Rejects a color-word count that cannot be a CLUT block.
 ///
 /// # Examples
 ///
@@ -142,7 +142,7 @@ pub fn rgba_to_word(rgba: [u8; 4]) -> u16 {
     channel(rgba[0]) | (channel(rgba[1]) << 5) | (channel(rgba[2]) << 10)
 }
 
-/// A CLUT bank: raw little-endian PSX color words.
+/// A CLUT block: raw little-endian PSX color words.
 ///
 /// # Examples
 ///
@@ -175,7 +175,7 @@ struct ColorJson {
 }
 
 impl Palette {
-    /// Decodes payload bytes, rejecting shapes that are not a CLUT bank.
+    /// Decodes payload bytes, rejecting shapes that are not a CLUT block.
     ///
     /// # Examples
     ///
