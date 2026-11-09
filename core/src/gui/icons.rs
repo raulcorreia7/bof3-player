@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-//! The window's icons: small SVG shapes compiled into the binary, so they look the same on every
-//! platform. gpui tints them with the text color.
+//! The window's icons: small SVG shapes compiled into the binary, so they look the same on every platform. gpui tints
+//! them with the text color.
 
 use std::borrow::Cow;
 

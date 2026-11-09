@@ -1,9 +1,5 @@
 // SPDX-License-Identifier: MIT
 //! `bof3player-gui`: a window to browse and play the game's audio.
-//!
-//! It offers the terminal browser's features through the same library calls: `discover` and
-//! `Library` open and list the game data, `Deck` plays it and `save` writes files. This module
-//! holds the state and the key map; `view` draws it with `gpui`.
 
 mod chooser;
 mod icons;
@@ -59,7 +55,7 @@ struct Cli {
     global: Global,
 }
 
-/// Start the window. `args` are the command-line arguments without the program name.
+/// Start the window.
 pub fn main(args: Vec<OsString>) -> ExitCode {
     let cli = Cli::parse_from(std::iter::once(OsString::from("bof3player-gui")).chain(args));
     let global = cli.global;
@@ -90,8 +86,7 @@ pub fn main(args: Vec<OsString>) -> ExitCode {
     if failed.get() { ExitCode::FAILURE } else { ExitCode::SUCCESS }
 }
 
-/// Start the toolkit, or explain why it cannot start. The toolkit panics when the system gives it
-/// no GPU context (it has no software renderer), so the panic is caught and reported as an error.
+/// Start the toolkit, or explain why it cannot start.
 fn start() -> Option<Application> {
     let hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(|_| {}));
@@ -543,7 +538,7 @@ impl Gui {
         }
     }
 
-    /// The key map. While a text field has the keyboard, keys type into it.
+    /// The key map.
     fn on_key(&mut self, event: &KeyDownEvent, _: &mut Window, cx: &mut Context<Self>) {
         let keystroke = &event.keystroke;
         let command = keystroke.modifiers.control || keystroke.modifiers.platform;
@@ -606,7 +601,7 @@ impl Gui {
         }
     }
 
-    /// The browser's keys, as in the terminal browser. Returns whether the key was used.
+    /// The browser's keys, as in the terminal browser.
     fn browse_key_with_event(&mut self, name: &str, _keystroke: &Keystroke, cx: &mut Context<Self>) -> bool {
         match name {
             "D" => {

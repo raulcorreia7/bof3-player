@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-//! Saving items to files: rendered WAV, FLAC and Ogg Vorbis exports that advance a slice per UI
-//! tick so a browser never blocks, and the native MIDI, VAG and VAB packages.
+//! Saving items to files: rendered WAV, FLAC and Ogg Vorbis exports that advance a slice per UI tick so a browser never
+//! blocks, and the native MIDI, VAG and VAB packages.
 
 use std::path::{Path, PathBuf};
 
@@ -81,8 +81,7 @@ const RESERVED: [&str; 22] = [
     "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
 ];
 
-/// A title with the characters no file system accepts removed and the trailing
-/// dots and spaces Windows rejects trimmed.
+/// A title with the characters no file system accepts removed and the trailing dots and spaces Windows rejects trimmed.
 fn sanitize(title: &str) -> String {
     let name: String = title.chars().filter(|c| !c.is_control() && !UNSAFE.contains(c)).collect();
     name.trim_matches(' ').trim_end_matches(['.', ' ']).to_string()
@@ -182,10 +181,7 @@ pub struct Save {
 }
 
 impl Save {
-    /// Start exporting `item` into `dir` as `export.format`. Music plays
-    /// `loops` passes of its loop window, or of the whole item when it has no
-    /// window, then the `fade` seconds at the end fade out. Other kinds
-    /// render once, without fade.
+    /// Start exporting `item` into `dir` as `export.format`.
     pub fn start(
         library: &'static Library<'static>,
         item: &Item,
@@ -197,8 +193,7 @@ impl Save {
         Self::start_to(library, item, player_options, export_path(dir, item, export.format.extension()), export)
     }
 
-    /// Start exporting `item` into the file `file`; the options act as in [`Save::start`]. The
-    /// folder of `file` must exist.
+    /// Start exporting `item` into the file `file`; the options act as in [`Save::start`].
     pub fn start_to(
         library: &'static Library<'static>,
         item: &Item,
@@ -371,8 +366,8 @@ pub fn absolute(path: &Path) -> PathBuf {
     std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
-/// The bytes and file extension of an item's native package: MIDI for music, VAG for a sample,
-/// VAB for a bank, or with `sequence` the game's own sequence package of a music item.
+/// The bytes and file extension of an item's native package: MIDI for music, VAG for a sample, VAB for a bank, or with
+/// `sequence` the game's own sequence package of a music item.
 pub fn native_package(
     library: &Library<'static>,
     item: &Item,
@@ -391,8 +386,8 @@ pub fn native_package(
     result.map(|bytes| (bytes, extension)).map_err(|error| error.to_string())
 }
 
-/// Write the native package of `item` into `dir` (see [`native_package`]) and return the status
-/// line for the result: where it was saved, or what failed and the next step.
+/// Write the native package of `item` into `dir` (see [`native_package`]) and return the status line for the result:
+/// where it was saved, or what failed and the next step.
 pub fn export_native(library: &Library<'static>, item: &Item, dir: &Path, sequence: bool) -> String {
     let (bytes, extension) = match native_package(library, item, sequence) {
         Ok(package) => package,
@@ -405,8 +400,8 @@ pub fn export_native(library: &Library<'static>, item: &Item, dir: &Path, sequen
     }
 }
 
-/// The folder exports go into by default: the user's Music folder below `Breath of Fire III`,
-/// else `./exports` when no home is known.
+/// The folder exports go into by default: the user's Music folder below `Breath of Fire III`, else `./exports` when no
+/// home is known.
 pub fn default_export_dir() -> PathBuf {
     let folder = Path::new("Breath of Fire III");
     #[cfg(target_os = "linux")]
@@ -543,7 +538,6 @@ mod tests {
         assert_eq!(first.file_name().unwrap(), "Opening Part 1.wav");
         std::fs::write(&first, b"").unwrap();
         assert_eq!(export_path(&dir, &titled, "wav").file_name().unwrap(), "Opening Part 1 (2).wav");
-        // No title, or a Windows device name, falls back to the id.
         assert_eq!(export_path(&dir, &item("music:A#1", ""), "flac").file_name().unwrap(), "music_A_1.flac");
         assert_eq!(export_path(&dir, &item("music:A#2", "CON"), "flac").file_name().unwrap(), "music_A_2.flac");
         std::fs::remove_dir_all(dir).unwrap();

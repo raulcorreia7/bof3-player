@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: MIT
 //! The game's sequencer clock: how SEP delta times map to frames of the 44.1 kHz driver.
-//!
-//! The format (events, running status, MIDI export) is `psx_formats::sep`; this module only
-//! knows how the retail driver counts time.
 
 use psx_formats::VAB_SAMPLE_RATE;
 use psx_formats::sep::Sequence;
@@ -15,8 +12,7 @@ const MICROSECONDS_PER_MINUTE: i64 = 60_000_000;
 
 /// Frames one driver tick covers: 44.1 kHz / 60.
 pub(crate) const DRIVER_FRAMES_PER_TICK: i64 = 735;
-/// Units one authored delta advances the sequence by. The driver's tick step and
-/// its unit counter share this scale.
+/// Units one authored delta advances the sequence by.
 pub(crate) const DRIVER_UNITS_PER_TICK: i64 = 10;
 /// Seconds of driver ticks per second: one tick is 1/60 s.
 const TICKS_PER_BPM_UNIT: i64 = 3600;

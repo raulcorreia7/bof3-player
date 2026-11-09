@@ -44,7 +44,6 @@ const HELP: [(&str, &str); 19] = [
 impl Render for Gui {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let palette = Palette::get();
-        // The text fields are virtual; the window keeps the key focus.
         if !self.focus.is_focused(window) {
             self.focus.focus(window);
         }
