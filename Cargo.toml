@@ -2,7 +2,7 @@
 # PlayStation crates it reads through. The workspace builds on its own.
 [workspace]
 resolver = "3"
-members = ["core", "emi", "psx-audio", "psx-cd", "psx-formats"]
+members = ["core", "emi", "psx-audio", "psx-cd", "psx-formats", "psx-machine"]
 exclude = ["vendor/stacksafe-macro"]
 
 [patch.crates-io]
@@ -34,6 +34,10 @@ ratatui = "0.30.2"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 sha2 = "0.11.1"
+
+# The interpreter runs millions of instructions per test; unoptimized it is too slow to boot.
+[profile.dev.package.psx-machine]
+opt-level = 3
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

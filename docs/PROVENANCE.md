@@ -1,7 +1,7 @@
 # Provenance
 
-The SPU model is written from public hardware documentation. It does not copy code from any
-emulator.
+The SPU model and the `psx-machine` hardware model are written from public hardware
+documentation. They do not copy code from any emulator.
 
 ## Sources
 
@@ -24,3 +24,16 @@ and how it was checked.
 Write SPU code from the specification and from tests of the specification's values. Do not read,
 copy or translate source code from an emulator, and do not paste an emulator's tables. A change that
 adds a constant or a formula cites the psx-spx section it comes from.
+
+## psx-machine
+
+`psx-machine` follows the [psx-spx](https://psx-spx.consoledev.net/) hardware specification. No
+emulator source was copied; GPL and non-commercial emulators (Mednafen/Beetle, PCSX-Redux,
+Avocado, DuckStation) and rustation, whose licence is unclear, were not used as code.
+
+| Part                      | psx-spx section                                        |
+| ------------------------- | ------------------------------------------------------ |
+| Instructions, delay slots | CPU Specifications; CPU Load/Store, Jump/Branch Opcodes |
+| Exceptions, `SR`, `CAUSE` | COP0 - Exception Handling; COP0 - Register Summary     |
+| Memory map and mirrors    | Memory Map                                             |
+| `I_STAT`, `I_MASK`        | Interrupts                                             |

@@ -1,6 +1,6 @@
 # Crates
 
-The generic PlayStation crates and the EMI reader. The PlayStation crates know no game. `emi` reads the container format of *Breath of Fire III*.
+The generic PlayStation crates, the machine and the EMI reader. The PlayStation crates know no game. `emi` reads the container format of *Breath of Fire III*.
 
 ## psx-audio
 
@@ -80,6 +80,27 @@ sector 16.
 | `metadata`       | project XML and `disc_lba.json`                                        |
 | `patch`          | a patched copy of the data track                                       |
 | `rebuild`        | a deterministic cooked ISO from a folder of files                      |
+
+## psx-machine
+
+A PlayStation machine that runs a game's own code and records what it tells the GPU and the SPU,
+so a tool can show textures, sprites and sounds as the game uses them instead of from a per-asset
+table. It has an R3000A interpreter, the memory map and the devices below the PsyQ libraries; it
+needs no BIOS image.
+
+| Module    | Contents                                                                  |
+| --------- | ------------------------------------------------------------------------- |
+| `cpu`     | R3000A interpreter: MIPS I, delay slots, coprocessor 0 and exceptions      |
+| `gte`     | coprocessor 2 registers                                                   |
+| `bus`     | RAM and its mirrors, scratchpad, I/O ports, KUSEG/KSEG0/KSEG1             |
+| `irq`     | `I_STAT` and `I_MASK`                                                     |
+
+| Part | Reference                                                         |
+| ---- | ----------------------------------------------------------------- |
+| CPU  | psx-spx "CPU Specifications", "COP0 - Exception Handling"; MIPS I |
+| Bus  | psx-spx "Memory Map", "Interrupts"                                |
+
+The crate README says why it writes its own core instead of depending on an emulator crate.
 
 ## psx-formats
 
