@@ -1,14 +1,4 @@
 //! Type-3 VRAM upload codec.
-//!
-//! A type-3 payload is a sequence of `0x800`-byte chunks; the TOC load
-//! argument is the descriptor that places them. Each chunk is one 32x32-word
-//! VRAM rectangle, advanced `chunks_per_row` rectangles per row.
-//! `decode` turns a payload into those rectangles, `encode` reproduces the payload, and
-//! `Plane` is the 1024x512-word frame buffer used to place rectangles and to
-//! dump them as a raw 16-bit PNG.
-//!
-//! # Examples
-//!
 //! ```
 //! use psx_formats::gfx::vram::{self, Descriptor, RECTANGLE_BYTES};
 //!
@@ -26,55 +16,20 @@ use super::png;
 use crate::error::{Error, Result};
 
 /// Container entry type of a VRAM upload.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::gfx::vram::UPLOAD_TYPE, 3);
-/// ```
 pub const UPLOAD_TYPE: u16 = 3;
 
 /// VRAM words per frame-buffer row.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::gfx::vram::VRAM_WIDTH, 1024);
-/// ```
 pub const VRAM_WIDTH: usize = 1024;
 /// Frame-buffer rows.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::gfx::vram::VRAM_HEIGHT, 512);
-/// ```
 pub const VRAM_HEIGHT: usize = 512;
 /// Side of one upload rectangle, in VRAM words and rows.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::gfx::vram::RECTANGLE_SIDE, 32);
-/// ```
 pub const RECTANGLE_SIDE: usize = 32;
 /// Bytes one upload rectangle occupies in a payload (`32 * 32` words).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::gfx::vram::RECTANGLE_BYTES, 2048);
-/// ```
 pub const RECTANGLE_BYTES: usize = RECTANGLE_SIDE * RECTANGLE_SIDE * 2;
 /// Words one upload rectangle holds.
 const RECTANGLE_WORDS: usize = RECTANGLE_SIDE * RECTANGLE_SIDE;
 
-/// Packed type-3 load argument: the VRAM destination and row span of an
-/// upload. The handler reads the fields as three masked bytes, so the
-/// unmasked bits above them carry no meaning.
-///
-/// # Examples
-///
+/// Packed type-3 load argument: the VRAM destination and row span of an upload.
 /// ```
 /// use psx_formats::gfx::vram::Descriptor;
 ///
@@ -93,9 +48,6 @@ pub struct Descriptor {
 
 impl Descriptor {
     /// Unpacks a TOC load argument.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let descriptor = psx_formats::gfx::vram::Descriptor::from_load_argument(0x00_03_01_00);
     /// assert_eq!((descriptor.column, descriptor.row, descriptor.chunks_per_row), (0, 3, 1));
@@ -112,11 +64,8 @@ impl Descriptor {
 /// The bits of a load argument that [`Descriptor`] owns: column, row and rectangles per row.
 const PLACEMENT_BITS: u32 = 0x3f1f_3f00;
 
-/// Where a type-3 upload lands, as a name for the three load-argument fields: the same value as
-/// [`Descriptor`], read as a placement (`x`, `y`, `load_argument`, `moved`).
-///
-/// # Examples
-///
+/// Where a type-3 upload lands, as a name for the three load-argument fields: the same value as [`Descriptor`], read as
+/// a placement (`x`, `y`, `load_argument`, `moved`).
 /// ```
 /// use psx_formats::gfx::vram::Placement;
 ///
@@ -127,9 +76,6 @@ pub type Placement = Descriptor;
 
 impl Descriptor {
     /// The left edge in VRAM words.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let descriptor = psx_formats::gfx::vram::Descriptor { column: 22, row: 0, chunks_per_row: 1 };
     /// assert_eq!(descriptor.x(), 704);
@@ -139,9 +85,6 @@ impl Descriptor {
     }
 
     /// The top edge in VRAM rows.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let descriptor = psx_formats::gfx::vram::Descriptor { column: 0, row: 8, chunks_per_row: 1 };
     /// assert_eq!(descriptor.y(), 256);
@@ -150,11 +93,8 @@ impl Descriptor {
         u16::from(self.row) * RECTANGLE_SIDE as u16
     }
 
-    /// `base` with this placement in the bits it owns (column, row, rectangles per row); every
-    /// other bit of `base` stays, so an unknown field of the load argument survives an edit.
-    ///
-    /// # Examples
-    ///
+    /// `base` with this placement in the bits it owns (column, row, rectangles per row); every other bit of `base`
+    /// stays, so an unknown field of the load argument survives an edit.
     /// ```
     /// use psx_formats::gfx::vram::Descriptor;
     ///
@@ -168,11 +108,8 @@ impl Descriptor {
             | u32::from(self.chunks_per_row) << 8
     }
 
-    /// The same upload with its top-left rectangle at VRAM `column` and `row` (32-word and 32-row
-    /// units), or `None` when `rectangles` of it would leave the frame buffer.
-    ///
-    /// # Examples
-    ///
+    /// The same upload with its top-left rectangle at VRAM `column` and `row` (32-word and 32-row units), or `None`
+    /// when `rectangles` of it would leave the frame buffer.
     /// ```
     /// use psx_formats::gfx::vram::Descriptor;
     ///
@@ -190,9 +127,6 @@ impl Descriptor {
 }
 
 /// One 32x32-word upload rectangle: its VRAM destination and its words.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::vram::Rectangle;
 ///
@@ -210,9 +144,6 @@ pub struct Rectangle {
 }
 
 /// Decodes a type-3 payload into its VRAM rectangles, in payload order.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES, decode};
 ///
@@ -246,12 +177,7 @@ pub fn decode(payload: &[u8], descriptor: Descriptor) -> Result<Vec<Rectangle>> 
     Ok(rectangles)
 }
 
-/// An upload laid out as one image: `chunks_per_row` rectangles across, each
-/// word read as its RGBA view. This is the 16bpp reading; a 4bpp or 8bpp payload
-/// shows as noise because no field names its texture mode or palette.
-///
-/// # Examples
-///
+/// An upload laid out as one image: `chunks_per_row` rectangles across, each word read as its RGBA view.
 /// ```
 /// use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES, upload_image};
 ///
@@ -270,9 +196,6 @@ pub struct UploadImage {
 }
 
 /// An upload's words as one row-major grid, `chunks_per_row` rectangles across.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES, word_grid};
 ///
@@ -291,9 +214,6 @@ pub struct WordGrid {
 }
 
 /// Lays an upload's rectangles out in their own grid, without the VRAM clip.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES, word_grid};
 ///
@@ -318,11 +238,7 @@ pub fn word_grid(payload: &[u8], descriptor: Descriptor) -> Result<WordGrid> {
     Ok(WordGrid { width, height, words })
 }
 
-/// Lays an upload's rectangles out in their own grid, each word read as its RGBA
-/// view (`clut::word_to_view`).
-///
-/// # Examples
-///
+/// Lays an upload's rectangles out in their own grid, each word read as its RGBA view (`clut::word_to_view`).
 /// ```
 /// use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES, upload_image};
 ///
@@ -336,12 +252,7 @@ pub fn upload_image(payload: &[u8], descriptor: Descriptor) -> Result<UploadImag
     Ok(UploadImage { width: grid.width as u32, height: grid.height as u32, rgba })
 }
 
-/// Rebuilds a type-3 payload from a row-major word grid: the inverse of
-/// [`word_grid`]. The grid is whole 32-by-32 rectangles, and they are written in
-/// payload order.
-///
-/// # Examples
-///
+/// Rebuilds a type-3 payload from a row-major word grid: the inverse of [`word_grid`].
 /// ```
 /// use psx_formats::gfx::vram::{RECTANGLE_BYTES, payload_from_grid};
 ///
@@ -368,9 +279,6 @@ pub fn payload_from_grid(width: usize, height: usize, words: &[u16]) -> Result<V
 }
 
 /// Reproduces a type-3 payload from its rectangles, in payload order.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES, decode, encode};
 ///
@@ -390,9 +298,6 @@ pub fn encode(rectangles: &[Rectangle]) -> Vec<u8> {
 }
 
 /// A 1024x512-word frame buffer.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::gfx::vram::Plane;
 ///
@@ -405,9 +310,6 @@ pub struct Plane {
 
 impl Plane {
     /// An all-zero frame buffer.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let plane = psx_formats::gfx::vram::Plane::new();
     /// assert_eq!(plane.word(1023, 511), 0);
@@ -416,10 +318,7 @@ impl Plane {
         Self { words: vec![0; VRAM_WIDTH * VRAM_HEIGHT] }
     }
 
-    /// Reads the word at column `x`, row `y`. Panics outside the plane.
-    ///
-    /// # Examples
-    ///
+    /// Reads the word at column `x`, row `y`.
     /// ```
     /// let plane = psx_formats::gfx::vram::Plane::new();
     /// assert_eq!(plane.word(0, 0), 0);
@@ -428,12 +327,7 @@ impl Plane {
         self.words[y * VRAM_WIDTH + x]
     }
 
-    /// Places rectangles that fit the frame buffer, in order, and returns how
-    /// many it cannot place. A loader skips a rectangle whose 32x32
-    /// extent leaves the frame buffer instead of clipping it.
-    ///
-    /// # Examples
-    ///
+    /// Places rectangles that fit the frame buffer, in order, and returns how many it cannot place.
     /// ```
     /// use psx_formats::gfx::vram::{Plane, Rectangle, VRAM_WIDTH};
     ///
@@ -458,11 +352,7 @@ impl Plane {
         skipped
     }
 
-    /// The plane as 16-bit grayscale PNG bytes, one sample per VRAM word
-    /// (`0x0000` black to `0xffff` white).
-    ///
-    /// # Examples
-    ///
+    /// The plane as 16-bit grayscale PNG bytes, one sample per VRAM word (`0x0000` black to `0xffff` white).
     /// ```
     /// let png = psx_formats::gfx::vram::Plane::new().png();
     /// assert_eq!(&png[..8], &psx_formats::gfx::png::SIGNATURE);
@@ -472,11 +362,7 @@ impl Plane {
         png::gray16_png(VRAM_WIDTH as u32, VRAM_HEIGHT as u32, &samples)
     }
 
-    /// Writes the plane as a 16-bit grayscale PNG, one sample per VRAM word
-    /// (`0x0000` black to `0xffff` white).
-    ///
-    /// # Examples
-    ///
+    /// Writes the plane as a 16-bit grayscale PNG, one sample per VRAM word (`0x0000` black to `0xffff` white).
     /// ```no_run
     /// use std::path::Path;
     ///

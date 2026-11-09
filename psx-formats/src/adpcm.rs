@@ -1,11 +1,6 @@
 //! PlayStation ADPCM: the 16-byte SPU block and the CD-ROM XA predictor.
-//!
-//! Sources: psx-spx "SPU ADPCM Samples" (block layout, flag bits, "same
-//! algorithm as XA-ADPCM") and "CDROM XA Audio ADPCM Compression" (filter
-//! tables, shift rule, `(old*f0 + older*f1 + 32) / 64`).
-//!
-//! # Examples
-//!
+//! Sources: psx-spx "SPU ADPCM Samples" (block layout, flag bits, "same algorithm as XA-ADPCM") and "CDROM XA Audio
+//! ADPCM Compression" (filter tables, shift rule, `(old*f0 + older*f1 + 32) / 64`).
 //! ```
 //! use psx_formats::adpcm;
 //!
@@ -17,61 +12,28 @@
 use alloc::vec::Vec;
 
 /// Bytes in one SPU ADPCM block (psx-spx, SPU ADPCM Samples).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::adpcm::BLOCK_BYTES, 16);
-/// ```
 pub const BLOCK_BYTES: usize = 16;
 /// Samples one block decodes to.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::adpcm::BLOCK_SAMPLES, 28);
-/// ```
 pub const BLOCK_SAMPLES: usize = 28;
 
 /// Block flag bit 0: loop end (set ENDX, jump to the repeat address).
-///
-/// # Examples
-///
 /// ```
 /// let flags = 0x23;
 /// assert_ne!(flags & psx_formats::adpcm::FLAG_END, 0);
 /// ```
 pub const FLAG_END: u8 = 0x01;
 /// Block flag bit 1: with `FLAG_END`, repeat instead of muting.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::adpcm::FLAG_END | psx_formats::adpcm::FLAG_REPEAT, 0x03);
-/// ```
 pub const FLAG_REPEAT: u8 = 0x02;
 /// Block flag bit 2: loop start (copy the current address to the repeat address).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::adpcm::FLAG_LOOP_START, 0x04);
-/// ```
 pub const FLAG_LOOP_START: u8 = 0x04;
 
 /// Filter coefficients applied to the previous sample (psx-spx, XA-ADPCM `pos` table).
-///
-/// # Examples
-///
 /// ```
 /// let filter = 1;
 /// assert_eq!(psx_formats::adpcm::FILTER_POS[filter], 60);
 /// ```
 pub const FILTER_POS: [i32; 5] = [0, 60, 115, 98, 122];
 /// Filter coefficients applied to the sample before that (psx-spx, XA-ADPCM `neg` table).
-///
-/// # Examples
-///
 /// ```
 /// let filter = 4;
 /// assert_eq!(psx_formats::adpcm::FILTER_NEG[filter], -60);
@@ -90,11 +52,6 @@ const XA_ROUNDING: i32 = 32;
 const NIBBLE_ALIGN: u32 = 12;
 
 /// The two previous output samples of a decode chain.
-///
-/// # Examples
-///
-/// A chain starts silent; each decoded sample becomes `prev1`.
-///
 /// ```
 /// use psx_formats::adpcm::{BLOCK_BYTES, BLOCK_SAMPLES, State, decode_block};
 ///
@@ -112,9 +69,6 @@ pub struct State {
 }
 
 /// How the prediction term is rounded.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::adpcm::Rounding;
 ///
@@ -135,11 +89,6 @@ fn clamp16(value: i32) -> i16 {
 }
 
 /// Decode one 4-bit `nibble` with the given `shift` and `filter` (0..=4).
-///
-/// `shift` above 12 acts as 9. The caller guarantees `filter <= 4`.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::adpcm::{Rounding, State, step};
 ///
@@ -169,12 +118,6 @@ pub fn step(nibble: u8, shift: u8, filter: usize, state: &mut State, rounding: R
 }
 
 /// Decode one 16-byte SPU block into 28 samples, advancing `state`.
-///
-/// Byte 0 holds shift (low nibble) and filter (high nibble; above 4 acts as 0),
-/// byte 1 the flags, bytes 2..16 the nibbles, low nibble first.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::adpcm::{BLOCK_SAMPLES, State, decode_block};
 ///
@@ -204,8 +147,7 @@ fn prediction(state: &State, filter: usize) -> i32 {
         + ((i32::from(state.prev2) * FILTER_NEG[filter]) >> COEFFICIENT_BITS)
 }
 
-/// The sample that nibble `n` decodes to at `shift`, given the block's prediction. For the same nibble,
-/// shift, filter and state, this is what [`step`] returns.
+/// The sample that nibble `n` decodes to at `shift`, given the block's prediction.
 fn reconstruct(n: i32, shift: u8, prediction: i32) -> i16 {
     clamp16((n << (NIBBLE_ALIGN - u32::from(shift))) + prediction)
 }
@@ -231,8 +173,7 @@ struct Quantized {
     error: i64,
 }
 
-/// Quantizes one block with one filter and shift from `state`. With `exact` set, it gives up at the first
-/// sample that does not decode to its target.
+/// Quantizes one block with one filter and shift from `state`.
 fn quantize(samples: &[i16; BLOCK_SAMPLES], state: State, filter: usize, shift: u8, exact: bool) -> Option<Quantized> {
     let mut state = state;
     let mut block = Quantized { filter, shift, nibbles: [0; BLOCK_SAMPLES], decoded: [0; BLOCK_SAMPLES], error: 0 };
@@ -256,12 +197,6 @@ fn choices() -> impl Iterator<Item = (usize, u8)> {
 }
 
 /// Encodes 28 samples as one SPU block and advances `state` by the samples the decoder produces from it.
-///
-/// The block takes the first filter and shift that decode every sample exactly. A block that no filter and
-/// shift reproduces takes the one with the least squared error. Byte 1, the flags, is left zero.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::adpcm::{BLOCK_SAMPLES, State, decode_block, encode_block};
 ///
@@ -289,11 +224,7 @@ pub fn encode_block(samples: &[i16; BLOCK_SAMPLES], state: &mut State) -> [u8; B
     bytes
 }
 
-/// Encodes PCM as SPU blocks, padding the last block with zeros. The last block carries [`FLAG_END`]; loop
-/// flags are not set. [`decode_stream`] reads the result back.
-///
-/// # Examples
-///
+/// Encodes PCM as SPU blocks, padding the last block with zeros.
 /// ```
 /// use psx_formats::adpcm::{BLOCK_BYTES, encode_stream};
 ///
@@ -315,10 +246,7 @@ pub fn encode_stream(samples: &[i16]) -> Vec<u8> {
     bytes
 }
 
-/// Decodes a whole SPU stream to PCM, 28 samples per block. A trailing partial block is ignored.
-///
-/// # Examples
-///
+/// Decodes a whole SPU stream to PCM, 28 samples per block.
 /// ```
 /// use psx_formats::adpcm::{BLOCK_BYTES, BLOCK_SAMPLES, decode_stream};
 ///
@@ -379,7 +307,6 @@ mod tests {
     fn filter_zero_is_plain_shift() {
         let mut block = [0u8; BLOCK_BYTES];
         block[0] = 0x0C; // shift 12 (loudest), filter 0
-        // Nibbles 7, 8 (-8), 1, F (-1), then zeros.
         block[2] = 0x87;
         block[3] = 0xF1;
         let mut out = [0i16; BLOCK_SAMPLES];
@@ -396,7 +323,6 @@ mod tests {
         block[3] = 0x00;
         let mut out = [0i16; BLOCK_SAMPLES];
         decode_block(&block, &mut out, &mut State::default());
-        // 7 << 12 >> 8 = 112; then 112 + (112*60 >> 6) = 217; then 0 + (217*60 >> 6) = 203.
         assert_eq!(&out[..3], &[112, 217, 203]);
     }
 

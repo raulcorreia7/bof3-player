@@ -3,9 +3,6 @@
 use core::fmt;
 
 /// Everything a parser or codec in this crate can report.
-///
-/// # Examples
-///
 /// ```
 /// let error = psx_formats::Error::VabBadMagic;
 /// assert_eq!(error.to_string(), "not a VAB header (bad magic)");
@@ -204,9 +201,6 @@ impl fmt::Display for Error {
 impl core::error::Error for Error {}
 
 /// The crate's result type.
-///
-/// # Examples
-///
 /// ```
 /// fn first(bytes: &[u8]) -> psx_formats::Result<u8> {
 ///     bytes.first().copied().ok_or(psx_formats::Error::XaSectorSize(0))

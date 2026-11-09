@@ -1,15 +1,4 @@
 //! SEP sequence packages: the event streams, their validator and their encoder.
-//!
-//! Layout: `"pQES"` magic and a zero big-endian `u16` version, then per sequence a 13-byte header
-//! (id, resolution, tempo, time signature, payload size) followed by that many bytes of events.
-//! An event is a variable-length delta, an optional status byte (running status when absent) and
-//! 0 to 2 data bytes; `0xFF` is a meta event whose payload length is declared in the stream.
-//!
-//! The parser accepts only what [`Package::encode`] writes back, so a package that parses is a
-//! package that round-trips; [`Package::problems`] reports what the format rules out beyond that.
-//!
-//! # Examples
-//!
 //! ```
 //! use psx_formats::sep::{Event, Package, Sequence};
 //!
@@ -35,12 +24,6 @@ pub mod seq;
 /// Magic a package opens with, in file order.
 const SEP_MAGIC: &[u8; 4] = b"pQES";
 /// Container entry type of a sequence package.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::sep::TYPE, 10);
-/// ```
 pub const TYPE: u16 = 10;
 /// Bytes of the file header: the magic plus the version field.
 const FILE_HEADER: usize = 6;
@@ -66,18 +49,9 @@ const MIDI_THIRTY_SECONDS_PER_QUARTER: u8 = 8;
 /// Meta type of the time-signature event.
 const META_TIME_SIGNATURE: u8 = 0x58;
 /// MIDI channels.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::sep::CHANNELS, 16);
-/// ```
 pub const CHANNELS: usize = 16;
 
 /// Message class of an event's status byte.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::sep::{Event, Kind};
 ///
@@ -104,8 +78,8 @@ pub enum Kind {
     Meta = 0xFF,
 }
 
-/// Data bytes a status byte carries: one for program and channel aftertouch,
-/// two for the rest, none for meta and for bytes outside `0x80..=0xEF`.
+/// Data bytes a status byte carries: one for program and channel aftertouch, two for the rest, none for meta and for
+/// bytes outside `0x80..=0xEF`.
 fn data_bytes(status: u8) -> usize {
     match status & 0xf0 {
         0xc0 | 0xd0 => 1,
@@ -114,11 +88,7 @@ fn data_bytes(status: u8) -> usize {
     }
 }
 
-/// One event of a sequence: the delta that waits for it, the status it runs
-/// under, and the bytes that status declares.
-///
-/// # Examples
-///
+/// One event of a sequence: the delta that waits for it, the status it runs under, and the bytes that status declares.
 /// ```
 /// use psx_formats::sep::Event;
 ///
@@ -146,9 +116,6 @@ pub struct Event {
 
 impl Event {
     /// The event's message class; the parser keeps no other status byte.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_formats::sep::{Event, Kind};
     ///
@@ -168,9 +135,6 @@ impl Event {
     }
 
     /// The channel the status byte addresses.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let event = psx_formats::sep::Event { status: 0x9f, ..Default::default() };
     /// assert_eq!(event.channel(), 15);
@@ -180,9 +144,6 @@ impl Event {
     }
 
     /// The tempo a set-tempo meta event states, in microseconds per quarter note.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let event = psx_formats::sep::Event {
     ///     status: 0xff,
@@ -199,9 +160,6 @@ impl Event {
 }
 
 /// One sequence: its header fields and its events, in stream order.
-///
-/// # Examples
-///
 /// ```
 /// use psx_formats::sep::{Event, Sequence};
 ///
@@ -230,13 +188,6 @@ pub struct Sequence {
 
 impl Sequence {
     /// Reads one format 0 Standard MIDI File, as [`Package::to_midi`] writes it, into a sequence with id `seq_id`.
-    ///
-    /// `to_midi` puts a tempo and a time signature at time zero, and it appends an end-of-track after the
-    /// sequence's own. Those become the header fields and are not events. A status byte equal to the running
-    /// status is a run-on event, as in the package. MIDI has no sequence id, so the caller supplies it.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_formats::sep::{Event, Package, Sequence};
     ///
@@ -315,9 +266,6 @@ impl Sequence {
     }
 
     /// Whether the sequence keys a voice at least once.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let event = psx_formats::sep::Event { status: 0x90, data2: 100, ..Default::default() };
     /// let sequence = psx_formats::sep::Sequence { events: vec![event], ..Default::default() };
@@ -328,9 +276,6 @@ impl Sequence {
     }
 
     /// Programs the note-carrying channels select, one bit each.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_formats::sep::{Event, Sequence};
     ///
@@ -360,9 +305,6 @@ impl Sequence {
 }
 
 /// The lowest program a [`Sequence::programs_used`] mask selects, 0 for an empty mask.
-///
-/// # Examples
-///
 /// ```
 /// assert_eq!(psx_formats::sep::lowest_program(1 << 5), 5);
 /// assert_eq!(psx_formats::sep::lowest_program(0), 0);
@@ -372,9 +314,6 @@ pub fn lowest_program(mask: u128) -> u8 {
 }
 
 /// A parsed package: every sequence the payload tiles.
-///
-/// # Examples
-///
 /// ```
 /// let package = psx_formats::sep::Package { sequences: vec![Default::default()] };
 /// assert_eq!(package.sequences.len(), 1);
@@ -386,9 +325,6 @@ pub struct Package {
 }
 
 /// What a package breaks of the format.
-///
-/// # Examples
-///
 /// ```
 /// let package = psx_formats::sep::Package { sequences: vec![Default::default()] };
 /// assert!(matches!(package.problems()[0], psx_formats::sep::Problem::NoEndOfTrack { .. }));
@@ -432,13 +368,6 @@ impl fmt::Display for Problem {
 
 impl Package {
     /// Parses a package.
-    ///
-    /// The sequence headers and their payloads must tile the payload exactly,
-    /// and every quantity must be minimally encoded, so [`Package::encode`] of
-    /// the result is the input again.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_formats::sep::Package;
     ///
@@ -485,9 +414,6 @@ impl Package {
     }
 
     /// The bytes of this model; [`Package::parse`] of them gives it back.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let bytes = psx_formats::sep::Package { sequences: vec![Default::default()] }.encode();
     /// assert_eq!(&bytes[..4], b"pQES");
@@ -510,9 +436,6 @@ impl Package {
     }
 
     /// Converts sequence `index` to a Standard MIDI File (format 0, one track).
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_formats::sep::{Event, Package, Sequence};
     ///
@@ -576,9 +499,6 @@ impl Package {
     }
 
     /// `Ok` when [`Package::problems`] is empty, else the first rule the package breaks.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let package = psx_formats::sep::Package { sequences: vec![Default::default()] };
     /// assert!(package.check().is_err(), "the sequence has no end-of-track event");
@@ -591,11 +511,6 @@ impl Package {
     }
 
     /// Parses `bytes` and checks the result: the validation a SEP file needs before it is stored.
-    /// The bytes round-trip through [`Package::encode`] because the parser takes only what the
-    /// encoder writes.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// use psx_formats::sep::{Event, Package, Sequence};
     ///
@@ -611,9 +526,6 @@ impl Package {
     }
 
     /// What the package breaks of the format; empty for a well-formed package.
-    ///
-    /// # Examples
-    ///
     /// ```
     /// let package = psx_formats::sep::Package { sequences: vec![Default::default()] };
     /// assert_eq!(package.problems().len(), 1, "the sequence has no end-of-track event");
@@ -642,11 +554,7 @@ impl Package {
         problems
     }
 
-    /// The package as one line per fact: the sequence headers, then every
-    /// event. Useful to diff two parses of the same bytes.
-    ///
-    /// # Examples
-    ///
+    /// The package as one line per fact: the sequence headers, then every event.
     /// ```
     /// let dump = psx_formats::sep::Package { sequences: vec![Default::default()] }.dump();
     /// assert!(dump.starts_with("sep sequences=1"));
@@ -811,8 +719,8 @@ fn is_meta(event: &Event, meta_type: u8, length: usize) -> bool {
     event.status == 0xff && event.meta_type == meta_type && event.meta.len() == length
 }
 
-/// One variable-length quantity: seven payload bits per byte, high bit set
-/// while more follow, and never a byte the value does not need.
+/// One variable-length quantity: seven payload bits per byte, high bit set while more follow, and never a byte the
+/// value does not need.
 fn read_vlq(bytes: &[u8], at: &mut usize, end: usize, sequence: usize) -> Result<u32> {
     let start = *at;
     let mut value: u64 = 0;
