@@ -7,14 +7,16 @@ Three tools read a *Breath of Fire III* disc image:
 - `bof3player-tui`: the terminal browser. It takes the shared switches and no command.
 - `bof3player-gui`: the window.
 
-Build the first two from the repository root (the binaries end in `.exe` on Windows):
+Build all three from the repository root (the binaries end in `.exe` on Windows):
 
 ```sh
-cargo build --release -p bof3player --features cli --bin bof3player --bin bof3player-tui
+make build
 ```
 
-The binary is `target/release/bof3player`. Every switch shows its default in `--help`, and each
-command has its own help, for example `bof3player render --help`.
+`make build` links `bin/bof3player`, `bin/bof3player-tui` and `bin/bof3player-gui`.
+
+Every switch shows its default in `--help`, and each command has its own help, for example
+`bin/bof3player render --help`. The examples below run from the repository root.
 
 ## Game data
 
@@ -39,10 +41,9 @@ In the browser, Enter opens, `h` goes up, `o` uses the current folder and `q` qu
 `bof3player-gui` is a window with the terminal browser's features: the catalog as a tree of kind,
 family and item, ranked search, play, pause, seek, volume (click the speaker to mute), loop, play on, level meters, a spectrum
 analyzer, and export to WAV, FLAC, Ogg Vorbis and native files. It uses [gpui](https://gpui.rs)
-and runs on Linux, macOS and Windows. Build it, then run it from the repository root:
+and runs on Linux, macOS and Windows. `make build-gui` builds it alone. Run it from the repository root:
 
 ```sh
-make build-gui
 bin/bof3player-gui -i "Breath of Fire III.cue"
 ```
 
@@ -124,14 +125,14 @@ file is reported and skipped.
 command is a search query: `bof3player battle` plays the best match.
 
 ```sh
-bof3player -i GAME.cue doctor
-bof3player -i GAME.cue list --kind music
-bof3player search "music"
-bof3player play music:ITEM#0 --loops 1
-bof3player render music:ITEM#0 --format flac -o opening.flac
-bof3player render --all --out-dir out/ --kind music --format flac
-bof3player export midi music:ITEM#0 -o opening.mid
-bof3player verify --kind sample --seconds 5
+bin/bof3player -i GAME.cue doctor
+bin/bof3player -i GAME.cue list --kind music
+bin/bof3player search "music"
+bin/bof3player play music:ITEM#0 --loops 1
+bin/bof3player render music:ITEM#0 --format flac -o opening.flac
+bin/bof3player render --all --out-dir out/ --kind music --format flac
+bin/bof3player export midi music:ITEM#0 -o opening.mid
+bin/bof3player verify --kind sample --seconds 5
 ```
 
 `ITEM` is a placeholder. Use an id from `bof3player list --kind music`.
@@ -189,7 +190,7 @@ contract.
 | Symptom                      | What to do                                                                                     |
 | ---------------------------- | ---------------------------------------------------------------------------------------------- |
 | `no game data found`         | Pass `-i PATH`, set `$BOF3_GAME_DIR`, or run `bof3player doctor`.                              |
-| No sound                     | On Linux, install the ALSA headers and check the device `doctor` reports.                      |
+| No sound                     | Check the audio device `doctor` reports. On Linux the build needs `libasound2-dev` (ALSA).     |
 | `ogg` build fails            | Build with `--no-default-features`, or render FLAC. Ogg needs a C compiler.                    |
 | Names or titles are empty    | Keep `bof3-names.json` next to the program or pass `--names FILE` ([Names file](#names-file)). |
 | Slow browser on a disc image | Extract the tree first and pass that folder with `-i`.                                         |

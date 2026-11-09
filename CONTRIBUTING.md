@@ -7,16 +7,22 @@ guidance for coding agents; people can ignore it.
 
 ## Set up
 
-You need Git, GNU make and Rust 1.88 or later (edition 2024). On Linux, audio output needs the
-ALSA headers. The [README](README.md) shows how to build and run the tools.
+Install the tools in the [README requirements](README.md#requirements): Rust 1.88 or later (edition
+2024), GNU make, `cargo-deny` and the Linux libraries. Then:
 
 ```sh
 git clone https://github.com/raulcorreia7/bof3-player.git
 cd bof3-player
-make check
+git switch -c fix/short-name
 ```
 
 ## Checks
+
+Run before every push:
+
+```sh
+make check
+```
 
 `make check` runs the checks CI runs:
 
@@ -41,15 +47,19 @@ Tests build their inputs from constants, generated fixtures (the `fixtures` feat
 `psx-formats`) or files written to a temporary folder. A test that writes files for you to inspect
 puts them in `target/tmp/<test>`.
 
-Do not add game data, extracted assets, game text or paths outside the repository. The only titles
+Do not add game data, extracted assets, game text, build output (`target/`, `bin/`) or paths outside the repository. The only titles
 are in `data/bof3-names.json`, each with a published source; library callers can also provide names
 through a `Naming` implementation.
 
 ## Submit a change
 
-Create a branch and keep each change focused. Use commit subjects such as
-`fix(spu): clamp the reverb sum` or `docs(player): add a render example`. Describe the behavior and
-the checks in the pull request.
+1. Branch from `main` and keep each change focused.
+2. Commit as `type(scope): subject`, imperative and lowercase, for example
+   `fix(spu): clamp the reverb sum` or `docs(player): add a render example`.
+3. Run `make check`, then push and open a pull request that describes the behavior and the checks.
+
+Docs, comments and commit messages follow the workspace
+[writing standard](https://github.com/raulcorreia7/bof3/blob/main/docs/standard.md#writing).
 
 ## License
 
