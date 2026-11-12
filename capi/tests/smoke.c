@@ -25,6 +25,32 @@ int bof3player_capi_smoke(void) {
     if (bof3player_player_set_loop(0, BOF3PLAYER_LOOP_OFF, 0) != BOF3PLAYER_STATUS_INVALID_ARGUMENT) return 9;
     if (bof3player_player_render_i16(0, 0, 0, 0) != BOF3PLAYER_STATUS_INVALID_ARGUMENT) return 10;
 
+    bof3player_disc *disc = 0;
+    if (bof3player_disc_open_path(0, 0, &disc) != BOF3PLAYER_STATUS_INVALID_ARGUMENT) return 11;
+    if (disc != 0) return 12;
+
+    bof3player_emi *archive = 0;
+    if (bof3player_emi_parse(0, 0, &archive) != BOF3PLAYER_STATUS_FORMAT) return 13;
+    if (archive != 0) return 14;
+
+    bof3player_vab *bank = 0;
+    if (bof3player_vab_parse(0, 0, &bank) != BOF3PLAYER_STATUS_FORMAT) return 15;
+    if (bank != 0) return 16;
+
+    bof3player_buffer buffer = {0};
+    bof3player_buffer_free(&buffer);
+    bof3player_pcm pcm = {0};
+    bof3player_pcm_free(&pcm);
+
+    bof3player_disc_free(disc);
+    bof3player_emi_free(archive);
+    bof3player_vab_free(bank);
+    bof3player_disc_free(0);
+    bof3player_emi_free(0);
+    bof3player_vab_free(0);
+    bof3player_buffer_free(0);
+    bof3player_pcm_free(0);
+
     bof3player_player_free(player);
     bof3player_library_free(library);
     bof3player_library_free(0);
