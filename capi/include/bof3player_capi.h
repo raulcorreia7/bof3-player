@@ -91,7 +91,37 @@ typedef enum {
    * A Rust panic was caught at the boundary.
    */
   BOF3PLAYER_STATUS_PANIC = 7,
+  /**
+   * The machine stopped on a halt; the last error holds its text.
+   */
+  BOF3PLAYER_STATUS_HALT = 8,
 } bof3player_status;
+
+/**
+ * Why a machine run stopped.
+ */
+typedef enum {
+  /**
+   * The program counter reached the requested address.
+   */
+  BOF3PLAYER_STOP_PC = 0,
+  /**
+   * The requested number of frames ran.
+   */
+  BOF3PLAYER_STOP_FRAMES = 1,
+  /**
+   * The run condition held.
+   */
+  BOF3PLAYER_STOP_CONDITION = 2,
+  /**
+   * The instruction budget ran out first.
+   */
+  BOF3PLAYER_STOP_BUDGET = 3,
+  /**
+   * The machine halted; the last error holds the halt text.
+   */
+  BOF3PLAYER_STOP_HALT = 4,
+} bof3player_stop;
 
 /**
  * An opened disc image with its cached file table.
@@ -113,6 +143,13 @@ typedef struct bof3player_emi bof3player_emi;
  * Opaque. Free it with `bof3player_library_free`.
  */
 typedef struct bof3player_library bof3player_library;
+
+/**
+ * A booted PlayStation machine.
+ *
+ * Opaque. Free it with `bof3player_machine_free`.
+ */
+typedef struct bof3player_machine bof3player_machine;
 
 /**
  * A player over one catalog item.
@@ -220,6 +257,24 @@ typedef struct {
    */
   uint64_t offset;
 } bof3player_emi_entry;
+
+/**
+ * An RGBA image. Free the pixels with `bof3player_image_free`.
+ */
+typedef struct {
+  /**
+   * The width in pixels.
+   */
+  uint32_t width;
+  /**
+   * The height in pixels.
+   */
+  uint32_t height;
+  /**
+   * The pixels, four bytes per pixel, row-major.
+   */
+  bof3player_buffer rgba;
+} bof3player_image;
 
 /**
  * One catalog item's metadata.
@@ -497,6 +552,16 @@ bof3player_status bof3player_emi_read_entry(const bof3player_emi *archive,
                                             bof3player_buffer *out_bytes);
 
 /**
+ * Free an image's pixels.
+ *
+ * # Safety
+ *
+ * `image` is NULL or points to an image returned by this library that has not
+ * been freed. The function zeroes the record.
+ */
+void bof3player_image_free(bof3player_image *image);
+
+/**
  * Free the strings of an item info and zero the record.
  *
  * # Safety
@@ -590,6 +655,55 @@ bof3player_status bof3player_library_open_folder_path(const char *path,
 bof3player_status bof3player_library_player_at(const bof3player_library *library,
                                                size_t index,
                                                bof3player_player **out_player);
+
+/**
+ * Boot a disc image: read `SYSTEM.CNF`, load its executable and install the
+ * stand-in kernel.
+ *
+ * # Safety
+ *
+ * `path` points to `path_len` readable bytes (or is NULL with length 0), and
+ * `out_machine` is NULL or writable.
+ */
+bof3player_status bof3player_machine_boot_disc_path(const char *path,
+                                                    size_t path_len,
+                                                    bof3player_machine **out_machine);
+
+/**
+ * Copy the displayed frame as RGBA.
+ *
+ * Free the pixels with `bof3player_image_free`.
+ *
+ * # Safety
+ *
+ * `machine` is NULL or a live handle, and `out_image` is NULL or writable.
+ */
+bof3player_status bof3player_machine_display(const bof3player_machine *machine,
+                                             bof3player_image *out_image);
+
+/**
+ * Free a machine handle.
+ *
+ * # Safety
+ *
+ * `machine` is NULL or a handle from this library that has not been freed.
+ */
+void bof3player_machine_free(bof3player_machine *machine);
+
+/**
+ * Run `frames` vertical blanks, or until `budget` instructions have run.
+ *
+ * A halt returns `BOF3PLAYER_STATUS_HALT`, writes `BOF3PLAYER_STOP_HALT` and
+ * puts the halt text in the last error.
+ *
+ * # Safety
+ *
+ * `machine` is NULL or a live handle, and `out_stop` is NULL or writable.
+ */
+bof3player_status bof3player_machine_run_frames(bof3player_machine *machine,
+                                                uint64_t frames,
+                                                uint64_t budget,
+                                                bof3player_stop *out_stop);
 
 /**
  * Free PCM samples.
@@ -720,6 +834,37 @@ bof3player_status bof3player_vab_vag_count(const bof3player_vab *bank, size_t *o
 bof3player_status bof3player_vab_vag_decode(const bof3player_vab *bank,
                                             size_t index,
                                             bof3player_pcm *out_pcm);
+
+/**
+ * Decode a type-3 VRAM upload into RGBA.
+ *
+ * `load_argument` is the entry's TOC load argument; it gives the upload's
+ * column, row and rectangles per row. Free the pixels with
+ * `bof3player_image_free`.
+ *
+ * # Safety
+ *
+ * `payload` points to `payload_len` readable bytes (or is NULL with length 0),
+ * and `out_image` is NULL or writable.
+ */
+bof3player_status bof3player_vram_decode(uint32_t load_argument,
+                                         const uint8_t *payload,
+                                         size_t payload_len,
+                                         bof3player_image *out_image);
+
+/**
+ * Write interleaved 16-bit PCM as a RIFF/WAVE file.
+ *
+ * The input is borrowed; the output is owned and freed with
+ * `bof3player_buffer_free`.
+ *
+ * # Safety
+ *
+ * `pcm` is NULL or a live record whose `samples` points to
+ * `frames * channels` readable samples (or is NULL with `frames` 0), and
+ * `out_bytes` is NULL or writable.
+ */
+bof3player_status bof3player_wav_encode(const bof3player_pcm *pcm, bof3player_buffer *out_bytes);
 
 #ifdef __cplusplus
 }  // extern "C"

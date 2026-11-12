@@ -265,3 +265,95 @@ fn new_error_paths() {
         vab::bof3player_vab_free(ptr::null_mut());
     }
 }
+
+fn zero_image() -> bof3player_image {
+    bof3player_image { width: 0, height: 0, rgba: bof3player_buffer { data: ptr::null_mut(), len: 0 } }
+}
+
+#[test]
+fn vram_decodes_to_rgba() {
+    let rectangle = psx_formats::gfx::vram::Rectangle { x: 0, y: 0, words: [0u16; 32 * 32] };
+    let payload = psx_formats::gfx::vram::encode(&[rectangle]);
+    let mut image = zero_image();
+    let status = unsafe { gfx::bof3player_vram_decode(0x0000_0100, payload.as_ptr(), payload.len(), &mut image) };
+    assert_eq!(status, bof3player_status::Ok, "{}", unsafe { c_string(bof3player_last_error_message()) });
+    assert_eq!((image.width, image.height), (32, 32));
+    assert_eq!(image.rgba.len, 32 * 32 * 4);
+    unsafe { bof3player_image_free(&mut image) };
+    assert_eq!((image.width, image.height, image.rgba.len), (0, 0, 0));
+}
+
+#[test]
+fn wav_encodes_pcm() {
+    let samples = [0i16, 1, 2, 3];
+    let pcm = bof3player_pcm { samples: samples.as_ptr() as *mut i16, frames: 2, channels: 2, sample_rate: 44_100 };
+    let mut bytes = bof3player_buffer { data: ptr::null_mut(), len: 0 };
+    let status = unsafe { audio::bof3player_wav_encode(&pcm, &mut bytes) };
+    assert_eq!(status, bof3player_status::Ok, "{}", unsafe { c_string(bof3player_last_error_message()) });
+    assert!(bytes.len >= 44);
+    assert_eq!(unsafe { std::slice::from_raw_parts(bytes.data, 4) }, b"RIFF");
+    unsafe { bof3player_buffer_free(&mut bytes) };
+}
+
+fn synthetic_exe() -> Vec<u8> {
+    let mut exe = vec![0u8; 0x800];
+    exe[..8].copy_from_slice(b"PS-X EXE");
+    exe[0x10..0x14].copy_from_slice(&0x8001_0000u32.to_le_bytes());
+    exe[0x18..0x1c].copy_from_slice(&0x8001_0000u32.to_le_bytes());
+    exe[0x1c..0x20].copy_from_slice(&4u32.to_le_bytes());
+    exe.extend_from_slice(&0x1000_FFFFu32.to_le_bytes());
+    exe
+}
+
+#[test]
+fn machine_boots_runs_and_displays() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("input");
+    std::fs::create_dir(&input).unwrap();
+    std::fs::write(input.join("SYSTEM.CNF"), b"BOOT = cdrom:\\MAIN.EXE;1\n").unwrap();
+    std::fs::write(input.join("MAIN.EXE"), synthetic_exe()).unwrap();
+    let image_path = dir.path().join("disc.iso");
+    psx_cd::rebuild::iso(&input, &image_path).unwrap();
+
+    let (path, len) = path_arg(&image_path);
+    let mut machine: *mut bof3player_machine = ptr::null_mut();
+    let status = unsafe { machine::bof3player_machine_boot_disc_path(path, len, &mut machine) };
+    assert_eq!(status, bof3player_status::Ok, "{}", unsafe { c_string(bof3player_last_error_message()) });
+
+    let mut stop = bof3player_stop::Halt;
+    let status = unsafe { machine::bof3player_machine_run_frames(machine, 1, 1000, &mut stop) };
+    assert_eq!(status, bof3player_status::Ok, "{}", unsafe { c_string(bof3player_last_error_message()) });
+    assert_eq!(stop, bof3player_stop::Budget);
+
+    let mut image = zero_image();
+    let status = unsafe { machine::bof3player_machine_display(machine, &mut image) };
+    assert_eq!(status, bof3player_status::Ok, "{}", unsafe { c_string(bof3player_last_error_message()) });
+    assert!(image.width > 0 && image.height > 0);
+    assert_eq!(image.rgba.len, image.width as usize * image.height as usize * 4);
+
+    unsafe {
+        bof3player_image_free(&mut image);
+        machine::bof3player_machine_free(machine);
+    }
+}
+
+#[test]
+fn image_audio_and_machine_error_paths() {
+    let mut image = zero_image();
+    assert_eq!(unsafe { gfx::bof3player_vram_decode(0, ptr::null(), 0, &mut image) }, bof3player_status::Format);
+    assert_eq!((image.width, image.height), (0, 0));
+
+    let mut bytes = bof3player_buffer { data: ptr::null_mut(), len: 0 };
+    assert_eq!(unsafe { audio::bof3player_wav_encode(ptr::null(), &mut bytes) }, bof3player_status::InvalidArgument);
+
+    let mut machine: *mut bof3player_machine = ptr::null_mut();
+    assert_eq!(unsafe { machine::bof3player_machine_boot_disc_path(ptr::null(), 0, &mut machine) }, bof3player_status::InvalidArgument);
+    let mut stop = bof3player_stop::Pc;
+    assert_eq!(unsafe { machine::bof3player_machine_run_frames(ptr::null_mut(), 1, 1, &mut stop) }, bof3player_status::InvalidArgument);
+    assert_eq!(unsafe { machine::bof3player_machine_display(ptr::null(), &mut image) }, bof3player_status::InvalidArgument);
+
+    unsafe {
+        bof3player_image_free(ptr::null_mut());
+        machine::bof3player_machine_free(ptr::null_mut());
+    }
+}

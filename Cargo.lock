@@ -801,6 +801,7 @@ dependencies = [
  "emi",
  "psx-cd",
  "psx-formats",
+ "psx-machine",
  "tempfile",
 ]
 

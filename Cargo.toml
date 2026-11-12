@@ -24,6 +24,7 @@ emi = { path = "emi", version = "0.1.3", default-features = false }
 psx-audio = { path = "psx-audio", version = "0.1.3", default-features = false }
 psx-cd = { path = "psx-cd", version = "0.1.3" }
 psx-formats = { path = "psx-formats", version = "0.1.3", default-features = false }
+psx-machine = { path = "psx-machine", version = "0.1.3" }
 clap = { version = "4.6.7", features = ["derive", "wrap_help"] }
 claxon = "0.4.3"
 cpal = "0.18.2"

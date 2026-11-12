@@ -42,6 +42,24 @@ int bof3player_capi_smoke(void) {
     bof3player_pcm pcm = {0};
     bof3player_pcm_free(&pcm);
 
+    bof3player_image image = {0};
+    if (bof3player_vram_decode(0, 0, 0, &image) != BOF3PLAYER_STATUS_FORMAT) return 17;
+    bof3player_image_free(&image);
+    if (image.rgba.data != 0 || image.rgba.len != 0) return 18;
+
+    if (bof3player_wav_encode(0, &buffer) != BOF3PLAYER_STATUS_INVALID_ARGUMENT) return 19;
+
+    bof3player_machine *machine = 0;
+    if (bof3player_machine_boot_disc_path(0, 0, &machine) != BOF3PLAYER_STATUS_INVALID_ARGUMENT) return 20;
+    if (machine != 0) return 21;
+    bof3player_stop stop = BOF3PLAYER_STOP_PC;
+    if (bof3player_machine_run_frames(0, 1, 1, &stop) != BOF3PLAYER_STATUS_INVALID_ARGUMENT) return 22;
+    if (bof3player_machine_display(0, &image) != BOF3PLAYER_STATUS_INVALID_ARGUMENT) return 23;
+
+    bof3player_machine_free(machine);
+    bof3player_image_free(0);
+    bof3player_machine_free(0);
+
     bof3player_disc_free(disc);
     bof3player_emi_free(archive);
     bof3player_vab_free(bank);

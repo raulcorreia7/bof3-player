@@ -25,10 +25,13 @@ use psx_cd::Entry as DiscEntry;
 use psx_formats::vab::Bank as VabBank;
 
 mod args;
+pub mod audio;
 pub mod disc;
 pub mod emi;
 mod error;
+pub mod gfx;
 pub mod library;
+pub mod machine;
 pub mod vab;
 
 /// Status returned by every fallible C function.
@@ -51,6 +54,8 @@ pub enum bof3player_status {
     Usage = 6,
     /// A Rust panic was caught at the boundary.
     Panic = 7,
+    /// The machine stopped on a halt; the last error holds its text.
+    Halt = 8,
 }
 
 /// The kind of media a catalog item is.
@@ -220,6 +225,33 @@ pub struct bof3player_vag_info {
     pub has_loop: u8,
 }
 
+/// An RGBA image. Free the pixels with `bof3player_image_free`.
+#[repr(C)]
+pub struct bof3player_image {
+    /// The width in pixels.
+    pub width: u32,
+    /// The height in pixels.
+    pub height: u32,
+    /// The pixels, four bytes per pixel, row-major.
+    pub rgba: bof3player_buffer,
+}
+
+/// Why a machine run stopped.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum bof3player_stop {
+    /// The program counter reached the requested address.
+    Pc = 0,
+    /// The requested number of frames ran.
+    Frames = 1,
+    /// The run condition held.
+    Condition = 2,
+    /// The instruction budget ran out first.
+    Budget = 3,
+    /// The machine halted; the last error holds the halt text.
+    Halt = 4,
+}
+
 /// An opened catalog over a disc image or an extracted folder.
 ///
 /// Opaque. Free it with `bof3player_library_free`.
@@ -259,6 +291,13 @@ pub struct bof3player_emi {
 pub struct bof3player_vab {
     pub(crate) bank: VabBank,
     pub(crate) body: Vec<u8>,
+}
+
+/// A booted PlayStation machine.
+///
+/// Opaque. Free it with `bof3player_machine_free`.
+pub struct bof3player_machine {
+    pub(crate) machine: Mutex<psx_machine::Machine>,
 }
 
 /// The C ABI version. Version 1 is the first.
@@ -316,6 +355,23 @@ pub unsafe extern "C" fn bof3player_pcm_free(pcm: *mut bof3player_pcm) {
         return;
     }
     unsafe { free_pcm(&mut *pcm) };
+}
+
+/// Free an image's pixels.
+///
+/// # Safety
+///
+/// `image` is NULL or points to an image returned by this library that has not
+/// been freed. The function zeroes the record.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bof3player_image_free(image: *mut bof3player_image) {
+    if image.is_null() {
+        return;
+    }
+    let image = unsafe { &mut *image };
+    free_buffer(&mut image.rgba);
+    image.width = 0;
+    image.height = 0;
 }
 
 /// Copy `text` into an owned string; empty text becomes a NULL pointer with
