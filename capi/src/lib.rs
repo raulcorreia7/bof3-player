@@ -19,10 +19,20 @@ use std::ffi::CString;
 use std::ptr;
 use std::sync::{Arc, Mutex};
 
+use ::emi::Archive as EmiArchive;
 use bof3player::{Library, Player};
+use psx_cd::Entry as DiscEntry;
+use psx_formats::vab::Bank as VabBank;
 
+mod args;
+pub mod audio;
+pub mod disc;
+pub mod emi;
 mod error;
+pub mod gfx;
 pub mod library;
+pub mod machine;
+pub mod vab;
 
 /// Status returned by every fallible C function.
 #[repr(C)]
@@ -44,6 +54,8 @@ pub enum bof3player_status {
     Usage = 6,
     /// A Rust panic was caught at the boundary.
     Panic = 7,
+    /// The machine stopped on a halt; the last error holds its text.
+    Halt = 8,
 }
 
 /// The kind of media a catalog item is.
@@ -132,6 +144,114 @@ pub struct bof3player_format {
     pub duration: f64,
 }
 
+/// An owned byte buffer. Free it with `bof3player_buffer_free`.
+///
+/// `data` is NULL when `len` is 0.
+#[repr(C)]
+pub struct bof3player_buffer {
+    /// The bytes; NULL when `len` is 0.
+    pub data: *mut u8,
+    /// The length in bytes.
+    pub len: usize,
+}
+
+/// Interleaved 16-bit PCM. Free the samples with `bof3player_pcm_free`.
+///
+/// `samples` holds `frames * channels` values and is NULL when `frames` is 0.
+#[repr(C)]
+pub struct bof3player_pcm {
+    /// The interleaved samples; NULL when `frames` is 0.
+    pub samples: *mut i16,
+    /// The number of frames.
+    pub frames: usize,
+    /// The number of channels.
+    pub channels: u32,
+    /// The sample rate in Hz.
+    pub sample_rate: u32,
+}
+
+/// One entry of a disc image's file table.
+#[repr(C)]
+pub struct bof3player_disc_entry {
+    /// The logical block address.
+    pub lba: u32,
+    /// The size in bytes.
+    pub size: u32,
+    /// One for a directory.
+    pub is_directory: u8,
+    /// One when the entry is an XA stream.
+    pub is_xa: u8,
+    /// The extended attribute bytes.
+    pub extended_attributes: u8,
+    /// Zero.
+    pub reserved: u8,
+}
+
+/// One entry of an EMI archive's table.
+#[repr(C)]
+pub struct bof3player_emi_entry {
+    /// The payload size in bytes.
+    pub size: u32,
+    /// The `u32` at byte 4 of the table record.
+    pub ram_ptr: u32,
+    /// The `u32` at byte 8 of the table record.
+    pub first4: u32,
+    /// The entry type.
+    pub file_type: u16,
+    /// Zero.
+    pub reserved: u16,
+    /// The payload's byte offset in the container.
+    pub offset: u64,
+}
+
+/// One VAG sample of a VAB bank.
+#[repr(C)]
+pub struct bof3player_vag_info {
+    /// The 1-based VAG number, as tones reference it.
+    pub number: u32,
+    /// The byte offset in the bank body.
+    pub offset: u32,
+    /// The byte size.
+    pub size: u32,
+    /// The samples a one-pass decode produces.
+    pub frames: u32,
+    /// The first looped sample, when `has_loop` is one.
+    pub loop_start_frame: u32,
+    /// One past the last looped sample, when `has_loop` is one.
+    pub loop_end_frame: u32,
+    /// One when an end flag was found.
+    pub has_end: u8,
+    /// One when the sample loops.
+    pub has_loop: u8,
+}
+
+/// An RGBA image. Free the pixels with `bof3player_image_free`.
+#[repr(C)]
+pub struct bof3player_image {
+    /// The width in pixels.
+    pub width: u32,
+    /// The height in pixels.
+    pub height: u32,
+    /// The pixels, four bytes per pixel, row-major.
+    pub rgba: bof3player_buffer,
+}
+
+/// Why a machine run stopped.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum bof3player_stop {
+    /// The program counter reached the requested address.
+    Pc = 0,
+    /// The requested number of frames ran.
+    Frames = 1,
+    /// The run condition held.
+    Condition = 2,
+    /// The instruction budget ran out first.
+    Budget = 3,
+    /// The machine halted; the last error holds the halt text.
+    Halt = 4,
+}
+
 /// An opened catalog over a disc image or an extracted folder.
 ///
 /// Opaque. Free it with `bof3player_library_free`.
@@ -147,6 +267,37 @@ pub struct bof3player_player {
     pub(crate) player: Mutex<Player<'static>>,
     /// Keeps the allocation the player borrows alive.
     pub(crate) _library: Arc<Library<'static>>,
+}
+
+/// An opened disc image with its cached file table.
+///
+/// Opaque. Free it with `bof3player_disc_free`.
+pub struct bof3player_disc {
+    pub(crate) image: Mutex<psx_cd::Image>,
+    pub(crate) entries: Vec<DiscEntry>,
+}
+
+/// A parsed EMI archive and the container bytes its payloads live in.
+///
+/// Opaque. Free it with `bof3player_emi_free`.
+pub struct bof3player_emi {
+    pub(crate) archive: EmiArchive,
+    pub(crate) bytes: Vec<u8>,
+}
+
+/// A parsed VAB bank and the body its samples live in.
+///
+/// Opaque. Free it with `bof3player_vab_free`.
+pub struct bof3player_vab {
+    pub(crate) bank: VabBank,
+    pub(crate) body: Vec<u8>,
+}
+
+/// A booted PlayStation machine.
+///
+/// Opaque. Free it with `bof3player_machine_free`.
+pub struct bof3player_machine {
+    pub(crate) machine: Mutex<psx_machine::Machine>,
 }
 
 /// The C ABI version. Version 1 is the first.
@@ -178,6 +329,51 @@ pub unsafe extern "C" fn bof3player_string_free(string: *mut bof3player_string) 
     unsafe { free_string(&mut *string) };
 }
 
+/// Free an owned byte buffer.
+///
+/// # Safety
+///
+/// `buffer` is NULL or points to a buffer returned by this library that has not
+/// been freed. The function zeroes the buffer.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bof3player_buffer_free(buffer: *mut bof3player_buffer) {
+    if buffer.is_null() {
+        return;
+    }
+    unsafe { free_buffer(&mut *buffer) };
+}
+
+/// Free PCM samples.
+///
+/// # Safety
+///
+/// `pcm` is NULL or points to PCM returned by this library that has not been
+/// freed. The function zeroes the record.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bof3player_pcm_free(pcm: *mut bof3player_pcm) {
+    if pcm.is_null() {
+        return;
+    }
+    unsafe { free_pcm(&mut *pcm) };
+}
+
+/// Free an image's pixels.
+///
+/// # Safety
+///
+/// `image` is NULL or points to an image returned by this library that has not
+/// been freed. The function zeroes the record.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bof3player_image_free(image: *mut bof3player_image) {
+    if image.is_null() {
+        return;
+    }
+    let image = unsafe { &mut *image };
+    free_buffer(&mut image.rgba);
+    image.width = 0;
+    image.height = 0;
+}
+
 /// Copy `text` into an owned string; empty text becomes a NULL pointer with
 /// length 0.
 pub(crate) fn owned_string(text: &str) -> bof3player_string {
@@ -197,6 +393,44 @@ pub(crate) fn free_string(string: &mut bof3player_string) {
     }
     string.data = ptr::null_mut();
     string.len = 0;
+}
+
+/// Copy bytes into an owned buffer; empty bytes become a NULL pointer with
+/// length 0.
+pub(crate) fn owned_buffer(bytes: Vec<u8>) -> bof3player_buffer {
+    if bytes.is_empty() {
+        return bof3player_buffer { data: ptr::null_mut(), len: 0 };
+    }
+    let bytes = bytes.into_boxed_slice();
+    let len = bytes.len();
+    bof3player_buffer { data: Box::into_raw(bytes).cast::<u8>(), len }
+}
+
+/// Free a buffer and zero it.
+pub(crate) fn free_buffer(buffer: &mut bof3player_buffer) {
+    if !buffer.data.is_null() {
+        drop(unsafe { Box::from_raw(ptr::slice_from_raw_parts_mut(buffer.data, buffer.len)) });
+    }
+    buffer.data = ptr::null_mut();
+    buffer.len = 0;
+}
+
+/// Copy interleaved samples into an owned PCM record.
+pub(crate) fn owned_pcm(samples: Vec<i16>, channels: u32, sample_rate: u32) -> bof3player_pcm {
+    let frames = if channels == 0 { 0 } else { samples.len() / channels as usize };
+    if samples.is_empty() {
+        return bof3player_pcm { samples: ptr::null_mut(), frames, channels, sample_rate };
+    }
+    bof3player_pcm { samples: Box::into_raw(samples.into_boxed_slice()).cast::<i16>(), frames, channels, sample_rate }
+}
+
+/// Free PCM samples and zero the record.
+pub(crate) fn free_pcm(pcm: &mut bof3player_pcm) {
+    if !pcm.samples.is_null() {
+        let len = pcm.frames.saturating_mul(pcm.channels as usize);
+        drop(unsafe { Box::from_raw(ptr::slice_from_raw_parts_mut(pcm.samples, len)) });
+    }
+    *pcm = bof3player_pcm { samples: ptr::null_mut(), frames: 0, channels: 0, sample_rate: 0 };
 }
 #[cfg(test)]
 mod smoke;

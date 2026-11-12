@@ -2,7 +2,6 @@
 //! Library and player: open a catalog, list its items, render PCM.
 
 use core::ffi::c_char;
-use std::path::PathBuf;
 use std::ptr;
 use std::slice;
 use std::sync::{Arc, Mutex};
@@ -10,29 +9,9 @@ use std::sync::{Arc, Mutex};
 use bof3player::player::Loop;
 use bof3player::{DiscSource, FolderSource, Library, Player, Source};
 
+use crate::args::path_arg;
 use crate::error::{Fail, fail, guard, map_audio, poisoned};
 use crate::{bof3player_format, bof3player_item_info, bof3player_kind, bof3player_library, bof3player_loop, bof3player_player, bof3player_status, bof3player_string, free_string, owned_string};
-
-/// Read a UTF-8 path argument. A NUL byte is rejected because it cannot name a
-/// file.
-///
-/// # Safety
-///
-/// `path` points to `len` readable bytes, or is NULL with `len` 0.
-unsafe fn path_arg(path: *const c_char, len: usize) -> Result<PathBuf, Fail> {
-    if path.is_null() {
-        return Err(Fail::new(bof3player_status::InvalidArgument, "path is NULL"));
-    }
-    if len == 0 {
-        return Err(Fail::new(bof3player_status::InvalidArgument, "path is empty"));
-    }
-    let bytes = unsafe { slice::from_raw_parts(path.cast::<u8>(), len) };
-    let text = std::str::from_utf8(bytes).map_err(|_| Fail::new(bof3player_status::InvalidArgument, "path is not UTF-8"))?;
-    if text.contains('\0') {
-        return Err(Fail::new(bof3player_status::InvalidArgument, "path contains a NUL byte"));
-    }
-    Ok(PathBuf::from(text))
-}
 
 /// Build a catalog from a source, with the bundled names.
 fn open_library(source: impl Source + 'static) -> Result<Library<'static>, Fail> {

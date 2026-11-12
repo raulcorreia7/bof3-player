@@ -21,6 +21,10 @@ smoke = ["dep:cc"]
 
 [dependencies]
 bof3player = { workspace = true, features = ["std", "bundled-names"] }
+emi = { workspace = true, features = ["std"] }
+psx-cd.workspace = true
+psx-formats = { workspace = true, features = ["std"] }
+psx-machine.workspace = true
 
 [build-dependencies]
 cc = { version = "1", optional = true }

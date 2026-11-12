@@ -91,7 +91,51 @@ typedef enum {
    * A Rust panic was caught at the boundary.
    */
   BOF3PLAYER_STATUS_PANIC = 7,
+  /**
+   * The machine stopped on a halt; the last error holds its text.
+   */
+  BOF3PLAYER_STATUS_HALT = 8,
 } bof3player_status;
+
+/**
+ * Why a machine run stopped.
+ */
+typedef enum {
+  /**
+   * The program counter reached the requested address.
+   */
+  BOF3PLAYER_STOP_PC = 0,
+  /**
+   * The requested number of frames ran.
+   */
+  BOF3PLAYER_STOP_FRAMES = 1,
+  /**
+   * The run condition held.
+   */
+  BOF3PLAYER_STOP_CONDITION = 2,
+  /**
+   * The instruction budget ran out first.
+   */
+  BOF3PLAYER_STOP_BUDGET = 3,
+  /**
+   * The machine halted; the last error holds the halt text.
+   */
+  BOF3PLAYER_STOP_HALT = 4,
+} bof3player_stop;
+
+/**
+ * An opened disc image with its cached file table.
+ *
+ * Opaque. Free it with `bof3player_disc_free`.
+ */
+typedef struct bof3player_disc bof3player_disc;
+
+/**
+ * A parsed EMI archive and the container bytes its payloads live in.
+ *
+ * Opaque. Free it with `bof3player_emi_free`.
+ */
+typedef struct bof3player_emi bof3player_emi;
 
 /**
  * An opened catalog over a disc image or an extracted folder.
@@ -101,12 +145,72 @@ typedef enum {
 typedef struct bof3player_library bof3player_library;
 
 /**
+ * A booted PlayStation machine.
+ *
+ * Opaque. Free it with `bof3player_machine_free`.
+ */
+typedef struct bof3player_machine bof3player_machine;
+
+/**
  * A player over one catalog item.
  *
  * Opaque. It keeps its library alive, so either handle may be freed first.
  * Free it with `bof3player_player_free`.
  */
 typedef struct bof3player_player bof3player_player;
+
+/**
+ * A parsed VAB bank and the body its samples live in.
+ *
+ * Opaque. Free it with `bof3player_vab_free`.
+ */
+typedef struct bof3player_vab bof3player_vab;
+
+/**
+ * An owned byte buffer. Free it with `bof3player_buffer_free`.
+ *
+ * `data` is NULL when `len` is 0.
+ */
+typedef struct {
+  /**
+   * The bytes; NULL when `len` is 0.
+   */
+  uint8_t *data;
+  /**
+   * The length in bytes.
+   */
+  size_t len;
+} bof3player_buffer;
+
+/**
+ * One entry of a disc image's file table.
+ */
+typedef struct {
+  /**
+   * The logical block address.
+   */
+  uint32_t lba;
+  /**
+   * The size in bytes.
+   */
+  uint32_t size;
+  /**
+   * One for a directory.
+   */
+  uint8_t is_directory;
+  /**
+   * One when the entry is an XA stream.
+   */
+  uint8_t is_xa;
+  /**
+   * The extended attribute bytes.
+   */
+  uint8_t extended_attributes;
+  /**
+   * Zero.
+   */
+  uint8_t reserved;
+} bof3player_disc_entry;
 
 /**
  * An owned UTF-8 string without a terminator.
@@ -123,6 +227,54 @@ typedef struct {
    */
   size_t len;
 } bof3player_string;
+
+/**
+ * One entry of an EMI archive's table.
+ */
+typedef struct {
+  /**
+   * The payload size in bytes.
+   */
+  uint32_t size;
+  /**
+   * The `u32` at byte 4 of the table record.
+   */
+  uint32_t ram_ptr;
+  /**
+   * The `u32` at byte 8 of the table record.
+   */
+  uint32_t first4;
+  /**
+   * The entry type.
+   */
+  uint16_t file_type;
+  /**
+   * Zero.
+   */
+  uint16_t reserved;
+  /**
+   * The payload's byte offset in the container.
+   */
+  uint64_t offset;
+} bof3player_emi_entry;
+
+/**
+ * An RGBA image. Free the pixels with `bof3player_image_free`.
+ */
+typedef struct {
+  /**
+   * The width in pixels.
+   */
+  uint32_t width;
+  /**
+   * The height in pixels.
+   */
+  uint32_t height;
+  /**
+   * The pixels, four bytes per pixel, row-major.
+   */
+  bof3player_buffer rgba;
+} bof3player_image;
 
 /**
  * One catalog item's metadata.
@@ -166,6 +318,30 @@ typedef struct {
 } bof3player_item_info;
 
 /**
+ * Interleaved 16-bit PCM. Free the samples with `bof3player_pcm_free`.
+ *
+ * `samples` holds `frames * channels` values and is NULL when `frames` is 0.
+ */
+typedef struct {
+  /**
+   * The interleaved samples; NULL when `frames` is 0.
+   */
+  int16_t *samples;
+  /**
+   * The number of frames.
+   */
+  size_t frames;
+  /**
+   * The number of channels.
+   */
+  uint32_t channels;
+  /**
+   * The sample rate in Hz.
+   */
+  uint32_t sample_rate;
+} bof3player_pcm;
+
+/**
  * Output shape of a player.
  */
 typedef struct {
@@ -183,6 +359,44 @@ typedef struct {
   double duration;
 } bof3player_format;
 
+/**
+ * One VAG sample of a VAB bank.
+ */
+typedef struct {
+  /**
+   * The 1-based VAG number, as tones reference it.
+   */
+  uint32_t number;
+  /**
+   * The byte offset in the bank body.
+   */
+  uint32_t offset;
+  /**
+   * The byte size.
+   */
+  uint32_t size;
+  /**
+   * The samples a one-pass decode produces.
+   */
+  uint32_t frames;
+  /**
+   * The first looped sample, when `has_loop` is one.
+   */
+  uint32_t loop_start_frame;
+  /**
+   * One past the last looped sample, when `has_loop` is one.
+   */
+  uint32_t loop_end_frame;
+  /**
+   * One when an end flag was found.
+   */
+  uint8_t has_end;
+  /**
+   * One when the sample loops.
+   */
+  uint8_t has_loop;
+} bof3player_vag_info;
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -191,6 +405,161 @@ extern "C" {
  * The C ABI version. Version 1 is the first.
  */
 uint32_t bof3player_abi_version(void);
+
+/**
+ * Free an owned byte buffer.
+ *
+ * # Safety
+ *
+ * `buffer` is NULL or points to a buffer returned by this library that has not
+ * been freed. The function zeroes the buffer.
+ */
+void bof3player_buffer_free(bof3player_buffer *buffer);
+
+/**
+ * One entry's type, size and position.
+ *
+ * # Safety
+ *
+ * `disc` is NULL or a live handle, and `out_entry` is NULL or writable.
+ */
+bof3player_status bof3player_disc_entry_at(const bof3player_disc *disc,
+                                           size_t index,
+                                           bof3player_disc_entry *out_entry);
+
+/**
+ * The number of entries in the cached file table.
+ *
+ * # Safety
+ *
+ * `disc` is NULL or a live handle, and `out_count` is NULL or writable.
+ */
+bof3player_status bof3player_disc_entry_count(const bof3player_disc *disc, size_t *out_count);
+
+/**
+ * One entry's path, as an owned UTF-8 string.
+ *
+ * A path that is not UTF-8 is converted lossily. Free the string with
+ * `bof3player_string_free`.
+ *
+ * # Safety
+ *
+ * `disc` is NULL or a live handle, and `out_path` is NULL or writable.
+ */
+bof3player_status bof3player_disc_entry_path(const bof3player_disc *disc,
+                                             size_t index,
+                                             bof3player_string *out_path);
+
+/**
+ * Free a disc handle.
+ *
+ * # Safety
+ *
+ * `disc` is NULL or a handle from this library that has not been freed.
+ */
+void bof3player_disc_free(bof3player_disc *disc);
+
+/**
+ * Open a disc image: a `.cue` sheet, a raw `.bin`, a cooked `.iso` or a folder
+ * that holds one. The ISO 9660 file table is read once and cached.
+ *
+ * # Safety
+ *
+ * `path` points to `path_len` readable bytes (or is NULL with length 0), and
+ * `out_disc` is NULL or writable.
+ */
+bof3player_status bof3player_disc_open_path(const char *path,
+                                            size_t path_len,
+                                            bof3player_disc **out_disc);
+
+/**
+ * Read one entry's bytes.
+ *
+ * # Safety
+ *
+ * `disc` is NULL or a live handle, and `out_bytes` is NULL or writable.
+ */
+bof3player_status bof3player_disc_read_entry(bof3player_disc *disc,
+                                             size_t index,
+                                             bof3player_buffer *out_bytes);
+
+/**
+ * One table entry's type, size and position.
+ *
+ * # Safety
+ *
+ * `archive` is NULL or a live handle, and `out_entry` is NULL or writable.
+ */
+bof3player_status bof3player_emi_entry_at(const bof3player_emi *archive,
+                                          size_t index,
+                                          bof3player_emi_entry *out_entry);
+
+/**
+ * The number of table entries.
+ *
+ * # Safety
+ *
+ * `archive` is NULL or a live handle, and `out_count` is NULL or writable.
+ */
+bof3player_status bof3player_emi_entry_count(const bof3player_emi *archive, size_t *out_count);
+
+/**
+ * Free an archive handle.
+ *
+ * # Safety
+ *
+ * `archive` is NULL or a handle from this library that has not been freed.
+ */
+void bof3player_emi_free(bof3player_emi *archive);
+
+/**
+ * Read an EMI archive from a file and parse its table.
+ *
+ * The whole container is held by the handle, so `bof3player_emi_read_entry`
+ * returns copies without the caller keeping the file bytes.
+ *
+ * # Safety
+ *
+ * `path` points to `path_len` readable bytes (or is NULL with length 0), and
+ * `out_archive` is NULL or writable.
+ */
+bof3player_status bof3player_emi_open_path(const char *path,
+                                           size_t path_len,
+                                           bof3player_emi **out_archive);
+
+/**
+ * Parse an EMI archive from bytes. The bytes are copied into the handle, so
+ * the caller may free them after the call.
+ *
+ * # Safety
+ *
+ * `bytes` points to `bytes_len` readable bytes (or is NULL with length 0), and
+ * `out_archive` is NULL or writable.
+ */
+bof3player_status bof3player_emi_parse(const uint8_t *bytes,
+                                       size_t bytes_len,
+                                       bof3player_emi **out_archive);
+
+/**
+ * Read one entry's payload as a copy.
+ *
+ * # Safety
+ *
+ * `archive` is NULL or a live handle, and `out_bytes` is NULL or writable.
+ */
+bof3player_status bof3player_emi_read_entry(const bof3player_emi *archive,
+                                            size_t index,
+                                            bof3player_buffer *out_bytes);
+
+/**
+ * Free an image's pixels.
+ *
+ * # Safety
+ *
+ * `image` is NULL or points to an image returned by this library that has not
+ * been freed. The function zeroes the record.
+ */
+void bof3player_image_free(bof3player_image *image);
 
 /**
  * Free the strings of an item info and zero the record.
@@ -288,6 +657,65 @@ bof3player_status bof3player_library_player_at(const bof3player_library *library
                                                bof3player_player **out_player);
 
 /**
+ * Boot a disc image: read `SYSTEM.CNF`, load its executable and install the
+ * stand-in kernel.
+ *
+ * # Safety
+ *
+ * `path` points to `path_len` readable bytes (or is NULL with length 0), and
+ * `out_machine` is NULL or writable.
+ */
+bof3player_status bof3player_machine_boot_disc_path(const char *path,
+                                                    size_t path_len,
+                                                    bof3player_machine **out_machine);
+
+/**
+ * Copy the displayed frame as RGBA.
+ *
+ * Free the pixels with `bof3player_image_free`.
+ *
+ * # Safety
+ *
+ * `machine` is NULL or a live handle, and `out_image` is NULL or writable.
+ */
+bof3player_status bof3player_machine_display(const bof3player_machine *machine,
+                                             bof3player_image *out_image);
+
+/**
+ * Free a machine handle.
+ *
+ * # Safety
+ *
+ * `machine` is NULL or a handle from this library that has not been freed.
+ */
+void bof3player_machine_free(bof3player_machine *machine);
+
+/**
+ * Run `frames` vertical blanks, or until `budget` instructions have run.
+ *
+ * A halt returns `BOF3PLAYER_STATUS_HALT`, writes `BOF3PLAYER_STOP_HALT` and
+ * puts the halt text in the last error.
+ *
+ * # Safety
+ *
+ * `machine` is NULL or a live handle, and `out_stop` is NULL or writable.
+ */
+bof3player_status bof3player_machine_run_frames(bof3player_machine *machine,
+                                                uint64_t frames,
+                                                uint64_t budget,
+                                                bof3player_stop *out_stop);
+
+/**
+ * Free PCM samples.
+ *
+ * # Safety
+ *
+ * `pcm` is NULL or points to PCM returned by this library that has not been
+ * freed. The function zeroes the record.
+ */
+void bof3player_pcm_free(bof3player_pcm *pcm);
+
+/**
  * The player's sample rate, channels and duration.
  *
  * # Safety
@@ -346,6 +774,97 @@ bof3player_status bof3player_player_set_loop(bof3player_player *player,
  * been freed. The function zeroes the string.
  */
 void bof3player_string_free(bof3player_string *string);
+
+/**
+ * Free a bank handle.
+ *
+ * # Safety
+ *
+ * `bank` is NULL or a handle from this library that has not been freed.
+ */
+void bof3player_vab_free(bof3player_vab *bank);
+
+/**
+ * Parse a one-file VAB bank (header followed by body).
+ *
+ * The body is copied into the handle for decoding.
+ *
+ * # Safety
+ *
+ * `vab` points to `vab_len` readable bytes (or is NULL with length 0), and
+ * `out_bank` is NULL or writable.
+ */
+bof3player_status bof3player_vab_parse(const uint8_t *vab,
+                                       size_t vab_len,
+                                       bof3player_vab **out_bank);
+
+/**
+ * One VAG's range and loop points.
+ *
+ * `index` is the 0-based position; `number` in the record is the 1-based VAG
+ * number the tones reference.
+ *
+ * # Safety
+ *
+ * `bank` is NULL or a live handle, and `out_info` is NULL or writable.
+ */
+bof3player_status bof3player_vab_vag_at(const bof3player_vab *bank,
+                                        size_t index,
+                                        bof3player_vag_info *out_info);
+
+/**
+ * The number of VAG entries, including the null sample at index 0.
+ *
+ * # Safety
+ *
+ * `bank` is NULL or a live handle, and `out_count` is NULL or writable.
+ */
+bof3player_status bof3player_vab_vag_count(const bof3player_vab *bank, size_t *out_count);
+
+/**
+ * Decode one VAG to mono 44,100 Hz PCM.
+ *
+ * The null sample (index 0) decodes to 0 frames without an error. Free the
+ * samples with `bof3player_pcm_free`.
+ *
+ * # Safety
+ *
+ * `bank` is NULL or a live handle, and `out_pcm` is NULL or writable.
+ */
+bof3player_status bof3player_vab_vag_decode(const bof3player_vab *bank,
+                                            size_t index,
+                                            bof3player_pcm *out_pcm);
+
+/**
+ * Decode a type-3 VRAM upload into RGBA.
+ *
+ * `load_argument` is the entry's TOC load argument; it gives the upload's
+ * column, row and rectangles per row. Free the pixels with
+ * `bof3player_image_free`.
+ *
+ * # Safety
+ *
+ * `payload` points to `payload_len` readable bytes (or is NULL with length 0),
+ * and `out_image` is NULL or writable.
+ */
+bof3player_status bof3player_vram_decode(uint32_t load_argument,
+                                         const uint8_t *payload,
+                                         size_t payload_len,
+                                         bof3player_image *out_image);
+
+/**
+ * Write interleaved 16-bit PCM as a RIFF/WAVE file.
+ *
+ * The input is borrowed; the output is owned and freed with
+ * `bof3player_buffer_free`.
+ *
+ * # Safety
+ *
+ * `pcm` is NULL or a live record whose `samples` points to
+ * `frames * channels` readable samples (or is NULL with `frames` 0), and
+ * `out_bytes` is NULL or writable.
+ */
+bof3player_status bof3player_wav_encode(const bof3player_pcm *pcm, bof3player_buffer *out_bytes);
 
 #ifdef __cplusplus
 }  // extern "C"

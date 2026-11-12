@@ -95,6 +95,53 @@ pub(crate) fn map_audio(error: bof3player::Error) -> Fail {
     }
 }
 
+/// The status for an EMI archive error.
+pub(crate) fn map_emi(error: emi::Error) -> Fail {
+    use emi::Error;
+    match error {
+        Error::Io(error) => Fail::new(bof3player_status::Io, error.to_string()),
+        Error::Format(error) => map_formats(error),
+        Error::InvalidArchive(message) => Fail::new(bof3player_status::Format, format!("invalid EMI archive: {message}")),
+        Error::EntryOutOfRange { index, count } => Fail::new(bof3player_status::InvalidIndex, format!("entry index {index} is out of range (the archive has {count} entries)")),
+        Error::CueTableSize(bytes) => Fail::new(bof3player_status::Format, format!("cue table is {bytes} bytes")),
+        Error::CueTableRecords(records) => Fail::new(bof3player_status::Format, format!("cue table holds {records} records")),
+        Error::CueRecord { record, reason } => Fail::new(bof3player_status::Format, format!("cue record {record}: {reason}")),
+    }
+}
+
+/// The status for a disc-image error.
+pub(crate) fn map_cd(error: psx_cd::Error) -> Fail {
+    use psx_cd::Error;
+    match error {
+        Error::Io(error) => Fail::new(bof3player_status::Io, error.to_string()),
+        Error::NoImage(message) => Fail::new(bof3player_status::Io, message),
+        Error::InvalidImage(message) => Fail::new(bof3player_status::Format, message),
+        Error::InvalidImageDetail(message) => Fail::new(bof3player_status::Format, message),
+        Error::InvalidInput(message) => Fail::new(bof3player_status::Format, message),
+        Error::Patch(message) => Fail::new(bof3player_status::Format, message),
+    }
+}
+
+/// The status for a machine error.
+pub(crate) fn map_machine(error: psx_machine::Error) -> Fail {
+    use psx_machine::Error;
+    match error {
+        Error::Disc(error) => map_cd(error),
+        Error::Boot(message) => Fail::new(bof3player_status::Format, message),
+        other => Fail::new(bof3player_status::Format, other.to_string()),
+    }
+}
+
+/// The status for one of the format library's errors.
+pub(crate) fn map_formats(error: psx_formats::Error) -> Fail {
+    let status = match &error {
+        psx_formats::Error::VagOutOfRange { .. } | psx_formats::Error::SepSequenceOutOfRange { .. } => bof3player_status::InvalidIndex,
+        psx_formats::Error::WaveUnsupported(_) => bof3player_status::Unsupported,
+        _ => bof3player_status::Format,
+    };
+    Fail::new(status, error.to_string())
+}
+
 /// The failure for a poisoned mutex: a previous call panicked while it held
 /// the handle.
 pub(crate) fn poisoned() -> Fail {

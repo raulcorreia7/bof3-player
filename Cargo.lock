@@ -798,6 +798,10 @@ dependencies = [
  "bof3player",
  "cbindgen",
  "cc",
+ "emi",
+ "psx-cd",
+ "psx-formats",
+ "psx-machine",
  "tempfile",
 ]
 
