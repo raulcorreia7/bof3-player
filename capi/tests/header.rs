@@ -15,6 +15,8 @@ fn header_is_current() {
         std::fs::create_dir_all(header.parent().unwrap()).unwrap();
         std::fs::write(&header, &generated).unwrap();
     }
-    let committed = std::fs::read_to_string(&header).expect("the committed header exists");
+    // A Windows checkout may hold the text file with CRLF; the generator always
+    // writes LF.
+    let committed = std::fs::read_to_string(&header).expect("the committed header exists").replace("\r\n", "\n");
     assert_eq!(generated, committed, "the header is stale; regenerate it with UPDATE_HEADER=1 cargo test -p bof3player-capi --test header");
 }
