@@ -122,6 +122,16 @@ pub(crate) fn map_cd(error: psx_cd::Error) -> Fail {
     }
 }
 
+/// The status for a machine error.
+pub(crate) fn map_machine(error: psx_machine::Error) -> Fail {
+    use psx_machine::Error;
+    match error {
+        Error::Disc(error) => map_cd(error),
+        Error::Boot(message) => Fail::new(bof3player_status::Format, message),
+        other => Fail::new(bof3player_status::Format, other.to_string()),
+    }
+}
+
 /// The status for one of the format library's errors.
 pub(crate) fn map_formats(error: psx_formats::Error) -> Fail {
     let status = match &error {
