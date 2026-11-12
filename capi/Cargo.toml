@@ -1,0 +1,36 @@
+[package]
+name = "bof3player-capi"
+description = "C interface for the bof3-player libraries"
+version = "0.1.3"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish = false
+
+[lib]
+name = "bof3player_capi"
+# rlib: the integration tests link the library and call the exported functions.
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[features]
+default = []
+# Build tests/smoke.c and link it into the test binary.
+smoke = ["dep:cc"]
+
+[dependencies]
+bof3player = { workspace = true, features = ["std", "bundled-names"] }
+
+[build-dependencies]
+cc = { version = "1", optional = true }
+
+[dev-dependencies]
+cbindgen = { version = "=0.28.0", default-features = false }
+tempfile = "3.27.0"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

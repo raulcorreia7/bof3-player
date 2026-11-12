@@ -120,6 +120,7 @@ directory or in `data/`. `--names FILE` or `$BOF3_NAMES` picks another file. See
 | [psx-cd](psx-cd/README.md)           | ISO 9660 and cue-sheet disc images: read, extract, patch, rebuild.                                   | [docs/crates.md](docs/crates.md#psx-cd)      |
 | [psx-machine](psx-machine/README.md) | A small PlayStation: R3000A interpreter, memory map, GPU command recording and frame drawing. | [docs/crates.md](docs/crates.md#psx-machine) |
 | [emi](emi/README.md)                 | The EMI archive reader.                                                                              | [docs/crates.md](docs/crates.md#emi)         |
+| [capi](capi/)                        | The library crates callable from C: open a disc or folder, list items, render PCM.                   | [docs/c-api.md](docs/c-api.md)               |
 
 The crates are not on crates.io. Use them as path or git dependencies.
 [docs/spu-model.md](docs/spu-model.md) lists the hardware documentation the SPU model follows.
