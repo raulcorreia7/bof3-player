@@ -55,7 +55,8 @@ cargo deny check
 
 - Skills: none; this guide is the entry point.
 - Tools: `bof3player --help` and [docs/player.md](docs/player.md).
-- Docs: [docs/](docs/) (table above) and each crate's `README.md`.
+- Docs: [docs/](docs/) (table above) and each crate's `README.md`; the C interface is
+  [docs/c-api.md](docs/c-api.md).
 - CI: [.github/workflows/ci.yml](.github/workflows/ci.yml) runs the gate above;
   [release.yml](.github/workflows/release.yml) builds the release archives.
 - Wiki (game and format facts): [site](https://raulcorreia7.github.io/bof3-wiki/). For a model: [llms.txt](https://raulcorreia7.github.io/bof3-wiki/llms.txt) (index), [llms-small.txt](https://raulcorreia7.github.io/bof3-wiki/llms-small.txt) (compact, for a small context), [llms-full.txt](https://raulcorreia7.github.io/bof3-wiki/llms-full.txt) (everything).
