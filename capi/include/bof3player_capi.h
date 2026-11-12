@@ -12,50 +12,6 @@
 #include <stdlib.h>
 
 /**
- * The kind of media a catalog item is.
- */
-typedef enum {
-  /**
-   * A sequence played through its bank.
-   */
-  BOF3PLAYER_KIND_MUSIC = 0,
-  /**
-   * A VAB sound bank or one of its cue records.
-   */
-  BOF3PLAYER_KIND_BANK = 1,
-  /**
-   * One raw sample of a bank.
-   */
-  BOF3PLAYER_KIND_SAMPLE = 2,
-  /**
-   * Streaming XA audio.
-   */
-  BOF3PLAYER_KIND_XA = 3,
-  /**
-   * A CD-DA track.
-   */
-  BOF3PLAYER_KIND_CDDA = 4,
-} bof3player_kind;
-
-/**
- * Which part of a track a player repeats.
- */
-typedef enum {
-  /**
-   * Play straight through once.
-   */
-  BOF3PLAYER_LOOP_OFF = 0,
-  /**
-   * Play the loop window this many extra times, then run on to the end.
-   */
-  BOF3PLAYER_LOOP_TIMES = 1,
-  /**
-   * Never end.
-   */
-  BOF3PLAYER_LOOP_FOREVER = 2,
-} bof3player_loop;
-
-/**
  * Status returned by every fallible C function.
  */
 typedef enum {
@@ -98,6 +54,32 @@ typedef enum {
 } bof3player_status;
 
 /**
+ * The kind of media a catalog item is.
+ */
+typedef enum {
+  /**
+   * A sequence played through its bank.
+   */
+  BOF3PLAYER_KIND_MUSIC = 0,
+  /**
+   * A VAB sound bank or one of its cue records.
+   */
+  BOF3PLAYER_KIND_BANK = 1,
+  /**
+   * One raw sample of a bank.
+   */
+  BOF3PLAYER_KIND_SAMPLE = 2,
+  /**
+   * Streaming XA audio.
+   */
+  BOF3PLAYER_KIND_XA = 3,
+  /**
+   * A CD-DA track.
+   */
+  BOF3PLAYER_KIND_CDDA = 4,
+} bof3player_kind;
+
+/**
  * Why a machine run stopped.
  */
 typedef enum {
@@ -122,6 +104,24 @@ typedef enum {
    */
   BOF3PLAYER_STOP_HALT = 4,
 } bof3player_stop;
+
+/**
+ * Which part of a track a player repeats.
+ */
+typedef enum {
+  /**
+   * Play straight through once.
+   */
+  BOF3PLAYER_LOOP_OFF = 0,
+  /**
+   * Play the loop window this many extra times, then run on to the end.
+   */
+  BOF3PLAYER_LOOP_TIMES = 1,
+  /**
+   * Never end.
+   */
+  BOF3PLAYER_LOOP_FOREVER = 2,
+} bof3player_loop;
 
 /**
  * An opened disc image with its cached file table.
