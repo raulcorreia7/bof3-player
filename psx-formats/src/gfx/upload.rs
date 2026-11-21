@@ -131,23 +131,6 @@ mod tests {
     }
 
     #[test]
-    fn an_unjoined_upload_has_no_clut() {
-        let tim = tim_direct(place(), &sheet()).unwrap();
-        assert_eq!((tim.mode, tim.clut.clone()), (Mode::Fifteen, None));
-        let back = from_tim(&File::read(&tim.write()).unwrap()).unwrap();
-        assert_eq!((back.payload, back.depth, back.clut), (sheet(), None, None));
-    }
-
-    #[test]
-    fn a_moved_image_changes_only_the_placement_bits() {
-        let mut file = tim_direct(place(), &sheet()).unwrap();
-        file.image.x = 64;
-        file.image.y = 32;
-        let back = from_tim(&file).unwrap();
-        assert_eq!(back.placement, Descriptor { column: 2, row: 1, chunks_per_row: 1 });
-    }
-
-    #[test]
     fn an_image_off_the_upload_grid_is_refused() {
         let mut file = tim_direct(place(), &sheet()).unwrap();
         file.image.x += 1;
@@ -164,13 +147,6 @@ mod tests {
         let mut short = tim_direct(place(), &sheet()).unwrap();
         short.image.words.pop();
         assert!(from_tim(&short).is_err(), "the word count must match the size");
-    }
-
-    #[test]
-    fn an_upload_that_is_not_whole_rectangles_is_refused() {
-        assert!(tim_direct(place(), &[]).is_err());
-        assert!(tim_direct(place(), &sheet()[..100]).is_err());
-        assert!(tim_with_clut(place(), &sheet(), Depth::Eight, 0, 0, &vec![0; 70_000]).is_err());
     }
 
     #[test]

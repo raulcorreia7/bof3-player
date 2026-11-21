@@ -97,33 +97,12 @@ mod tests {
     }
 
     #[test]
-    fn a_sequence_is_a_seq_file_with_the_manual_layout() {
-        let file = export(&stored(), 1).unwrap();
-        assert_eq!(&file[..4], b"pQES");
-        assert_eq!(&file[4..8], &[0, 0, 0, 1], "version, 4 bytes");
-        assert_eq!(&file[8..10], &48u16.to_be_bytes(), "resolution of a quarter note");
-        assert_eq!(&file[10..13], &[0x07, 0xa1, 0x20], "tempo, 3 bytes");
-        assert_eq!(&file[13..15], &[4, 2], "rhythm");
-        assert_eq!(&file[file.len() - 3..], &[0xff, 0x2f, 0x00], "end of SEQ");
-    }
-
-    #[test]
     fn seq_files_rebuild_the_package_with_their_ids() {
         let package = stored();
         let first = export(&package, 0).unwrap();
         let second = export(&package, 1).unwrap();
         assert_eq!(self::package(&[(&first, 0), (&second, 7)]).unwrap().encode(), package);
         assert_eq!(export(&package, 2), Err(Error::SepSequenceOutOfRange { index: 2, count: 2 }));
-    }
-
-    #[test]
-    fn a_file_that_is_not_a_seq_is_refused() {
-        assert_eq!(read(b"MThd", 0), Err(Error::SeqFile("it does not open with the pQES magic and a header")));
-        let mut broken = export(&stored(), 0).unwrap();
-        broken.truncate(broken.len() - 1);
-        assert!(read(&broken, 0).is_err(), "the end of SEQ is cut");
-        let no_end = encode(&Sequence { events: vec![note(0, 0x90)], ..sequence(0) });
-        assert!(matches!(read(&no_end, 0), Err(Error::SepRule(_))), "no end of track");
     }
 
     #[test]

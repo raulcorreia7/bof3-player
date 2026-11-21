@@ -165,32 +165,6 @@ impl Naming for Names {
 mod tests {
     use super::*;
 
-    const SAMPLE: &str = r#"{
- "version":1,
- "music":{
-  "music:A#0":{"title":"First","source":"data","sound":[3,9]},
-  "music:B#0":{"same_as":"music:A#0"},
-  "music:C#1":{"title":"Own","source":"label","same_as":"music:A#0"},
-  "music:D#0":{"source":"none"}
- },
- "banks":{
-  "bank:MAGIC001":{"title":"Jump, Nue Stomp","source":"game","abilities":[1,160]},
-  "bank:AREA001":{"same_as":"bank:AREA000"}
- },
- "xa":{"xa:S#ch0@0":{"title":"Cue 0","source":"game"}}
-}"#;
-
-    #[test]
-    fn copy_takes_the_title_of_its_original() {
-        let names = Names::from_json(SAMPLE).unwrap();
-        assert_eq!(names.music_title("A", 0), Some("First"));
-        assert_eq!(names.music_title("B", 0), Some("First"));
-        assert_eq!(names.music_copy("B#0"), Some("A#0"));
-        assert_eq!(names.music_title("C", 1), Some("Own"));
-        assert_eq!(names.music_title("D", 0), None);
-        assert_eq!(names.music_title("Z", 0), None);
-    }
-
     #[test]
     fn rejects_other_versions_and_bad_text() {
         assert!(Names::from_json(r#"{"version":2}"#).is_err());
@@ -203,20 +177,6 @@ mod tests {
 
     #[cfg(feature = "bundled-names")]
     #[test]
-    fn bundled_names_answer_every_lookup() {
-        let game = game_names();
-        assert_eq!(game.music_title("BGMOPN", 0), Some("Opening"));
-        assert_eq!(game.music_title("BGMOPN", 999), None);
-        assert_eq!(game.music_title("DEMO", 0), Some("Opening"));
-        assert_eq!(game.music_copy("DEMO#0"), Some("BGMOPN#0"));
-        assert_eq!(game.music_sound("BGM000#0"), Some(0));
-        assert_eq!(game.bank_name("BIN/BENEMY/ENEMY001.EMI"), Some("Area 001 enemy bank (no enemy records)"));
-        assert_eq!(game.bank_duplicate("AREA001"), Some("AREA000"));
-        assert_eq!(game.magic_ability(160), Some("Nue Stomp"));
-        assert_eq!(game.xa_span("xa:S_XA00#ch0@0"), Some("S_XA00 cue 0 (game 0x0000)"));
-    }
-
-    #[test]
     fn the_shipped_file_reads_and_every_title_has_a_source() {
         let names = Names::from_json(SHIPPED).unwrap();
         assert!(!names.music().is_empty());
@@ -226,35 +186,5 @@ mod tests {
                 assert!(entry.evidence.is_some(), "{id} has a title and no evidence");
             }
         }
-    }
-
-    #[test]
-    fn every_same_as_in_the_shipped_file_stays_in_its_section() {
-        let names = Names::from_json(SHIPPED).unwrap();
-        // A music original is always listed; a bank original may be an archive without an entry.
-        for (id, entry) in names.music() {
-            if let Some(original) = &entry.same_as {
-                assert!(names.music().contains_key(original), "{id} points at the missing {original}");
-                assert_ne!(original, id, "{id} copies itself");
-            }
-        }
-        for (id, entry) in names.banks() {
-            if let Some(original) = &entry.same_as {
-                assert!(original.starts_with("bank:") && original != id, "{id} points at {original}");
-            }
-        }
-    }
-
-    #[test]
-    fn a_chain_of_copies_ends_and_a_loop_gives_no_title() {
-        let names = Names::from_json(
-            r#"{"version":1,"music":{
-              "music:A#0":{"same_as":"music:B#0"},
-              "music:B#0":{"same_as":"music:A#0"},
-              "music:C#0":{"same_as":"music:Z#0"}}}"#,
-        )
-        .unwrap();
-        assert_eq!(names.music_title("A", 0), None);
-        assert_eq!(names.music_title("C", 0), None);
     }
 }

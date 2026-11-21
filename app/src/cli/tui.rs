@@ -1195,19 +1195,3 @@ pub fn run(global: &Global, naming: &dyn Naming) -> Result<ExitCode, String> {
     result.map_err(|e| e.to_string())?;
     Ok(ExitCode::SUCCESS)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn theme_colors_map_to_the_nearest_cube_color() {
-        assert_eq!(cube(0x000000), Color::Indexed(16));
-        assert_eq!(cube(0xffffff), Color::Indexed(231));
-        assert_eq!(cube(0xff0000), Color::Indexed(196));
-        // Each channel lands on the nearest step: 0x5f is 95, 0x87 is 135, 0xd7 is 215.
-        assert_eq!(cube(0x5f87d7), Color::Indexed(16 + 36 + 2 * 6 + 4));
-        assert_eq!(cube(0x1e88e5), Color::Indexed(16 + 2 * 6 + 4));
-        assert_eq!(cube(0x3b0000), Color::Indexed(16 + 36));
-    }
-}

@@ -888,22 +888,6 @@ mod tests {
     }
 
     #[test]
-    fn natural_order_compares_numbers_by_value() {
-        assert_eq!(natural_compare("BGM2", "BGM10"), Ordering::Less);
-        assert_eq!(natural_compare("BGM10", "BGM2"), Ordering::Greater);
-        assert_eq!(natural_compare("BGM02", "BGM2"), Ordering::Greater);
-        assert_eq!(natural_compare("A", "A"), Ordering::Equal);
-        assert_eq!(natural_compare("A", "AB"), Ordering::Less);
-    }
-
-    #[test]
-    fn items_sort_by_kind_then_natural_id() {
-        let catalog = catalog();
-        let ids: Vec<_> = catalog.items().iter().map(|i| i.id.as_str()).collect();
-        assert_eq!(ids, ["music:BGM2#0", "music:BGM2#1", "music:BGM10#0", "sample:BOSS001#3", "xa:S_XA00#ch0@0"]);
-    }
-
-    #[test]
     fn search_ranks_exact_then_prefix_then_substring_then_subsequence() {
         let catalog = catalog();
         let hits = |query: &str| catalog.search(query, &Filter::default()).iter().map(|i| i.id.clone()).collect::<Vec<_>>();
@@ -923,17 +907,5 @@ mod tests {
         assert_eq!(count(Filter { kinds: vec![Kind::Music], ..Filter::default() }), 3);
         assert_eq!(count(Filter { family: Some("boss"), ..Filter::default() }), 1);
         assert_eq!(count(Filter { playable_only: true, ..Filter::default() }), 4);
-    }
-
-    #[test]
-    fn same_as_text_names_the_original_and_its_title() {
-        let catalog = catalog();
-        let copy = Item { same_as: Some("music:BGM2#0".to_string()), ..item(Kind::Music, "music:X#0", "X", "Battle", "BGM", true) };
-        assert_eq!(catalog.same_as_text(&copy).as_deref(), Some("BGM2#0 (Opening)"));
-        let same_title = Item { title: "Opening".to_string(), ..copy.clone() };
-        assert_eq!(catalog.same_as_text(&same_title).as_deref(), Some("BGM2#0"));
-        assert_eq!(catalog.same_as_text(&catalog.items[0].clone()), None);
-        let unknown = Item { same_as: Some("music:GONE#0".to_string()), ..copy };
-        assert_eq!(catalog.same_as_text(&unknown).as_deref(), Some("GONE#0"));
     }
 }

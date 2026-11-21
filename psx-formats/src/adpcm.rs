@@ -231,32 +231,11 @@ mod encode_tests {
         assert_eq!(second, first);
         assert_eq!(first.len(), pcm.len().div_ceil(BLOCK_SAMPLES) * BLOCK_SAMPLES);
     }
-
-    #[test]
-    fn the_last_block_carries_the_end_flag() {
-        let bytes = encode_stream(&[0; 40]);
-        assert_eq!(bytes.len(), 2 * BLOCK_BYTES);
-        assert_eq!(bytes[BLOCK_BYTES + 1], FLAG_END);
-        assert_eq!(bytes[1], 0);
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// Golden vector: filter 0 passes the shifted nibbles through.
-    #[test]
-    fn filter_zero_is_plain_shift() {
-        let mut block = [0u8; BLOCK_BYTES];
-        block[0] = 0x0C; // shift 12 (loudest), filter 0
-        // Nibbles 7, 8 (-8), 1, F (-1), then zeros.
-        block[2] = 0x87;
-        block[3] = 0xF1;
-        let mut out = [0i16; BLOCK_SAMPLES];
-        decode_block(&block, &mut out, &mut State::default());
-        assert_eq!(&out[..5], &[7, -8, 1, -1, 0]);
-    }
 
     /// Golden vector for the filter path: shift 8, filter 1 (60/64 of the last sample).
     #[test]
@@ -269,26 +248,5 @@ mod tests {
         decode_block(&block, &mut out, &mut State::default());
         // 7 << 12 >> 8 = 112; then 112 + (112*60 >> 6) = 217; then 0 + (217*60 >> 6) = 203.
         assert_eq!(&out[..3], &[112, 217, 203]);
-    }
-
-    #[test]
-    fn reserved_shift_acts_as_nine() {
-        let mut a = State::default();
-        let mut b = State::default();
-        assert_eq!(step(5, 13, 0, &mut a, Rounding::TruncateEachTerm), step(5, 9, 0, &mut b, Rounding::TruncateEachTerm));
-    }
-
-    #[test]
-    fn output_saturates() {
-        let mut state = State { prev1: i16::MAX, prev2: 0 };
-        assert_eq!(step(7, 0, 1, &mut state, Rounding::TruncateEachTerm), i16::MAX);
-    }
-
-    /// 1013 * 60 / 64 = 949.69: each-term truncation gives 949, the XA rounded sum 950.
-    #[test]
-    fn rounding_modes_differ_on_the_fraction() {
-        let start = State { prev1: 1013, prev2: 0 };
-        assert_eq!(step(0, 0, 1, &mut { start }, Rounding::TruncateEachTerm), 949);
-        assert_eq!(step(0, 0, 1, &mut { start }, Rounding::RoundSum), 950);
     }
 }

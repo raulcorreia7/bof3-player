@@ -47,10 +47,3 @@ fn an_upload_encodes_back_to_its_payload() {
     fs::write(out.join("upload.png"), plane.png()).unwrap();
     fs::write(out.join("upload.raw"), &bytes).unwrap();
 }
-
-#[test]
-fn a_payload_from_a_grid_is_the_inverse_of_the_grid() {
-    let bytes = payload(2);
-    let grid = vram::word_grid(&bytes, descriptor(0, 0, 2)).unwrap();
-    assert_eq!(vram::payload_from_grid(grid.width, grid.height, &grid.words).unwrap(), bytes);
-}

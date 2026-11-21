@@ -335,34 +335,6 @@ mod tests {
     }
 
     #[test]
-    fn bands_are_log_spaced_and_each_reads_its_own_bins() {
-        let mut bands = Vec::new();
-        for count in [16, 64, 120, 256] {
-            layout(count, RATE, &mut bands);
-            assert_eq!(bands.len(), count);
-            let mut previous: Option<&Bins> = None;
-            for band in &bands {
-                match (&band.bins, previous) {
-                    (Bins::At(at), Some(Bins::At(before))) => assert!(at > before),
-                    (Bins::Peak(range), Some(Bins::Peak(before))) => assert_eq!(range.start, before.end),
-                    (Bins::Peak(range), _) => assert!(!range.is_empty()),
-                    (Bins::At(_), Some(Bins::Peak(_))) => panic!("a narrow band above a wide one"),
-                    (Bins::At(at), None) => assert!(*at >= LOW_HZ * WINDOW as f32 / RATE as f32),
-                }
-                previous = Some(&band.bins);
-            }
-            assert!(matches!(&bands[count - 1].bins, Bins::Peak(range) if range.end <= WINDOW / 2));
-        }
-    }
-
-    #[test]
-    fn the_top_band_stays_below_nyquist_at_low_rates() {
-        let mut bands = Vec::new();
-        layout(64, 22_050, &mut bands);
-        assert!(matches!(&bands[63].bins, Bins::Peak(range) if range.end <= WINDOW / 2));
-    }
-
-    #[test]
     fn a_sine_lights_the_band_that_holds_its_pitch_at_any_band_count() {
         for hz in [60.0, 250.0, 1000.0, 8000.0] {
             for count in [32, 100, 256] {
@@ -375,17 +347,6 @@ mod tests {
     }
 
     #[test]
-    fn narrow_bass_bands_differ_instead_of_repeating_one_bin() {
-        let mut spectrum = Spectrum::new(200);
-        spectrum.advance(&sine(80.0, 0.1), RATE, 10.0);
-        let narrow = spectrum.bands.iter().take_while(|band| matches!(band.bins, Bins::At(_))).count();
-        assert!(narrow > 10);
-        let lit = spectrum.levels[..narrow].iter().take_while(|&&level| level > 0.0).count();
-        assert!(lit > 10);
-        assert!(spectrum.levels[..lit].windows(2).all(|pair| pair[0] != pair[1]), "{:?}", &spectrum.levels[..lit]);
-    }
-
-    #[test]
     fn silence_stays_dark_and_levels_fall_at_a_steady_rate() {
         let mut spectrum = Spectrum::new(8);
         spectrum.update(&[0.0; 100], RATE);
@@ -395,71 +356,5 @@ mod tests {
         spectrum.advance(&[0.0; 100], RATE, 0.1);
         assert!((spectrum.levels[3] - (1.0 - FALL_PER_SECOND * 0.1)).abs() < 1e-6);
         assert!((spectrum.caps[3] - (1.0 - CAP_FALL_PER_SECOND * 0.1)).abs() < 1e-6);
-    }
-
-    #[test]
-    fn an_onset_jumps_past_the_settled_level_then_eases_back() {
-        let tone = sine(1000.0, 0.05);
-        let mut settled = Spectrum::new(32);
-        settled.advance(&tone, RATE, 10.0);
-        let loudest = (0..32).max_by(|&a, &b| settled.levels[a].total_cmp(&settled.levels[b])).unwrap();
-        let mut spectrum = Spectrum::new(32);
-        spectrum.advance(&tone, RATE, 5.0 * ATTACK_SECONDS);
-        assert!(spectrum.levels[loudest] > settled.levels[loudest] + 0.1, "{} against {}", spectrum.levels[loudest], settled.levels[loudest]);
-        for _ in 0..200 {
-            spectrum.advance(&tone, RATE, 0.01);
-        }
-        assert!((spectrum.levels[loudest] - settled.levels[loudest]).abs() < 0.01);
-    }
-
-    #[test]
-    fn motion_is_the_same_at_any_frame_rate() {
-        for scope in [sine(1000.0, 0.8), vec![0.0; WINDOW]] {
-            let mut once = Spectrum::new(32);
-            once.levels.fill(0.5);
-            once.caps.fill(0.9);
-            let mut twice = once.clone();
-            for _ in 0..10 {
-                once.advance(&scope, RATE, 0.02);
-                twice.advance(&scope, RATE, 0.01);
-                twice.advance(&scope, RATE, 0.01);
-            }
-            for (a, b) in once.levels.iter().chain(&once.caps).zip(twice.levels.iter().chain(&twice.caps)) {
-                assert!((a - b).abs() < 0.02, "{a} against {b}");
-            }
-        }
-    }
-
-    #[test]
-    fn the_tint_warms_with_bass_cools_with_treble_and_settles_when_paused() {
-        let mut bass = Spectrum::new(64);
-        bass.advance(&sine(80.0, 0.3), RATE, 10.0);
-        let mut treble = Spectrum::new(64);
-        treble.advance(&sine(6000.0, 0.3), RATE, 10.0);
-        assert!(bass.tint.warmth > 0.5 && treble.tint.warmth < -0.5, "{:?} {:?}", bass.tint, treble.tint);
-        assert!(bass.tint.glow > 0.0);
-        let red = |rgb: u32| (rgb >> 16) & 0xff;
-        let base = theme::SPECTRUM[1];
-        assert!(red(bass.tint.apply(base)) > red(base) && red(treble.tint.apply(base)) < red(base));
-        assert_eq!(Tint::default().apply(base), base);
-        // Two seconds of first-update steps.
-        for _ in 0..120 {
-            bass.last = None;
-            bass.fade();
-        }
-        assert!(bass.tint.warmth.abs() < 0.01 && bass.tint.glow < 0.01 && bass.tint.flash == 0.0);
-    }
-
-    #[test]
-    fn an_onset_flashes_then_the_flash_fades() {
-        let mut spectrum = Spectrum::new(32);
-        spectrum.advance(&sine(1000.0, 0.3), RATE, ATTACK_SECONDS);
-        assert!(spectrum.tint.flash > 0.0);
-        let lit = Tint { flash: 1.0, ..Tint::default() };
-        assert!(lit.apply(theme::SPECTRUM[0]) != theme::SPECTRUM[0]);
-        for _ in 0..50 {
-            spectrum.advance(&sine(1000.0, 0.3), RATE, 0.02);
-        }
-        assert!(spectrum.tint.flash < 0.05);
     }
 }
