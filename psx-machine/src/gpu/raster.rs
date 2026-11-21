@@ -8,6 +8,9 @@
 //! and line-stepping precision; the fixed-point forms below are the ones the `ps1-tests`
 //! reference images agree with (see the crate README).
 
+use psx_formats::gfx::color::shifted;
+use psx_formats::gfx::texture::{Depth as Indexed, texel_index};
+
 use super::{Depth, Draw, DrawArea, Shape, Texture, VRAM_HEIGHT, VRAM_WIDTH, Vertex};
 
 /// psx-spx "GPU Rendering Attributes", Size Restriction: the largest distance between two
@@ -131,10 +134,10 @@ impl<'a> Sampler<'a> {
         let v = usize::from((v & self.keep_v) | self.set_v);
         let row = ((self.page_y + v) % VRAM_HEIGHT) * VRAM_WIDTH;
         let at = |x: usize| vram[row + x % VRAM_WIDTH];
-        let lookup = |index: usize| self.palette[index];
+        let indexed = |depth: Indexed| self.palette[texel_index(at(self.page_x + u / depth.texels_per_word()), u, depth)];
         match self.depth {
-            Depth::Bits4 => lookup(usize::from((at(self.page_x + u / 4) >> ((u % 4) * 4)) & 0xF)),
-            Depth::Bits8 => lookup(usize::from((at(self.page_x + u / 2) >> ((u % 2) * 8)) & 0xFF)),
+            Depth::Bits4 => indexed(Indexed::Four),
+            Depth::Bits8 => indexed(Indexed::Eight),
             Depth::Bits15 => at(self.page_x + u),
         }
     }
@@ -268,7 +271,7 @@ impl Painter<'_> {
             color = if self.modulate {
                 // psx-spx "GPU (MISC)", Modulation: texel * colour / 128, on the texel widened to 8 bits.
                 (0..3).fold(0, |color, channel| {
-                    let texel = i32::from((texel >> (5 * channel)) & 0x1F) << 3;
+                    let texel = i32::from(shifted(texel)[channel]);
                     color | to_5bit((texel * fragment.rgb[channel]) >> 7) << (5 * channel)
                 })
             } else {

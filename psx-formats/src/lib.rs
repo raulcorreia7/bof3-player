@@ -8,6 +8,7 @@ extern crate alloc;
 pub mod adpcm;
 pub mod bytes;
 mod error;
+pub mod exe;
 #[cfg(any(test, feature = "fixtures"))]
 pub mod fixtures;
 #[cfg(feature = "std")]
@@ -25,10 +26,4 @@ pub use error::{Error, Result};
 pub use gfx::{clut, vram};
 
 /// Sample rate of VAB samples and sequenced music, in Hz.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::VAB_SAMPLE_RATE, 44_100);
-/// ```
 pub const VAB_SAMPLE_RATE: u32 = 44_100;

@@ -22,14 +22,14 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use emi::Archive;
+use psx_formats::bytes::{try_u32_le, u16_le};
+use psx_formats::exe::Executable;
 
 use crate::catalog::Naming;
 use crate::source::Source;
 
 /// The retail executable that holds the pair arrays.
 const EXE: &str = "SLUS_004.22";
-/// `VA = file offset + EXE_BASE`; pinned by the libsnd pitch table (`wiki: formats/audio#vab-bank`).
-const EXE_BASE: u32 = 0x8009_6000;
 /// File-number to pair-array pointer.
 const ARRAY_TABLE: u32 = 0x8018_323C;
 /// S_XA00, MAGIC00 and VOICE.
@@ -146,43 +146,20 @@ fn payload(bytes: &[u8], wanted: impl Fn(&emi::Entry) -> bool) -> Option<&[u8]> 
     archive.payload(bytes, index).ok()
 }
 
-fn u16_at(bytes: &[u8], at: usize) -> Option<u16> {
-    Some(u16::from_le_bytes(bytes.get(at..at + 2)?.try_into().ok()?))
-}
-
-fn u32_at(bytes: &[u8], at: usize) -> Option<u32> {
-    Some(u32::from_le_bytes(bytes.get(at..at + 4)?.try_into().ok()?))
-}
-
-fn va_at(bytes: &[u8], va: u32) -> Option<usize> {
-    let at = va.checked_sub(EXE_BASE)? as usize;
-    (at < bytes.len()).then_some(at)
-}
-
 /// The pair arrays of the three files. A missing or malformed executable gives
 /// no cues, which leaves the catalog's EOF spans in place.
 fn parse_exe(bytes: &[u8]) -> [Vec<Cue>; FILES] {
     let mut files = [Vec::new(), Vec::new(), Vec::new()];
-    if bytes.get(..8) != Some(b"PS-X EXE") {
-        return files;
-    }
+    let Ok(exe) = Executable::parse(bytes) else { return files };
     let mut starts = [0u32; FILES];
     for (index, start) in starts.iter_mut().enumerate() {
-        let Some(at) = va_at(bytes, ARRAY_TABLE).and_then(|at| at.checked_add(4 * index)) else { return files };
-        let Some(pointer) = u32_at(bytes, at) else { return files };
+        let Some(pointer) = exe.word_at(ARRAY_TABLE + 4 * index as u32) else { return files };
         *start = pointer;
     }
     for index in 0..FILES {
         let start = starts[index];
         let limit = starts.iter().copied().filter(|&other| other > start).min().map_or(MAX_ENTRIES, |next| ((next - start) / 2) as usize);
-        let Some(base) = va_at(bytes, start) else { continue };
-        let mut values = Vec::with_capacity(limit);
-        for at in 0..limit {
-            match u16_at(bytes, base + at * 2) {
-                Some(value) => values.push(value),
-                None => break,
-            }
-        }
+        let values: Vec<u16> = (0..limit as u32).map_while(|at| exe.bytes_at(start + at * 2, 2)).map(|half| u16_le(half, 0)).collect();
         files[index] = parse_cues(&values, index);
     }
     files
@@ -228,13 +205,13 @@ fn voice_names(source: &dyn Source, naming: &dyn Naming) -> BTreeMap<u16, String
     let game = read(source, GAME);
     let abilities = game.as_deref().and_then(|bytes| payload(bytes, |entry| entry.ram_ptr == ABILITY_RAM));
     for slot in 0..=u32::from(u8::MAX) {
-        let Some(pointer) = u32_at(overlay, VOICE_TABLE + slot as usize * 4) else { break };
+        let Some(pointer) = try_u32_le(overlay, VOICE_TABLE + slot as usize * 4) else { break };
         let Some(mut at) = pointer.checked_sub(OVERLAY).map(|at| at as usize) else { continue };
         let ability = abilities.and_then(|table| ability_name(table, slot as usize));
         let ability = ability.or_else(|| naming.magic_ability(slot as u16).map(String::from));
         let Some(ability) = ability else { continue };
         let ability = ability.as_str();
-        while let Some(word) = u32_at(overlay, at) {
+        while let Some(word) = try_u32_le(overlay, at) {
             if word == 0xFFFF_FFFF {
                 break;
             }

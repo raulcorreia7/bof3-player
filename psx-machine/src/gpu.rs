@@ -9,11 +9,8 @@ mod display;
 mod raster;
 
 pub use display::Frame;
-
-/// VRAM width in 16-bit pixels.
-pub const VRAM_WIDTH: usize = 1024;
-/// VRAM height in lines.
-pub const VRAM_HEIGHT: usize = 512;
+pub use psx_formats::gfx::texture::Clut;
+pub use psx_formats::gfx::vram::{VRAM_HEIGHT, VRAM_WIDTH};
 
 /// Colour depth of a texture page.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -53,23 +50,6 @@ impl TexturePage {
             },
             blend: ((bits >> 5) & 3) as u8,
         }
-    }
-}
-
-/// Where a CLUT sits in VRAM.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct Clut {
-    /// Left edge in VRAM pixels (a multiple of 16).
-    pub x: u16,
-    /// Line.
-    pub y: u16,
-}
-
-impl Clut {
-    /// Decodes a CLUT attribute.
-    #[must_use]
-    pub fn from_bits(bits: u32) -> Self {
-        Self { x: ((bits & 0x3F) * 16) as u16, y: ((bits >> 6) & 0x1FF) as u16 }
     }
 }
 
@@ -668,7 +648,7 @@ impl Gpu {
             // A textured polygon's page attribute replaces the page bits of the draw mode.
             let bits = self.draw_mode_bits(PAGE_ATTRIBUTE_BITS);
             self.draw_mode = (self.draw_mode & !PAGE_ATTRIBUTE_BITS) | (page_bits & bits);
-            Texture { page: TexturePage::from_bits(page_bits), clut: Clut::from_bits(clut_bits), window: self.window, raw: opcode & 0x01 != 0, flip_x: false, flip_y: false }
+            Texture { page: TexturePage::from_bits(page_bits), clut: Clut::from_word(clut_bits as u16), window: self.window, raw: opcode & 0x01 != 0, flip_x: false, flip_y: false }
         });
         let shape = if count == 4 { Shape::Quad } else { Shape::Triangle };
         self.draw(opcode, shape, vertices, texture);
@@ -704,7 +684,7 @@ impl Gpu {
             cursor += 1;
             vertex.u = uv as u8;
             vertex.v = (uv >> 8) as u8;
-            clut = Clut::from_bits(uv >> 16);
+            clut = Clut::from_word((uv >> 16) as u16);
         }
         let (width, height) = match (opcode >> 3) & 3 {
             0 => {
