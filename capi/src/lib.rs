@@ -3,7 +3,7 @@
 //!
 //! The committed header is `capi/include/bof3player_capi.h`; `tests/header.rs`
 //! generates it with cbindgen and fails when the two differ. Every fallible
-//! function returns `bof3player_status`, and the error of the last failing call
+//! function returns `psx_status`, and the error of the last failing call
 //! is available through `bof3player_last_error_message`.
 //!
 //! The C library builds the workspace crates with `std` only: the tools, the
@@ -14,48 +14,30 @@
 // The C ABI names are the header's names; Rust's camel-case lint does not apply.
 #![allow(non_camel_case_types)]
 
-use core::ffi::c_char;
-use std::ffi::CString;
 use std::ptr;
 use std::sync::{Arc, Mutex};
 
-use ::emi::Archive as EmiArchive;
 use bof3player::{Library, Player};
 use psx_cd::Entry as DiscEntry;
 use psx_formats::vab::Bank as VabBank;
 
-mod args;
 pub mod audio;
 pub mod disc;
-pub mod emi;
 mod error;
 pub mod gfx;
 pub mod library;
 pub mod machine;
 pub mod vab;
 
-/// Status returned by every fallible C function.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum bof3player_status {
-    /// The call succeeded.
-    Ok = 0,
-    /// A pointer, length or range the caller supplied is invalid.
-    InvalidArgument = 1,
-    /// An index is past the last item or entry.
-    InvalidIndex = 2,
-    /// The input is valid but uses a feature this library does not implement.
-    Unsupported = 3,
-    /// A file or stream could not be read or written.
-    Io = 4,
-    /// The bytes are malformed, truncated or not the format they claim.
-    Format = 5,
-    /// The call is not valid in the handle's current state.
-    Usage = 6,
-    /// A Rust panic was caught at the boundary.
-    Panic = 7,
-    /// The machine stopped on a halt; the last error holds its text.
-    Halt = 8,
+pub use psx_capi::*;
+
+/// The C ABI version; the header defines it too. Version 2 shares the `psx_` layer.
+pub const BOF3PLAYER_ABI_VERSION: u32 = 2;
+
+/// The C ABI version of the loaded library.
+#[unsafe(no_mangle)]
+pub extern "C" fn bof3player_abi_version() -> u32 {
+    BOF3PLAYER_ABI_VERSION
 }
 
 /// The kind of media a catalog item is.
@@ -98,17 +80,6 @@ pub enum bof3player_loop {
     Forever = 2,
 }
 
-/// An owned UTF-8 string without a terminator.
-///
-/// Free it with `bof3player_string_free`. `data` is NULL when `len` is 0.
-#[repr(C)]
-pub struct bof3player_string {
-    /// The bytes; NULL when `len` is 0.
-    pub data: *mut c_char,
-    /// The length in bytes.
-    pub len: usize,
-}
-
 /// One catalog item's metadata.
 ///
 /// The strings are owned; free the whole record with
@@ -117,20 +88,18 @@ pub struct bof3player_string {
 pub struct bof3player_item_info {
     /// The media kind.
     pub kind: bof3player_kind,
-    /// One when `duration` is meaningful, zero otherwise.
-    pub has_duration: u8,
-    /// One when the item carries audio.
-    pub playable: u8,
-    /// Zero.
-    pub reserved: [u8; 2],
-    /// Seconds, meaningful when `has_duration` is one.
+    /// True when `duration` is meaningful.
+    pub has_duration: bool,
+    /// True when the item carries audio.
+    pub playable: bool,
+    /// Seconds, meaningful when `has_duration` is true.
     pub duration: f64,
     /// The catalog id, for example `music:BGM000#0`.
-    pub id: bof3player_string,
+    pub id: psx_string,
     /// The archive name.
-    pub name: bof3player_string,
+    pub name: psx_string,
     /// The title from the names file, empty when none is known.
-    pub title: bof3player_string,
+    pub title: psx_string,
 }
 
 /// Output shape of a player.
@@ -142,17 +111,6 @@ pub struct bof3player_format {
     pub channels: u32,
     /// Seconds.
     pub duration: f64,
-}
-
-/// An owned byte buffer. Free it with `bof3player_buffer_free`.
-///
-/// `data` is NULL when `len` is 0.
-#[repr(C)]
-pub struct bof3player_buffer {
-    /// The bytes; NULL when `len` is 0.
-    pub data: *mut u8,
-    /// The length in bytes.
-    pub len: usize,
 }
 
 /// Interleaved 16-bit PCM. Free the samples with `bof3player_pcm_free`.
@@ -177,31 +135,12 @@ pub struct bof3player_disc_entry {
     pub lba: u32,
     /// The size in bytes.
     pub size: u32,
-    /// One for a directory.
-    pub is_directory: u8,
-    /// One when the entry is an XA stream.
-    pub is_xa: u8,
+    /// True for a directory.
+    pub is_directory: bool,
+    /// True when the entry is an XA stream.
+    pub is_xa: bool,
     /// The extended attribute bytes.
     pub extended_attributes: u8,
-    /// Zero.
-    pub reserved: u8,
-}
-
-/// One entry of an EMI archive's table.
-#[repr(C)]
-pub struct bof3player_emi_entry {
-    /// The payload size in bytes.
-    pub size: u32,
-    /// The `u32` at byte 4 of the table record.
-    pub ram_ptr: u32,
-    /// The `u32` at byte 8 of the table record.
-    pub first4: u32,
-    /// The entry type.
-    pub file_type: u16,
-    /// Zero.
-    pub reserved: u16,
-    /// The payload's byte offset in the container.
-    pub offset: u64,
 }
 
 /// One VAG sample of a VAB bank.
@@ -215,14 +154,14 @@ pub struct bof3player_vag_info {
     pub size: u32,
     /// The samples a one-pass decode produces.
     pub frames: u32,
-    /// The first looped sample, when `has_loop` is one.
+    /// The first looped sample, when `has_loop` is true.
     pub loop_start_frame: u32,
-    /// One past the last looped sample, when `has_loop` is one.
+    /// One past the last looped sample, when `has_loop` is true.
     pub loop_end_frame: u32,
-    /// One when an end flag was found.
-    pub has_end: u8,
-    /// One when the sample loops.
-    pub has_loop: u8,
+    /// True when an end flag was found.
+    pub has_end: bool,
+    /// True when the sample loops.
+    pub has_loop: bool,
 }
 
 /// An RGBA image. Free the pixels with `bof3player_image_free`.
@@ -233,7 +172,7 @@ pub struct bof3player_image {
     /// The height in pixels.
     pub height: u32,
     /// The pixels, four bytes per pixel, row-major.
-    pub rgba: bof3player_buffer,
+    pub rgba: psx_buffer,
 }
 
 /// Why a machine run stopped.
@@ -277,14 +216,6 @@ pub struct bof3player_disc {
     pub(crate) entries: Vec<DiscEntry>,
 }
 
-/// A parsed EMI archive and the container bytes its payloads live in.
-///
-/// Opaque. Free it with `bof3player_emi_free`.
-pub struct bof3player_emi {
-    pub(crate) archive: EmiArchive,
-    pub(crate) bytes: Vec<u8>,
-}
-
 /// A parsed VAB bank and the body its samples live in.
 ///
 /// Opaque. Free it with `bof3player_vab_free`.
@@ -298,49 +229,6 @@ pub struct bof3player_vab {
 /// Opaque. Free it with `bof3player_machine_free`.
 pub struct bof3player_machine {
     pub(crate) machine: Mutex<psx_machine::Machine>,
-}
-
-/// The C ABI version. Version 1 is the first.
-#[unsafe(no_mangle)]
-pub extern "C" fn bof3player_abi_version() -> u32 {
-    1
-}
-
-/// The NUL-terminated message of the last failing call on this thread, or NULL
-/// when that call succeeded.
-///
-/// The pointer is valid until the next `bof3player_` call on the same thread.
-#[unsafe(no_mangle)]
-pub extern "C" fn bof3player_last_error_message() -> *const c_char {
-    error::last_error()
-}
-
-/// Free an owned string.
-///
-/// # Safety
-///
-/// `string` is NULL or points to a string returned by this library that has not
-/// been freed. The function zeroes the string.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_string_free(string: *mut bof3player_string) {
-    if string.is_null() {
-        return;
-    }
-    unsafe { free_string(&mut *string) };
-}
-
-/// Free an owned byte buffer.
-///
-/// # Safety
-///
-/// `buffer` is NULL or points to a buffer returned by this library that has not
-/// been freed. The function zeroes the buffer.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_buffer_free(buffer: *mut bof3player_buffer) {
-    if buffer.is_null() {
-        return;
-    }
-    unsafe { free_buffer(&mut *buffer) };
 }
 
 /// Free PCM samples.
@@ -372,47 +260,6 @@ pub unsafe extern "C" fn bof3player_image_free(image: *mut bof3player_image) {
     free_buffer(&mut image.rgba);
     image.width = 0;
     image.height = 0;
-}
-
-/// Copy `text` into an owned string; empty text becomes a NULL pointer with
-/// length 0.
-pub(crate) fn owned_string(text: &str) -> bof3player_string {
-    if text.is_empty() {
-        return bof3player_string { data: ptr::null_mut(), len: 0 };
-    }
-    let text = text.replace('\0', " ");
-    let text = CString::new(text).expect("NUL bytes are replaced");
-    let len = text.as_bytes().len();
-    bof3player_string { data: text.into_raw(), len }
-}
-
-/// Free a string and zero it.
-pub(crate) fn free_string(string: &mut bof3player_string) {
-    if !string.data.is_null() {
-        drop(unsafe { CString::from_raw(string.data) });
-    }
-    string.data = ptr::null_mut();
-    string.len = 0;
-}
-
-/// Copy bytes into an owned buffer; empty bytes become a NULL pointer with
-/// length 0.
-pub(crate) fn owned_buffer(bytes: Vec<u8>) -> bof3player_buffer {
-    if bytes.is_empty() {
-        return bof3player_buffer { data: ptr::null_mut(), len: 0 };
-    }
-    let bytes = bytes.into_boxed_slice();
-    let len = bytes.len();
-    bof3player_buffer { data: Box::into_raw(bytes).cast::<u8>(), len }
-}
-
-/// Free a buffer and zero it.
-pub(crate) fn free_buffer(buffer: &mut bof3player_buffer) {
-    if !buffer.data.is_null() {
-        drop(unsafe { Box::from_raw(ptr::slice_from_raw_parts_mut(buffer.data, buffer.len)) });
-    }
-    buffer.data = ptr::null_mut();
-    buffer.len = 0;
 }
 
 /// Copy interleaved samples into an owned PCM record.

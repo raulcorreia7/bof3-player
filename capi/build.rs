@@ -6,6 +6,6 @@ fn main() {
     println!("cargo:rerun-if-changed=include/bof3player_capi.h");
     #[cfg(feature = "smoke")]
     {
-        cc::Build::new().file("tests/smoke.c").include("include").warnings(true).compile("bof3player_capi_smoke");
+        cc::Build::new().file("tests/smoke.c").include("include").include("../psx-capi/include").warnings(true).compile("bof3player_capi_smoke");
     }
 }

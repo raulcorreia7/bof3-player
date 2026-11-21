@@ -799,6 +799,7 @@ dependencies = [
  "cbindgen 0.29.4",
  "cc",
  "emi",
+ "psx-capi",
  "psx-cd",
  "psx-formats",
  "psx-machine",
@@ -4974,6 +4975,16 @@ dependencies = [
  "psx-formats",
  "tempfile",
  "vorbis_rs",
+]
+
+[[package]]
+name = "psx-capi"
+version = "0.1.3"
+dependencies = [
+ "cbindgen 0.29.4",
+ "emi",
+ "psx-formats",
+ "tempfile",
 ]
 
 [[package]]

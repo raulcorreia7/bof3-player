@@ -7,9 +7,9 @@ use std::sync::Mutex;
 
 use psx_machine::{Machine, Stop};
 
-use crate::args::path_arg;
 use crate::error::{Fail, fail, guard, map_machine, poisoned};
-use crate::{bof3player_buffer, bof3player_image, bof3player_machine, bof3player_status, bof3player_stop, owned_buffer};
+use crate::{bof3player_image, bof3player_machine, bof3player_stop, owned_buffer, psx_buffer, psx_status};
+use psx_capi::path_arg;
 
 /// Boot a disc image: read `SYSTEM.CNF`, load its executable and install the
 /// stand-in kernel.
@@ -19,9 +19,9 @@ use crate::{bof3player_buffer, bof3player_image, bof3player_machine, bof3player_
 /// `path` points to `path_len` readable bytes (or is NULL with length 0), and
 /// `out_machine` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_machine_boot_disc_path(path: *const c_char, path_len: usize, out_machine: *mut *mut bof3player_machine) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_machine_boot_disc_path(path: *const c_char, path_len: usize, out_machine: *mut *mut bof3player_machine) -> psx_status {
     if out_machine.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_machine is NULL");
+        return fail(psx_status::InvalidArgument, "out_machine is NULL");
     }
     unsafe { *out_machine = ptr::null_mut() };
     guard(|| {
@@ -55,13 +55,13 @@ pub unsafe extern "C" fn bof3player_machine_free(machine: *mut bof3player_machin
 ///
 /// `machine` is NULL or a live handle, and `out_stop` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_machine_run_frames(machine: *mut bof3player_machine, frames: u64, budget: u64, out_stop: *mut bof3player_stop) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_machine_run_frames(machine: *mut bof3player_machine, frames: u64, budget: u64, out_stop: *mut bof3player_stop) -> psx_status {
     if out_stop.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_stop is NULL");
+        return fail(psx_status::InvalidArgument, "out_stop is NULL");
     }
     unsafe { *out_stop = bof3player_stop::Pc };
     if machine.is_null() {
-        return fail(bof3player_status::InvalidArgument, "machine is NULL");
+        return fail(psx_status::InvalidArgument, "machine is NULL");
     }
     guard(|| {
         let machine = unsafe { &*machine };
@@ -73,7 +73,7 @@ pub unsafe extern "C" fn bof3player_machine_run_frames(machine: *mut bof3player_
             }
             Err(halt) => {
                 unsafe { *out_stop = bof3player_stop::Halt };
-                Err(Fail::new(bof3player_status::Halt, halt.to_string()))
+                Err(Fail::new(psx_status::Halt, halt.to_string()))
             }
         }
     })
@@ -87,20 +87,20 @@ pub unsafe extern "C" fn bof3player_machine_run_frames(machine: *mut bof3player_
 ///
 /// `machine` is NULL or a live handle, and `out_image` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_machine_display(machine: *const bof3player_machine, out_image: *mut bof3player_image) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_machine_display(machine: *const bof3player_machine, out_image: *mut bof3player_image) -> psx_status {
     if out_image.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_image is NULL");
+        return fail(psx_status::InvalidArgument, "out_image is NULL");
     }
-    unsafe { *out_image = bof3player_image { width: 0, height: 0, rgba: bof3player_buffer { data: ptr::null_mut(), len: 0 } } };
+    unsafe { *out_image = bof3player_image { width: 0, height: 0, rgba: psx_buffer { data: ptr::null_mut(), len: 0 } } };
     if machine.is_null() {
-        return fail(bof3player_status::InvalidArgument, "machine is NULL");
+        return fail(psx_status::InvalidArgument, "machine is NULL");
     }
     guard(|| {
         let machine = unsafe { &*machine };
         let machine = machine.machine.lock().map_err(|_| poisoned())?;
         let frame = machine.display();
-        let width = u32::try_from(frame.width).map_err(|_| Fail::new(bof3player_status::Format, "the frame width overflows u32"))?;
-        let height = u32::try_from(frame.height).map_err(|_| Fail::new(bof3player_status::Format, "the frame height overflows u32"))?;
+        let width = u32::try_from(frame.width).map_err(|_| Fail::new(psx_status::Format, "the frame width overflows u32"))?;
+        let height = u32::try_from(frame.height).map_err(|_| Fail::new(psx_status::Format, "the frame height overflows u32"))?;
         unsafe { *out_image = bof3player_image { width, height, rgba: owned_buffer(frame.rgba) } };
         Ok(())
     })
