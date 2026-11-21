@@ -22,7 +22,7 @@ fn zero_info() -> bof3player_item_info {
 }
 
 #[test]
-fn abi_version_is_two() {
+fn abi_version_is_three() {
     assert_eq!(bof3player_abi_version(), BOF3PLAYER_ABI_VERSION);
 }
 
@@ -271,19 +271,6 @@ fn zero_image() -> bof3player_image {
 }
 
 #[test]
-fn vram_decodes_to_rgba() {
-    let rectangle = psx_formats::gfx::vram::Rectangle { x: 0, y: 0, words: [0u16; 32 * 32] };
-    let payload = psx_formats::gfx::vram::encode(&[rectangle]);
-    let mut image = zero_image();
-    let status = unsafe { gfx::bof3player_vram_decode(0x0000_0100, payload.as_ptr(), payload.len(), &mut image) };
-    assert_eq!(status, psx_status::Ok, "{}", unsafe { c_string(psx_last_error_message()) });
-    assert_eq!((image.width, image.height), (32, 32));
-    assert_eq!(image.rgba.len, 32 * 32 * 4);
-    unsafe { bof3player_image_free(&mut image) };
-    assert_eq!((image.width, image.height, image.rgba.len), (0, 0, 0));
-}
-
-#[test]
 fn wav_encodes_pcm() {
     let samples = [0i16, 1, 2, 3];
     let pcm = bof3player_pcm { samples: samples.as_ptr() as *mut i16, frames: 2, channels: 2, sample_rate: 44_100 };
@@ -339,10 +326,6 @@ fn machine_boots_runs_and_displays() {
 
 #[test]
 fn image_audio_and_machine_error_paths() {
-    let mut image = zero_image();
-    assert_eq!(unsafe { gfx::bof3player_vram_decode(0, ptr::null(), 0, &mut image) }, psx_status::Format);
-    assert_eq!((image.width, image.height), (0, 0));
-
     let mut bytes = psx_buffer { data: ptr::null_mut(), len: 0 };
     assert_eq!(unsafe { audio::bof3player_wav_encode(ptr::null(), &mut bytes) }, psx_status::InvalidArgument);
 
@@ -350,6 +333,7 @@ fn image_audio_and_machine_error_paths() {
     assert_eq!(unsafe { machine::bof3player_machine_boot_disc_path(ptr::null(), 0, &mut machine) }, psx_status::InvalidArgument);
     let mut stop = bof3player_stop::Pc;
     assert_eq!(unsafe { machine::bof3player_machine_run_frames(ptr::null_mut(), 1, 1, &mut stop) }, psx_status::InvalidArgument);
+    let mut image = zero_image();
     assert_eq!(unsafe { machine::bof3player_machine_display(ptr::null(), &mut image) }, psx_status::InvalidArgument);
 
     unsafe {

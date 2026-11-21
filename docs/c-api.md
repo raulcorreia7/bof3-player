@@ -11,7 +11,7 @@ The committed headers are `capi/include/bof3player_capi.h` and `psx-capi/include
 `psx-capi` is the layer shared with the rebof3 C interface: the `psx_status` codes, the last-error
 slot, the panic guard, `psx_buffer` and `psx_string` with their free functions, and the EMI handle
 (`psx_emi_*`). `bof3player_capi.h` includes `psx_capi.h`, and the library exports both sets of
-symbols. `BOF3PLAYER_ABI_VERSION` in the header equals `bof3player_abi_version()`; it is 2.
+symbols. `BOF3PLAYER_ABI_VERSION` in the header equals `bof3player_abi_version()`; it is 3.
 
 cbindgen generates the headers from the Rust declarations; each crate's `tests/header.rs` fails
 when the committed copy is stale. Regenerate them with:
@@ -91,11 +91,6 @@ offset, RAM pointer and type of one table entry.
 what the game's type-6 and type-7 EMI entries form when joined. `bof3player_vab_vag_count` and
 `bof3player_vab_vag_at` describe the samples; index 0 is the null sample.
 `bof3player_vab_vag_decode` returns mono 44,100 Hz PCM and gives 0 frames for the null sample.
-
-## Images
-
-`bof3player_vram_decode` takes a type-3 VRAM upload and its TOC load argument and returns RGBA in
-the upload's own grid. Free the pixels with `bof3player_image_free`.
 
 ## Audio output
 
