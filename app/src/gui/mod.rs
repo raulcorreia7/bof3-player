@@ -26,12 +26,12 @@ use gpui::{
 
 use clap::Parser;
 
-use crate::catalog::{Item, Kind};
 use crate::deck::Deck;
 use crate::options::Global;
-use crate::player::Loop;
-use crate::save::{ExportFormat, ExportOptions, Format, OggQuality, Save, Step, export_failed, export_path, saved_message};
 use crate::spectrum::Spectrum;
+use bof3player::catalog::{Item, Kind};
+use bof3player::player::Loop;
+use bof3player::save::{ExportFormat, ExportOptions, Format, OggQuality, Save, Step, export_failed, export_path, saved_message};
 use chooser::{Chooser, Target};
 use list::{Row, Tree};
 use load::{Failed, Loaded, Loading};
@@ -444,7 +444,7 @@ impl Gui {
 
     fn export_native(&mut self, sequence: bool) {
         let (State::Ready(browser), Some(item)) = (&self.state, self.selected_item()) else { return };
-        self.message = crate::save::export_native(browser.loaded.library, item, &self.export_dir, sequence);
+        self.message = bof3player::save::export_native(browser.loaded.library, item, &self.export_dir, sequence);
     }
 
     fn open_export(&mut self) {

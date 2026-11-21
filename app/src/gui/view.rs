@@ -8,9 +8,9 @@ use super::icons::icon;
 use super::list::{self, Row};
 use super::widgets::{Palette, RADIUS, button, chip, field, meter, panel, slider, spectrum, transport};
 use super::{ExportMenu, Field, Gui, State, describe};
-use crate::catalog::Item;
 use crate::deck::clock;
-use crate::discover::SourceKind;
+use bof3player::catalog::Item;
+use bof3player::discover::SourceKind;
 
 /// Height of a list row.
 const ROW: f32 = 28.0;
@@ -395,12 +395,14 @@ impl Gui {
             .p_5()
             .w(px(620.0))
             .child(div().text_lg().font_weight(FontWeight::BOLD).child(format!("Export {}", list::label(menu.item))))
-            .child(div().pb_2().flex().items_center().gap_3().child(div().flex_1().text_color(palette.muted).child(format!("Folder: {}", crate::save::absolute(&self.export_dir).display()))).child(
-                button("folder", Some("folder"), "Change", true).on_click(cx.listener(|gui, _, _, cx| {
-                    gui.browse_for(Target::Export);
-                    cx.notify();
-                })),
-            ))
+            .child(
+                div().pb_2().flex().items_center().gap_3().child(div().flex_1().text_color(palette.muted).child(format!("Folder: {}", bof3player::save::absolute(&self.export_dir).display()))).child(
+                    button("folder", Some("folder"), "Change", true).on_click(cx.listener(|gui, _, _, cx| {
+                        gui.browse_for(Target::Export);
+                        cx.notify();
+                    })),
+                ),
+            )
             .children(rows)
             .child(div().pt_2().text_color(palette.muted).child(settings))
             .child(div().text_color(palette.muted).child("Up Down choose  ·  Enter save  ·  f change folder  ·  Esc cancel"))
@@ -474,8 +476,8 @@ fn item_row(base: gpui::Stateful<Div>, item: &'static Item, playing: bool) -> gp
 }
 
 /// The icon of a kind.
-fn kind_icon(kind: crate::catalog::Kind) -> &'static str {
-    use crate::catalog::Kind;
+fn kind_icon(kind: bof3player::catalog::Kind) -> &'static str {
+    use bof3player::catalog::Kind;
     match kind {
         Kind::Music => "music",
         Kind::Sample => "volume",

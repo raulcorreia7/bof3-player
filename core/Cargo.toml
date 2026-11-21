@@ -18,52 +18,16 @@ default = ["std", "ogg"]
 std = ["psx-audio/std", "emi/std"]
 # Ogg Vorbis export through psx-audio.
 ogg = ["std", "psx-audio/ogg"]
-# Audio output through `cpal`.
-audio = ["std", "dep:cpal"]
 # The names file reader (JSON through `serde`).
 names = ["std", "dep:serde", "dep:serde_json"]
 # The shipped names file embedded in the library: `names::game_names()`.
 bundled-names = ["names"]
-# The `bof3player-gui` binary: a `gpui` window.
-gui = ["audio", "names", "dep:clap", "dep:gpui"]
-# The `bof3player` and `bof3player-tui` binaries.
-cli = [
-    "audio",
-    "names",
-    "dep:clap",
-    "dep:ratatui",
-    "dep:claxon",
-    "dep:lewton",
-    "dep:hound",
-]
-
-[[bin]]
-name = "bof3player"
-path = "src/bin/bof3player.rs"
-required-features = ["cli"]
-
-[[bin]]
-name = "bof3player-tui"
-path = "src/bin/bof3player-tui.rs"
-required-features = ["cli"]
-
-[[bin]]
-name = "bof3player-gui"
-path = "src/bin/bof3player-gui.rs"
-required-features = ["gui"]
 
 [dependencies]
 psx-audio = { workspace = true, default-features = false }
 emi.workspace = true
 psx-formats.workspace = true
 sha2.workspace = true
-clap = { workspace = true, optional = true }
-cpal = { workspace = true, optional = true }
-gpui = { workspace = true, optional = true }
-ratatui = { workspace = true, optional = true }
-claxon = { workspace = true, optional = true }
-lewton = { workspace = true, optional = true }
-hound = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 

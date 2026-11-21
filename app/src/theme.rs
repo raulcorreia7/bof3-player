@@ -164,7 +164,6 @@ mod tests {
 
     /// The tokens equal the ANSI colors the terminal player names, in the Dark+ terminal scheme.
     /// `DANGER` is the bright red: the plain red fails the text limit on dark surfaces.
-    #[cfg(feature = "cli")]
     #[test]
     fn tokens_match_the_terminal_player() {
         use ratatui::style::Color;

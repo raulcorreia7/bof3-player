@@ -64,7 +64,7 @@ impl Gui {
     /// Open the chooser for `target`, starting near the current choice.
     pub(super) fn browse_for(&mut self, target: Target) {
         let start = match target {
-            Target::Export => crate::save::absolute(&self.export_dir),
+            Target::Export => bof3player::save::absolute(&self.export_dir),
             Target::Data => {
                 let typed = PathBuf::from(self.path.trim());
                 let near = if typed.is_dir() { Some(typed) } else { typed.parent().map(Path::to_path_buf) };

@@ -3,8 +3,8 @@
 
 use std::collections::{BTreeMap, HashSet};
 
-use crate::catalog::{Filter, Item, Kind};
-use crate::library::Library;
+use bof3player::catalog::{Filter, Item, Kind};
+use bof3player::library::Library;
 
 /// Most search hits listed.
 const MAX_HITS: usize = 5000;

@@ -9,10 +9,10 @@ use std::process::ExitCode;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
-use crate::Library;
-use crate::catalog::{Filter, Item, Kind};
-use crate::player::Loop;
 use crate::theme;
+use bof3player::Library;
+use bof3player::catalog::{Filter, Item, Kind};
+use bof3player::player::Loop;
 use ratatui::Frame;
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::layout::{Constraint, Direction, Flex, Layout, Rect};
@@ -20,12 +20,12 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Clear, Gauge, List, ListItem, ListState, Padding, Paragraph, Wrap};
 
-use crate::catalog::Naming;
 use crate::cli::Global;
 use crate::cli::audio::Deck;
 use crate::cli::commands::{clock, music_length, open_library};
-use crate::save::{ExportFormat, ExportOptions, Format, OggQuality, Save, Step, absolute, export_failed, saved_message};
 use crate::spectrum::Spectrum;
+use bof3player::catalog::Naming;
+use bof3player::save::{ExportFormat, ExportOptions, Format, OggQuality, Save, Step, absolute, export_failed, saved_message};
 
 /// Frame interval of the extract browser's loop.
 pub const TICK: Duration = Duration::from_millis(50);
@@ -361,7 +361,7 @@ impl App {
     fn export_native(&mut self, sequence: bool) {
         let Some(index) = self.selected_item() else { return };
         let item = self.item(index);
-        self.message = crate::save::export_native(self.library, item, &self.global.exports(), sequence);
+        self.message = bof3player::save::export_native(self.library, item, &self.global.exports(), sequence);
     }
 
     fn open_export(&mut self) {
@@ -375,7 +375,7 @@ impl App {
         };
         let item = self.item(index);
         let directory = self.global.exports();
-        let rows = Format::for_kind(item.kind).iter().map(|&format| (format, crate::save::export_path(&directory, item, format.extension()))).collect();
+        let rows = Format::for_kind(item.kind).iter().map(|&format| (format, bof3player::save::export_path(&directory, item, format.extension()))).collect();
         self.export = Some(ExportMenu { item: index, selected: 0, rows, loops: self.global.loops, quality: OggQuality::Normal });
         self.help = false;
     }

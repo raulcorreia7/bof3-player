@@ -114,7 +114,8 @@ directory or in `data/`. `--names FILE` or `$BOF3_NAMES` picks another file. See
 
 | Part                                 | What it is                                                                                           | Guide                                        |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| [core](core/README.md)               | `bof3player`: catalog, playback and export in Rust, and the `bof3player` and `bof3player-tui` tools. | [docs/rust-api.md](docs/rust-api.md)         |
+| [core](core/README.md)               | `bof3player`: catalog, playback and export in Rust.                                                  | [docs/rust-api.md](docs/rust-api.md)         |
+| [app](docs/player.md)                | `bof3player-app`: the `bof3player`, `bof3player-tui` and `bof3player-gui` tools.                     | [docs/player.md](docs/player.md)             |
 | [psx-audio](psx-audio/README.md)     | SPU voices, XA and CD-DA playback, sources, WAV, FLAC and Ogg export.                                | [docs/crates.md](docs/crates.md#psx-audio)   |
 | [psx-formats](psx-formats/README.md) | VAB, SEP, ADPCM, sector, VRAM, CLUT and TIM formats.                                                 | [docs/crates.md](docs/crates.md#psx-formats) |
 | [psx-cd](psx-cd/README.md)           | ISO 9660 and cue-sheet disc images: read, extract, patch, rebuild.                                   | [docs/crates.md](docs/crates.md#psx-cd)      |

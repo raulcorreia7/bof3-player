@@ -1,0 +1,45 @@
+[package]
+name = "bof3player-app"
+description = "The Breath of Fire III player: a command line, a terminal browser and a window over the bof3player library"
+version = "0.1.3"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[features]
+default = ["gui"]
+# The `bof3player-gui` window through `gpui`.
+gui = ["dep:gpui"]
+
+[lib]
+name = "bof3player_app"
+
+[[bin]]
+name = "bof3player"
+path = "src/bin/bof3player.rs"
+
+[[bin]]
+name = "bof3player-tui"
+path = "src/bin/bof3player-tui.rs"
+
+[[bin]]
+name = "bof3player-gui"
+path = "src/bin/bof3player-gui.rs"
+required-features = ["gui"]
+
+[dependencies]
+bof3player = { workspace = true, features = ["std", "ogg", "names"] }
+psx-formats = { workspace = true, features = ["std"] }
+clap.workspace = true
+claxon.workspace = true
+cpal.workspace = true
+gpui = { workspace = true, optional = true }
+hound.workspace = true
+lewton.workspace = true
+ratatui.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

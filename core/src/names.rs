@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 //! The names file: titles and labels for the catalog, read from one JSON file.
 //!
-//! The library ships no game text. A names file supplies it; `--names FILE` picks one and
-//! [`default_path`] finds one when the switch is absent. The schema is in `docs/player.md`.
+//! The library ships no game text. A names file supplies it. The schema is in `docs/player.md`.
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde::Deserialize;
 
@@ -13,9 +12,6 @@ use crate::catalog::Naming;
 
 /// The schema version this reader understands.
 pub const VERSION: u32 = 1;
-
-/// The file name [`default_path`] looks for.
-pub const DEFAULT_FILE: &str = "bof3-names.json";
 
 /// The names this repository ships, `data/bof3-names.json`, parsed on first use.
 #[cfg(feature = "bundled-names")]
@@ -119,38 +115,6 @@ impl Names {
 
     fn bank_entry(&self, archive: &str) -> Option<&Entry> {
         self.banks.get(&format!("bank:{archive}"))
-    }
-}
-
-/// The names file to use when `--names` is absent: `$BOF3_NAMES`, then `bof3-names.json`,
-/// `build/bof3-names.json` or `data/bof3-names.json` in the working directory and its parents,
-/// then in the executable's directory and its parents. `None` when none exists.
-#[must_use]
-pub fn default_path() -> Option<PathBuf> {
-    if let Some(value) = std::env::var_os("BOF3_NAMES").filter(|value| !value.is_empty()) {
-        return Some(PathBuf::from(value));
-    }
-    let cwd = std::env::current_dir().ok();
-    let exe = std::env::current_exe().ok().and_then(|path| path.parent().map(Path::to_path_buf));
-    let bases = cwd.iter().flat_map(|dir| dir.ancestors().take(6)).chain(exe.iter().flat_map(|dir| dir.ancestors().take(4)));
-    bases.flat_map(|base| [base.join(DEFAULT_FILE), base.join("build").join(DEFAULT_FILE), base.join("data").join(DEFAULT_FILE)]).find(|path| path.is_file())
-}
-
-/// The names file `--names` selects, or else the default one. A file that was asked for must
-/// read; a default file that does not read gives the reason as the second value and no names.
-#[must_use]
-pub fn load(explicit: Option<&Path>) -> (Names, Option<String>) {
-    let (path, asked) = match explicit {
-        Some(path) => (Some(path.to_path_buf()), true),
-        None => (default_path(), false),
-    };
-    let Some(path) = path else { return (Names::default(), None) };
-    match Names::read(&path) {
-        Ok(names) => (names, None),
-        Err(error) => {
-            let kind = if asked { "names file" } else { "default names file" };
-            (Names::default(), Some(format!("cannot read the {kind} {}: {error}", path.display())))
-        }
     }
 }
 
@@ -269,12 +233,6 @@ mod tests {
         assert_eq!(game_names().music_title("BGMEND", 1), Some("\"Fin\""));
     }
 
-    fn scratch(test: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("bof3player-{test}-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
-
     #[test]
     fn the_shipped_file_reads_and_every_title_has_a_source() {
         let names = Names::from_json(SHIPPED).unwrap();
@@ -315,26 +273,5 @@ mod tests {
         .unwrap();
         assert_eq!(names.music_title("A", 0), None);
         assert_eq!(names.music_title("C", 0), None);
-    }
-
-    #[test]
-    fn an_explicit_file_overrides_the_default_and_a_bad_one_reports_why() {
-        let dir = scratch("names-override");
-        let file = dir.join("mine.json");
-        std::fs::write(&file, r#"{"version":1,"music":{"music:A#0":{"title":"Mine","source":"data","evidence":"e"}}}"#).unwrap();
-        let (names, failure) = load(Some(&file));
-        assert!(failure.is_none());
-        assert_eq!(names.music_title("A", 0), Some("Mine"));
-
-        let missing = dir.join("absent.json");
-        let (names, failure) = load(Some(&missing));
-        let message = failure.expect("a file that was asked for must read");
-        assert!(message.contains("names file") && message.contains("absent.json"), "{message}");
-        assert!(names.music().is_empty());
-
-        std::fs::write(&file, r#"{"version":9}"#).unwrap();
-        let message = load(Some(&file)).1.expect("an unsupported version is reported");
-        assert!(message.contains("unsupported names version 9"), "{message}");
-        std::fs::remove_dir_all(dir).unwrap();
     }
 }

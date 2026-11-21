@@ -776,19 +776,28 @@ dependencies = [
 name = "bof3player"
 version = "0.1.3"
 dependencies = [
- "clap",
- "claxon",
- "cpal",
  "emi",
- "gpui",
- "hound",
- "lewton",
  "psx-audio",
  "psx-formats",
- "ratatui",
  "serde",
  "serde_json",
  "sha2 0.11.1",
+]
+
+[[package]]
+name = "bof3player-app"
+version = "0.1.3"
+dependencies = [
+ "bof3player",
+ "clap",
+ "claxon",
+ "cpal",
+ "gpui",
+ "hound",
+ "lewton",
+ "psx-formats",
+ "ratatui",
+ "serde_json",
 ]
 
 [[package]]

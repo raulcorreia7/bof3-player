@@ -4,7 +4,7 @@ import json
 import subprocess
 import sys
 
-APPS = {"rebof3", "rebof3-editor"}
+APPS = {"bof3player-app", "rebof3", "rebof3-editor"}
 SHELLS = {"psx-capi"}
 UI = {"gpui", "ratatui", "cpal"}
 
@@ -16,6 +16,9 @@ for package in metadata["packages"]:
     needs = {dep["name"] for dep in package["dependencies"] if dep["kind"] != "dev"}
     for dep in sorted(needs & APPS):
         failures.append(f"{name} depends on the app {dep}")
+    if name == "bof3player":
+        for dep in sorted(needs & UI):
+            failures.append(f"{name} depends on the UI crate {dep}")
     if name.startswith("psx-") and name not in SHELLS:
         for dep in sorted(needs & members):
             if not dep.startswith("psx-"):

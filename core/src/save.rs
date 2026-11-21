@@ -367,30 +367,6 @@ pub fn export_native(library: &Library<'static>, item: &Item, dir: &Path, sequen
     }
 }
 
-/// The folder exports go into by default: the user's Music folder below `Breath of Fire III`,
-/// else `./exports` when no home is known.
-pub fn default_export_dir() -> PathBuf {
-    let folder = Path::new("Breath of Fire III");
-    #[cfg(target_os = "linux")]
-    if let Some(music) = std::env::var_os("XDG_MUSIC_DIR").filter(|value| !value.is_empty()) {
-        return PathBuf::from(music).join(folder);
-    }
-    if let Some(home) = home_dir() {
-        return home.join("Music").join(folder);
-    }
-    PathBuf::from("exports")
-}
-
-#[cfg(windows)]
-fn home_dir() -> Option<PathBuf> {
-    std::env::var_os("USERPROFILE").filter(|value| !value.is_empty()).map(PathBuf::from)
-}
-
-#[cfg(not(windows))]
-fn home_dir() -> Option<PathBuf> {
-    std::env::var_os("HOME").filter(|value| !value.is_empty()).map(PathBuf::from)
-}
-
 /// One file format the export menu offers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Format {
