@@ -67,14 +67,14 @@ impl Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let kind = match self {
+        let label = match self {
             Self::Io(_) => "i/o error",
             Self::Format(_) => "bad format",
             Self::Invalid(_) => "invalid argument",
             Self::Unsupported(_) => "unsupported",
             Self::State(_) => "wrong state",
         };
-        write!(f, "{kind}: {}", self.message())
+        write!(f, "{label}: {}", self.message())
     }
 }
 

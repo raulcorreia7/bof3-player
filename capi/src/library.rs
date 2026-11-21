@@ -10,7 +10,7 @@ use bof3player::player::Loop;
 use bof3player::{DiscSource, FolderSource, Library, Player, Source};
 
 use crate::error::{Fail, fail, guard, map_audio, poisoned};
-use crate::{bof3player_format, bof3player_item_info, bof3player_kind, bof3player_library, bof3player_loop, bof3player_player, owned_string, psx_status, psx_string};
+use crate::{bof3player_format, bof3player_item_info, bof3player_library, bof3player_loop, bof3player_media_type, bof3player_player, owned_string, psx_status, psx_string};
 use psx_capi::{free_string, path_arg};
 
 /// Build a catalog from a source, with the bundled names.
@@ -21,7 +21,7 @@ fn open_library(source: impl Source + 'static) -> Result<Library<'static>, Fail>
 /// An item info with no strings; also the value written on failure.
 fn empty_item_info() -> bof3player_item_info {
     bof3player_item_info {
-        kind: bof3player_kind::Music,
+        media_type: bof3player_media_type::Music,
         has_duration: false,
         playable: false,
         duration: 0.0,
@@ -136,7 +136,7 @@ pub unsafe extern "C" fn bof3player_library_item_at(library: *const bof3player_l
         let library = unsafe { &*library };
         let item = library.inner.catalog().get(index).ok_or_else(|| Fail::new(psx_status::InvalidIndex, format!("item index {index} is out of range")))?;
         let info = bof3player_item_info {
-            kind: item.kind.into(),
+            media_type: item.media_type.into(),
             has_duration: item.duration.is_some(),
             playable: item.playable,
             duration: item.duration.unwrap_or(0.0),

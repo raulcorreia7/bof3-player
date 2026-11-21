@@ -14,7 +14,7 @@ use crate::clock;
 use crate::error::{Error, Result};
 use crate::format::VAB_SAMPLE_RATE;
 use crate::format::emi::{Emi, EntryType};
-use crate::format::sep::{Kind, Package as Sep, Sequence};
+use crate::format::sep::{EventType, Package as Sep, Sequence};
 use crate::format::vab::{Bank as Vab, Tone, Vag};
 use crate::player::Loop;
 use crate::spu::{self, ADDRESS_UNIT, PITCH_MAX, PITCH_ONE, PITCH_TABLE, REVERB_AREA_START, ReverbModel, Spu, VOICE_COUNT, VoiceSetup};
@@ -200,7 +200,7 @@ impl Bank {
 /// One sequence event resolved onto the frame timeline.
 #[derive(Debug, Clone, Copy)]
 struct NoteEvent {
-    kind: NoteKind,
+    note_type: NoteType,
     channel: u8,
     note: u8,
     velocity: u8,
@@ -212,7 +212,7 @@ struct NoteEvent {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum NoteKind {
+enum NoteType {
     Bend,
     On,
     Off,
@@ -270,16 +270,16 @@ fn build_timeline(sequence: &Sequence) -> Timeline {
         units += clock::DRIVER_UNITS_PER_TICK * i64::from(event.delta);
         let frame = (clock::driver_tick_of(units, step) + 1) * clock::DRIVER_FRAMES_PER_TICK;
         end_frame = frame;
-        if event.kind() == Kind::Meta {
+        if event.event_type() == EventType::Meta {
             if let Some(tempo) = event.tempo() {
                 step = clock::driver_tick_step(tempo, resolution);
             }
             continue;
         }
         let state = &mut channels[usize::from(event.channel())];
-        let base = NoteEvent { kind: NoteKind::Off, channel: event.channel(), note: 0, velocity: 0, program: 0, volume: 0, pan: MIX_CENTER, bend: MIX_CENTER, frame };
-        match event.kind() {
-            Kind::Control => {
+        let base = NoteEvent { note_type: NoteType::Off, channel: event.channel(), note: 0, velocity: 0, program: 0, volume: 0, pan: MIX_CENTER, bend: MIX_CENTER, frame };
+        match event.event_type() {
+            EventType::Control => {
                 if event.data1 == clock::CC_LOOP {
                     match event.data2 {
                         clock::LOOP_START => {
@@ -293,26 +293,26 @@ fn build_timeline(sequence: &Sequence) -> Timeline {
                         _ => {}
                     }
                 } else if event.data1 == clock::CC_VOLUME || event.data1 == clock::CC_PAN {
-                    let kind = if event.data1 == clock::CC_VOLUME {
+                    let note_type = if event.data1 == clock::CC_VOLUME {
                         state.volume = event.data2;
-                        NoteKind::Volume
+                        NoteType::Volume
                     } else {
                         state.pan = event.data2;
-                        NoteKind::Pan
+                        NoteType::Pan
                     };
-                    events.push(NoteEvent { kind, volume: state.volume, pan: state.pan, ..base });
+                    events.push(NoteEvent { note_type, volume: state.volume, pan: state.pan, ..base });
                 }
             }
-            Kind::Program => state.program = event.data1,
-            Kind::PitchBend => {
+            EventType::Program => state.program = event.data1,
+            EventType::PitchBend => {
                 state.bend = event.data2;
-                events.push(NoteEvent { kind: NoteKind::Bend, bend: state.bend, ..base });
+                events.push(NoteEvent { note_type: NoteType::Bend, bend: state.bend, ..base });
             }
-            Kind::NoteOn if event.data2 != 0 => {
-                events.push(NoteEvent { kind: NoteKind::On, note: event.data1, velocity: event.data2, program: state.program, volume: state.volume, pan: state.pan, bend: state.bend, ..base })
+            EventType::NoteOn if event.data2 != 0 => {
+                events.push(NoteEvent { note_type: NoteType::On, note: event.data1, velocity: event.data2, program: state.program, volume: state.volume, pan: state.pan, bend: state.bend, ..base })
             }
-            Kind::NoteOn | Kind::NoteOff => events.push(NoteEvent { kind: NoteKind::Off, note: event.data1, ..base }),
-            Kind::PolyAftertouch | Kind::ChannelAftertouch | Kind::Meta => {}
+            EventType::NoteOn | EventType::NoteOff => events.push(NoteEvent { note_type: NoteType::Off, note: event.data1, ..base }),
+            EventType::PolyAftertouch | EventType::ChannelAftertouch | EventType::Meta => {}
         }
     }
     Timeline { events, window, end_frame }
@@ -493,11 +493,11 @@ impl MusicEngine {
         while self.next_event < end && self.events[self.next_event].frame <= self.frame {
             let event = self.events[self.next_event];
             self.next_event += 1;
-            match event.kind {
-                NoteKind::Bend => self.apply_bend(&event),
-                NoteKind::On => self.begin_note(&event),
-                NoteKind::Off => self.end_note(&event),
-                NoteKind::Volume | NoteKind::Pan => self.apply_mix(&event),
+            match event.note_type {
+                NoteType::Bend => self.apply_bend(&event),
+                NoteType::On => self.begin_note(&event),
+                NoteType::Off => self.end_note(&event),
+                NoteType::Volume | NoteType::Pan => self.apply_mix(&event),
             }
         }
     }
@@ -556,7 +556,7 @@ impl MusicEngine {
             if !voice.active || voice.channel != event.channel {
                 continue;
             }
-            if event.kind == NoteKind::Volume {
+            if event.note_type == NoteType::Volume {
                 voice.mix.volume = event.volume;
             } else {
                 voice.mix.pan = event.pan;

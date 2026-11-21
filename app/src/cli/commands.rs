@@ -8,7 +8,7 @@ use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 use crate::discover;
-use bof3player::catalog::{Catalog, Filter, Item, Kind, Naming};
+use bof3player::catalog::{Catalog, Filter, Item, MediaType, Naming};
 use bof3player::player::Loop;
 use bof3player::render::{self, RenderStyle};
 use bof3player::save::ExportFormat;
@@ -65,11 +65,11 @@ fn not_found(discovery: &discover::Discovery) -> String {
 }
 
 pub fn filter_of(filters: &Filters) -> Result<Filter<'_>, String> {
-    let kinds = match &filters.kind {
-        Some(name) => vec![Kind::from_name(name).ok_or_else(|| format!("unknown kind {name}: use music, bank, sample, xa or cdda"))?],
+    let media_types = match &filters.media_type {
+        Some(name) => vec![MediaType::from_name(name).ok_or_else(|| format!("unknown type {name}: use music, bank, sample, xa or cdda"))?],
         None => Vec::new(),
     };
-    Ok(Filter { kinds, family: filters.family.as_deref(), playable_only: filters.playable })
+    Ok(Filter { media_types, family: filters.family.as_deref(), playable_only: filters.playable })
 }
 
 pub use crate::deck::clock;
@@ -96,7 +96,7 @@ pub fn resolve<'a>(library: &'a Library<'static>, query: &str) -> Result<&'a Ite
 
 fn item_json(item: &Item) -> serde_json::Value {
     json!({
-        "id": item.id, "kind": item.kind.name(), "name": item.name, "title": item.title, "family": item.family,
+        "id": item.id, "type": item.media_type.name(), "name": item.name, "title": item.title, "family": item.family,
         "detail": item.detail, "path": item.path, "index": item.index, "sub_index": item.sub_index,
         "duration": item.duration, "playable": item.playable, "same_as": item.same_as,
     })
@@ -107,7 +107,7 @@ fn row_text(catalog: &Catalog, item: &Item, copies: Option<usize>) -> String {
     let title = if item.title.is_empty() { String::new() } else { format!("{} · ", item.title) };
     let same = catalog.same_as_text(item).map_or_else(String::new, |text| format!("  same as {text}"));
     let times = copies.map_or_else(String::new, |n| format!(" ×{n}"));
-    format!("{:<6} {:<28} {:>8}  {title}{}{same}{times}", item.kind.name(), item.id, duration_text(item), item.name)
+    format!("{:<6} {:<28} {:>8}  {title}{}{same}{times}", item.media_type.name(), item.id, duration_text(item), item.name)
 }
 
 fn print_rows(global: &Global, catalog: &Catalog, rows: &[&Item], total: usize, show_all: bool) {
@@ -169,7 +169,7 @@ pub fn info(global: &Global, query: &str, naming: &dyn Naming) -> Outcome {
         say!("{}", serde_json::to_string_pretty(&val).unwrap_or_default());
         return Ok(ExitCode::SUCCESS);
     }
-    say!("id        {}\nkind      {}\nname      {}", item.id, item.kind.name(), item.name);
+    say!("id        {}\ntype      {}\nname      {}", item.id, item.media_type.name(), item.name);
     if !item.title.is_empty() {
         say!("title     {}", item.title);
     }
@@ -189,7 +189,7 @@ pub fn info(global: &Global, query: &str, naming: &dyn Naming) -> Outcome {
     say!("family    {}\nduration  {}\ndetail    {}", item.family, duration_text(item), item.detail);
     say!("playable  {}\nsource    {}\nindex     {}\nsub index {}", if item.playable { "yes" } else { "no" }, item.path, item.index, item.sub_index);
     if item.playable
-        && matches!(item.kind, Kind::Music)
+        && matches!(item.media_type, MediaType::Music)
         && let Ok(player) = library.player(item)
     {
         match player.loop_window() {
@@ -218,7 +218,7 @@ fn archive_counts(items: &[&Item]) -> (usize, usize) {
 
 pub fn music(global: &Global, all: bool, untitled: bool, naming: &dyn Naming) -> Outcome {
     let library = open_library(global, naming)?;
-    let filter = Filter { kinds: vec![Kind::Music], ..Filter::default() };
+    let filter = Filter { media_types: vec![MediaType::Music], ..Filter::default() };
     let mut archives: BTreeMap<&str, Vec<&Item>> = BTreeMap::new();
     for item in library.catalog().search("", &filter) {
         archives.entry(&item.path).or_default().push(item);
@@ -257,23 +257,23 @@ pub fn music(global: &Global, all: bool, untitled: bool, naming: &dyn Naming) ->
 pub fn stats(global: &Global, naming: &dyn Naming) -> Outcome {
     let library = open_library(global, naming)?;
     let items = library.catalog().items();
-    let mut kinds: BTreeMap<Kind, (usize, usize, f64)> = BTreeMap::new();
+    let mut media_types: BTreeMap<MediaType, (usize, usize, f64)> = BTreeMap::new();
     let mut families: BTreeMap<&str, usize> = BTreeMap::new();
     for item in items {
-        let e = kinds.entry(item.kind).or_default();
+        let e = media_types.entry(item.media_type).or_default();
         e.0 += 1;
         e.1 += usize::from(!item.playable);
         e.2 += item.duration.unwrap_or(0.0).max(0.0);
         *families.entry(&item.family).or_default() += 1;
     }
     if global.json {
-        let k: Vec<_> = kinds.iter().map(|(k, v)| json!({"kind": k.name(), "items": v.0, "no_audio": v.1, "seconds": v.2})).collect();
-        say!("{}", json!({"items": items.len(), "kinds": k, "families": families}));
+        let k: Vec<_> = media_types.iter().map(|(k, v)| json!({"type": k.name(), "items": v.0, "no_audio": v.1, "seconds": v.2})).collect();
+        say!("{}", json!({"items": items.len(), "types": k, "families": families}));
         return Ok(ExitCode::SUCCESS);
     }
-    say!("{} items\n\n{:<8} {:>7} {:>9} {:>10}", items.len(), "kind", "items", "no audio", "duration");
-    for (kind, (n, silent, secs)) in &kinds {
-        say!("{:<8} {n:>7} {silent:>9} {:>10}", kind.name(), clock(*secs));
+    say!("{} items\n\n{:<8} {:>7} {:>9} {:>10}", items.len(), "type", "items", "no audio", "duration");
+    for (media_type, (n, silent, secs)) in &media_types {
+        say!("{:<8} {n:>7} {silent:>9} {:>10}", media_type.name(), clock(*secs));
     }
     let mut top: Vec<_> = families.into_iter().collect();
     top.sort_by_key(|entry| std::cmp::Reverse(entry.1));
@@ -288,7 +288,7 @@ pub fn doctor(global: &Global, naming: &dyn Naming) -> Outcome {
     let discovery = discover::discover(global.dir.as_deref());
     say!("player {}\n", bof3player::VERSION);
     match &discovery.found {
-        Some((kind, path)) => say!("source:  {kind:?} {}", path.display()),
+        Some((media_type, path)) => say!("source:  {media_type:?} {}", path.display()),
         None => say!("source:  none found"),
     }
     say!("\ncandidates ({}):", discovery.candidates.len());
@@ -303,11 +303,11 @@ pub fn doctor(global: &Global, naming: &dyn Naming) -> Outcome {
     let library = discovery.open_with(naming).map_err(|error| format!("cannot open the game data: {}; run `bof3player doctor` to see every probe", error.message()))?;
     let mut counts = BTreeMap::new();
     for item in library.catalog().items() {
-        *counts.entry(item.kind).or_insert(0usize) += 1;
+        *counts.entry(item.media_type).or_insert(0usize) += 1;
     }
     say!("\ncatalog: {} items", library.catalog().len());
-    for (kind, n) in counts {
-        say!("  {:<8}{n}", kind.name());
+    for (media_type, n) in counts {
+        say!("  {:<8}{n}", media_type.name());
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -477,10 +477,10 @@ pub fn verify(global: &Global, filters: &Filters, seconds: f64, limit: Option<us
     let library = open_library(global, naming)?;
     let filter = filter_of(filters)?;
     let hits = library.catalog().search("", &filter);
-    let mut tallies: BTreeMap<Kind, Tally> = BTreeMap::new();
+    let mut tallies: BTreeMap<MediaType, Tally> = BTreeMap::new();
     for item in hits.iter().take(limit.unwrap_or(usize::MAX)) {
-        let tally = tallies.entry(item.kind).or_default();
-        if !item.playable || item.kind == Kind::Bank {
+        let tally = tallies.entry(item.media_type).or_default();
+        if !item.playable || item.media_type == MediaType::Bank {
             tally.empty += 1;
             continue;
         }
@@ -497,10 +497,10 @@ pub fn verify(global: &Global, filters: &Filters, seconds: f64, limit: Option<us
             }
         }
     }
-    say!("\n{:<8} {:>7} {:>7} {:>7} {:>7}", "kind", "sound", "silent", "empty", "failed");
+    say!("\n{:<8} {:>7} {:>7} {:>7} {:>7}", "type", "sound", "silent", "empty", "failed");
     let mut bad = false;
-    for (kind, t) in &tallies {
-        say!("{:<8} {:>7} {:>7} {:>7} {:>7}", kind.name(), t.sound, t.silent, t.empty, t.failed);
+    for (media_type, t) in &tallies {
+        say!("{:<8} {:>7} {:>7} {:>7} {:>7}", media_type.name(), t.sound, t.silent, t.empty, t.failed);
         bad |= t.silent + t.failed > 0;
     }
     Ok(if bad { ExitCode::from(1) } else { ExitCode::SUCCESS })

@@ -29,7 +29,7 @@ use clap::Parser;
 use crate::deck::Deck;
 use crate::options::Global;
 use crate::spectrum::Spectrum;
-use bof3player::catalog::{Item, Kind};
+use bof3player::catalog::{Item, MediaType};
 use bof3player::player::Loop;
 use bof3player::save::{ExportFormat, ExportOptions, Format, OggQuality, Save, Step, export_failed, export_path, saved_message};
 use chooser::{Chooser, Target};
@@ -343,7 +343,7 @@ impl Gui {
             Row::Item(_) => above.iter().rposition(|row| matches!(row, Row::Family(..))),
             _ => None,
         }
-        .or_else(|| above.iter().rposition(|row| matches!(row, Row::Kind(..))));
+        .or_else(|| above.iter().rposition(|row| matches!(row, Row::MediaType(..))));
         if let Some(parent) = parent {
             self.select(parent);
         }
@@ -456,7 +456,7 @@ impl Gui {
             self.message = "Select an item to export.".to_string();
             return;
         };
-        let rows = Format::for_kind(item.kind).iter().map(|&format| (format, export_path(&self.export_dir, item, format.extension()))).collect();
+        let rows = Format::for_media_type(item.media_type).iter().map(|&format| (format, export_path(&self.export_dir, item, format.extension()))).collect();
         self.export = Some(ExportMenu { item, selected: 0, rows, loops: self.global.loops, quality: OggQuality::Normal });
         self.help = false;
     }
@@ -608,16 +608,16 @@ impl Gui {
     }
 }
 
-/// The kind and family of an item, for the now-playing line.
+/// The type and family of an item, for the now-playing line.
 fn describe(item: &Item) -> String {
-    let kind = match item.kind {
-        Kind::Music => "Music",
-        Kind::Sample => "Sound effect",
-        Kind::Xa => "XA",
-        Kind::Cdda => "CD audio",
-        Kind::Bank => "Sound bank",
+    let media_type = match item.media_type {
+        MediaType::Music => "Music",
+        MediaType::Sample => "Sound effect",
+        MediaType::Xa => "XA",
+        MediaType::Cdda => "CD audio",
+        MediaType::Bank => "Sound bank",
     };
-    format!("{kind} / {}", item.family)
+    format!("{media_type} / {}", item.family)
 }
 
 /// The name a key map matches: the typed character, else the key's name.

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-//! The catalog as a tree of kind, family and item rows, like the terminal browser's.
+//! The catalog as a tree of type, family and item rows, like the terminal browser's.
 
 use std::collections::{BTreeMap, HashSet};
 
-use bof3player::catalog::{Filter, Item, Kind};
+use bof3player::catalog::{Filter, Item, MediaType};
 use bof3player::library::Library;
 
 /// Most search hits listed.
@@ -16,10 +16,10 @@ pub fn label(item: &Item) -> &str {
 /// One line of the list.
 #[derive(Clone, Copy)]
 pub enum Row {
-    /// A kind and the items under it.
-    Kind(Kind, usize),
-    /// A family of one kind and the items under it.
-    Family(Kind, &'static str, usize),
+    /// A type and the items under it.
+    MediaType(MediaType, usize),
+    /// A family of one type and the items under it.
+    Family(MediaType, &'static str, usize),
     /// An item.
     Item(&'static Item),
 }
@@ -28,25 +28,25 @@ impl Row {
     /// A key that names the row across rebuilds.
     pub fn key(&self) -> String {
         match self {
-            Row::Kind(kind, _) => kind_key(*kind),
-            Row::Family(kind, family, _) => family_key(*kind, family),
+            Row::MediaType(media_type, _) => media_type_key(*media_type),
+            Row::Family(media_type, family, _) => family_key(*media_type, family),
             Row::Item(item) => item.id.clone(),
         }
     }
 }
 
-fn kind_key(kind: Kind) -> String {
-    kind.name().to_string()
+fn media_type_key(media_type: MediaType) -> String {
+    media_type.name().to_string()
 }
 
-fn family_key(kind: Kind, family: &str) -> String {
-    format!("{}/{family}", kind.name())
+fn family_key(media_type: MediaType, family: &str) -> String {
+    format!("{}/{family}", media_type.name())
 }
 
-/// All items grouped by kind and family, and which groups are open.
+/// All items grouped by type and family, and which groups are open.
 pub struct Tree {
     library: &'static Library<'static>,
-    groups: BTreeMap<Kind, BTreeMap<&'static str, Vec<&'static Item>>>,
+    groups: BTreeMap<MediaType, BTreeMap<&'static str, Vec<&'static Item>>>,
     expanded: HashSet<String>,
     /// How many playable items the catalog holds.
     pub playable: usize,
@@ -55,14 +55,14 @@ pub struct Tree {
 impl Tree {
     /// Group the catalog of `library`. Music and its families start open.
     pub fn new(library: &'static Library<'static>) -> Self {
-        let mut groups: BTreeMap<Kind, BTreeMap<&str, Vec<&Item>>> = BTreeMap::new();
+        let mut groups: BTreeMap<MediaType, BTreeMap<&str, Vec<&Item>>> = BTreeMap::new();
         for item in library.catalog().items() {
-            groups.entry(item.kind).or_default().entry(item.family.as_str()).or_default().push(item);
+            groups.entry(item.media_type).or_default().entry(item.family.as_str()).or_default().push(item);
         }
         let mut expanded = HashSet::new();
-        if let Some(families) = groups.get(&Kind::Music) {
-            expanded.insert(kind_key(Kind::Music));
-            expanded.extend(families.keys().map(|family| family_key(Kind::Music, family)));
+        if let Some(families) = groups.get(&MediaType::Music) {
+            expanded.insert(media_type_key(MediaType::Music));
+            expanded.extend(families.keys().map(|family| family_key(MediaType::Music, family)));
         }
         Self { library, groups, expanded, playable: library.catalog().playable_count() }
     }
@@ -91,21 +91,21 @@ impl Tree {
         }
     }
 
-    /// The visible rows. A non-empty `query` lists the ranked hits under their kinds instead of
+    /// The visible rows. A non-empty `query` lists the ranked hits under their types instead of
     /// the families.
     pub fn rows(&self, query: &str, playable_only: bool) -> Vec<Row> {
         let query = query.trim();
         let mut rows = Vec::new();
         if query.is_empty() {
-            for kind in Kind::LIST {
-                let Some(families) = self.groups.get(&kind) else { continue };
+            for media_type in MediaType::LIST {
+                let Some(families) = self.groups.get(&media_type) else { continue };
                 let count = |items: &Vec<&Item>| items.iter().filter(|item| !playable_only || item.playable).count();
                 let total: usize = families.values().map(count).sum();
                 if total == 0 {
                     continue;
                 }
-                rows.push(Row::Kind(kind, total));
-                if !self.expanded.contains(&kind_key(kind)) {
+                rows.push(Row::MediaType(media_type, total));
+                if !self.expanded.contains(&media_type_key(media_type)) {
                     continue;
                 }
                 for (&family, items) in families {
@@ -113,8 +113,8 @@ impl Tree {
                     if shown == 0 {
                         continue;
                     }
-                    rows.push(Row::Family(kind, family, shown));
-                    if self.expanded.contains(&family_key(kind, family)) {
+                    rows.push(Row::Family(media_type, family, shown));
+                    if self.expanded.contains(&family_key(media_type, family)) {
                         rows.extend(items.iter().filter(|item| !playable_only || item.playable).map(|&i| Row::Item(i)));
                     }
                 }
@@ -123,10 +123,10 @@ impl Tree {
         }
         let filter = Filter { playable_only, ..Filter::default() };
         let hits = self.library.catalog().search(query, &filter);
-        for kind in Kind::LIST {
-            let items: Vec<&Item> = hits.iter().copied().filter(|item| item.kind == kind).take(MAX_HITS).collect();
+        for media_type in MediaType::LIST {
+            let items: Vec<&Item> = hits.iter().copied().filter(|item| item.media_type == media_type).take(MAX_HITS).collect();
             if !items.is_empty() {
-                rows.push(Row::Kind(kind, items.len()));
+                rows.push(Row::MediaType(media_type, items.len()));
                 rows.extend(items.into_iter().map(Row::Item));
             }
         }

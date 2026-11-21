@@ -64,7 +64,7 @@ next to it.
 
 ```sh
 bin/bof3player -i "Breath of Fire III.cue" doctor
-bin/bof3player -i "Breath of Fire III.cue" list --kind music
+bin/bof3player -i "Breath of Fire III.cue" list --type music
 bin/bof3player -i "Breath of Fire III.cue" render --format flac -o song.flac "music:BGMOPN#0"
 bin/bof3player-tui -i "Breath of Fire III.cue"
 bin/bof3player-gui -i "Breath of Fire III.cue"

@@ -39,10 +39,10 @@ pub extern "C" fn bof3player_abi_version() -> u32 {
     BOF3PLAYER_ABI_VERSION
 }
 
-/// The kind of media a catalog item is.
+/// The type of media a catalog item is.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum bof3player_kind {
+pub enum bof3player_media_type {
     /// A sequence played through its bank.
     Music = 0,
     /// A VAB sound bank or one of its cue records.
@@ -55,14 +55,14 @@ pub enum bof3player_kind {
     Cdda = 4,
 }
 
-impl From<bof3player::Kind> for bof3player_kind {
-    fn from(kind: bof3player::Kind) -> Self {
-        match kind {
-            bof3player::Kind::Music => Self::Music,
-            bof3player::Kind::Bank => Self::Bank,
-            bof3player::Kind::Sample => Self::Sample,
-            bof3player::Kind::Xa => Self::Xa,
-            bof3player::Kind::Cdda => Self::Cdda,
+impl From<bof3player::MediaType> for bof3player_media_type {
+    fn from(media_type: bof3player::MediaType) -> Self {
+        match media_type {
+            bof3player::MediaType::Music => Self::Music,
+            bof3player::MediaType::Bank => Self::Bank,
+            bof3player::MediaType::Sample => Self::Sample,
+            bof3player::MediaType::Xa => Self::Xa,
+            bof3player::MediaType::Cdda => Self::Cdda,
         }
     }
 }
@@ -85,8 +85,8 @@ pub enum bof3player_loop {
 /// `bof3player_item_info_free`.
 #[repr(C)]
 pub struct bof3player_item_info {
-    /// The media kind.
-    pub kind: bof3player_kind,
+    /// The media type.
+    pub media_type: bof3player_media_type,
     /// True when `duration` is meaningful.
     pub has_duration: bool,
     /// True when the item carries audio.

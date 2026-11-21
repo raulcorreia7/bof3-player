@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
     for (; index < count; index++) {
         bof3player_item_info info;
         if (bof3player_library_item_at(library, index, &info) != PSX_STATUS_OK) continue;
-        int music = info.kind == BOF3PLAYER_KIND_MUSIC && info.playable;
+        int music = info.media_type == BOF3PLAYER_MEDIA_TYPE_MUSIC && info.playable;
         bof3player_item_info_free(&info);
         if (music) break;
     }

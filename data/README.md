@@ -42,7 +42,7 @@ Edit it by hand and check each fact against your disc.
 1. **Slots.** Each EMI archive has a 16-byte header and 16-byte TOC entries (`u32` size, `u16` type at
    byte 12); payloads start at `0x800`, each padded to `0x800`. Type 10 is a SEP package: `pQES`,
    `u16` version, then per sequence a 13-byte header (`u16` id at 0, `u32` big-endian body size at 9)
-   and the body. The slot is `ARCHIVE#id`. `bof3player list --kind music` shows which are playable.
+   and the body. The slot is `ARCHIVE#id`. `bof3player list --type music` shows which are playable.
 2. **Sequence duplicates.** SHA-256 of each body, header excluded (headers differ in the id only).
    Slots with equal hashes are one group.
 3. **Bank duplicates.** SHA-256 of the first type-6 (VH) payload followed by the first type-7 (VB)

@@ -63,7 +63,7 @@ pub mod save;
 mod driver;
 mod xa_cues;
 
-pub use catalog::{Catalog, Item, Kind, Naming, NoNaming};
+pub use catalog::{Catalog, Item, MediaType, Naming, NoNaming};
 pub use library::{Library, PlayerOptions};
 pub use player::Player;
 pub use psx_audio::{Blob, CallbackSource, Error, MemorySource, Result, Source, error, export, source, spu};

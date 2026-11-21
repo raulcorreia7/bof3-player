@@ -188,11 +188,11 @@ fn parse_file(value: &str) -> Result<(&str, &str), Error> {
         }
         return Ok((name, quoted[end + 1..].trim()));
     }
-    let (name, kind) = split_word(value);
+    let (name, media_type) = split_word(value);
     if name.is_empty() {
         return Err(Error::InvalidImage("empty cue FILE path"));
     }
-    Ok((name, kind))
+    Ok((name, media_type))
 }
 
 fn parse_track(value: &str) -> Result<(u8, TrackMode), Error> {

@@ -5,14 +5,14 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver};
 
 use crate::discover;
-use bof3player::{Library, discover::SourceKind};
+use bof3player::{Library, discover::SourceType};
 
 /// Game data that opened.
 pub struct Loaded {
     /// The catalog and its source. Leaked: players borrow it for `'static`.
     pub library: &'static Library<'static>,
     /// Whether the data is a disc image or a folder.
-    pub kind: SourceKind,
+    pub media_type: SourceType,
     /// The disc image or folder that was opened.
     pub path: PathBuf,
     /// Something the user should know, such as a names file that did not read.
@@ -53,7 +53,7 @@ impl Loading {
 fn open(hint: Option<&Path>, names: Option<&Path>) -> Result<Loaded, Failed> {
     let discovery = discover::discover(hint);
     let probes = discovery.candidates.iter().map(|c| format!("{}: {} ({})", c.label, c.path.display(), c.detail)).collect::<Vec<_>>();
-    let Some((kind, path)) = discovery.found.clone() else {
+    let Some((media_type, path)) = discovery.found.clone() else {
         let message = match hint {
             Some(hint) => format!("No game data found at {}.", hint.display()),
             None => "No game data found.".to_string(),
@@ -66,7 +66,7 @@ fn open(hint: Option<&Path>, names: Option<&Path>) -> Result<Loaded, Failed> {
         notice = Some(format!("{failure}. Titles are not shown."));
     }
     match discovery.open_with(&titles) {
-        Ok(library) => Ok(Loaded { library: Box::leak(Box::new(library)), kind, path, notice }),
+        Ok(library) => Ok(Loaded { library: Box::leak(Box::new(library)), media_type, path, notice }),
         Err(error) => Err(Failed { message: format!("Cannot read {}: {}.", path.display(), error.message()), probes }),
     }
 }
