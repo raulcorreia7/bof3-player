@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 //! Content-based grouping for playable items.
 
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -87,6 +87,11 @@ impl Groups {
         None
     }
 
+    /// Whether the item repeats a copy already listed; `seen` records each group's canonical copy.
+    pub fn is_repeat(&self, item_id: &str, seen: &mut BTreeSet<String>) -> bool {
+        self.canonical_of(item_id).is_some_and(|canon| canon != item_id || !seen.insert(canon))
+    }
+
     /// All members of the duplicate group containing this item.
     #[must_use]
     pub fn group_members(&self, item_id: &str) -> Option<Vec<String>> {
@@ -142,60 +147,20 @@ fn encode_events_for(sequence: &sep::Sequence) -> Vec<u8> {
                 out.push(event.status);
                 running = event.status;
             }
-            match event.kind() {
-                sep::Kind::Program => {
-                    out.push(event.data1);
-                }
-                sep::Kind::NoteOn | sep::Kind::NoteOff | sep::Kind::PolyAftertouch => {
-                    out.push(event.data1);
-                    out.push(event.data2);
-                }
-                sep::Kind::Control => {
-                    out.push(event.data1);
-                    out.push(event.data2);
-                }
-                sep::Kind::PitchBend => {
-                    out.push(event.data1);
-                    out.push(event.data2);
-                }
-                sep::Kind::ChannelAftertouch => {
-                    out.push(event.data1);
-                }
-                sep::Kind::Meta => {
-                    out.push(event.meta_type);
-                    write_vlq(&mut out, event.meta.len() as u32);
-                    out.extend_from_slice(&event.meta);
-                }
+        } else if event.kind() == sep::Kind::Meta && running != 0xff {
+            out.push(0xff);
+            running = 0xff;
+        }
+        match event.kind() {
+            sep::Kind::Program | sep::Kind::ChannelAftertouch => out.push(event.data1),
+            sep::Kind::NoteOn | sep::Kind::NoteOff | sep::Kind::PolyAftertouch | sep::Kind::Control | sep::Kind::PitchBend => {
+                out.push(event.data1);
+                out.push(event.data2);
             }
-        } else {
-            match event.kind() {
-                sep::Kind::Program => {
-                    out.push(event.data1);
-                }
-                sep::Kind::NoteOn | sep::Kind::NoteOff | sep::Kind::PolyAftertouch => {
-                    out.push(event.data1);
-                    out.push(event.data2);
-                }
-                sep::Kind::Control => {
-                    out.push(event.data1);
-                    out.push(event.data2);
-                }
-                sep::Kind::PitchBend => {
-                    out.push(event.data1);
-                    out.push(event.data2);
-                }
-                sep::Kind::ChannelAftertouch => {
-                    out.push(event.data1);
-                }
-                sep::Kind::Meta => {
-                    if running != 0xff {
-                        out.push(0xff);
-                        running = 0xff;
-                    }
-                    out.push(event.meta_type);
-                    write_vlq(&mut out, event.meta.len() as u32);
-                    out.extend_from_slice(&event.meta);
-                }
+            sep::Kind::Meta => {
+                out.push(event.meta_type);
+                write_vlq(&mut out, event.meta.len() as u32);
+                out.extend_from_slice(&event.meta);
             }
         }
     }
@@ -217,10 +182,7 @@ fn music_key(item: &Item, source: &dyn Source) -> Result<Option<String>> {
     let emi = Emi::parse(&bytes)?;
     let seq_bytes = emi.find(EntryType::Seq, 0)?;
     let sep = Package::parse(seq_bytes)?;
-    let selected = match sep.sequences.get(item.index as usize) {
-        Some(s) => s,
-        None => return Ok(None),
-    };
+    let Some(selected) = sep.sequences.get(item.index as usize) else { return Ok(None) };
     if !selected.has_notes() {
         return Ok(None);
     }
@@ -299,7 +261,7 @@ fn sample_key(item: &Item, source: &dyn Source) -> Result<Option<String>> {
     if let Ok(vag_bytes) = bank.vag_bytes(body, item.sub_index) {
         hasher.update(vag_bytes);
     }
-    for tone in bank.tones.iter() {
+    for tone in &bank.tones {
         if tone.vag as u32 == item.sub_index && tone.is_usable(bank.vag_count) {
             hasher.update([tone.vol, tone.pan, tone.center_note, tone.shift]);
             hasher.update(tone.adsr1.to_le_bytes());

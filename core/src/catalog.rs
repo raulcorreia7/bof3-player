@@ -593,36 +593,17 @@ fn loop_text(vag: &Vag) -> String {
     format!(", loops {} to {}", seconds_text(f64::from(vag.loop_start_frame) / rate), seconds_text(f64::from(vag.loop_end_frame) / rate))
 }
 
-fn add_bank(items: &mut Vec<Item>, archive: &Archive<'_>, number: u32, header: &[u8], body: &[u8], cues: &[u8], naming: &dyn Naming) -> Result<u128> {
-    let vab = Bank::parse(header, body)?;
-    let (qualifier, label) = if number == 0 { (String::new(), archive.name.clone()) } else { (format!("@{}", number + 1), format!("{} bank {}", archive.name, number + 1)) };
-    let usable: Vec<Tone> = vab.usable_tones().copied().collect();
-    let tones = bank_tones(&vab, &usable);
+/// Where a bank sits in its archive, and the names its items derive from.
+struct BankAt<'a> {
+    archive: &'a Archive<'a>,
+    number: u32,
+    qualifier: &'a str,
+    label: &'a str,
+}
 
-    let mut bank = Item::new(Kind::Bank);
-    bank.id = format!("bank:{}{qualifier}", archive.name);
-    bank.name = label.clone();
-    if let Some(name) = naming.bank_name(archive.path) {
-        bank.name = if number == 0 { name.to_string() } else { format!("{name} bank {}", number + 1) };
-    }
-    bank.same_as = naming.bank_duplicate(&archive.name).map(String::from);
-    bank.family = archive.family.clone();
-    bank.path = archive.path.to_string();
-    bank.index = number;
-    bank.bank = number;
-    bank.playable = (1..vab.vags.len()).any(|i| tones.audible[i] && !vab.vags[i].is_empty());
-    let any_volume = usable.iter().any(|t| t.vol != 0);
-    let silent_note = if bank.playable {
-        ""
-    } else if any_volume {
-        " (silent: no tone reaches a non-empty sample)"
-    } else {
-        " (silent: every tone volume is 0)"
-    };
-    bank.detail = format!("audition: {} programs, {} tones, one at a time (the game keys one tone per sound){silent_note}", vab.program_count, vab.declared_tones);
-    items.push(bank);
-
-    // One sample item per non-empty VAG.
+/// One sample item per non-empty VAG.
+fn add_bank_samples(items: &mut Vec<Item>, at: &BankAt<'_>, vab: &Bank, tones: &BankTones, body: &[u8]) {
+    let BankAt { archive, number, qualifier, label } = *at;
     for vag in vab.vags.iter().filter(|v| !v.is_empty()) {
         let frames = vag.size / BLOCK_BYTES as u32 * BLOCK_SAMPLES as u32;
         let seconds = f64::from(frames) / f64::from(crate::format::VAB_SAMPLE_RATE);
@@ -651,8 +632,11 @@ fn add_bank(items: &mut Vec<Item>, archive: &Archive<'_>, number: u32, header: &
         sample.bank = number;
         items.push(sample);
     }
+}
 
-    // The archive's own cue list.
+/// One item per record of the archive's own cue list.
+fn add_bank_cues(items: &mut Vec<Item>, at: &BankAt<'_>, vab: &Bank, usable: &[Tone], tones: &BankTones, body: &[u8], cues: &[u8]) -> Result<()> {
+    let BankAt { archive, number, qualifier, label } = *at;
     for (i, cue) in BankCues::decode(cues).map_err(emi_format::error)?.records().iter().enumerate() {
         let raw = cue.encode();
         let mut item = Item::new(Kind::Bank);
@@ -689,6 +673,41 @@ fn add_bank(items: &mut Vec<Item>, archive: &Archive<'_>, number: u32, header: &
         }
         items.push(item);
     }
+    Ok(())
+}
+
+fn add_bank(items: &mut Vec<Item>, archive: &Archive<'_>, number: u32, header: &[u8], body: &[u8], cues: &[u8], naming: &dyn Naming) -> Result<u128> {
+    let vab = Bank::parse(header, body)?;
+    let (qualifier, label) = if number == 0 { (String::new(), archive.name.clone()) } else { (format!("@{}", number + 1), format!("{} bank {}", archive.name, number + 1)) };
+    let usable: Vec<Tone> = vab.usable_tones().copied().collect();
+    let tones = bank_tones(&vab, &usable);
+
+    let mut bank = Item::new(Kind::Bank);
+    bank.id = format!("bank:{}{qualifier}", archive.name);
+    bank.name = label.clone();
+    if let Some(name) = naming.bank_name(archive.path) {
+        bank.name = if number == 0 { name.to_string() } else { format!("{name} bank {}", number + 1) };
+    }
+    bank.same_as = naming.bank_duplicate(&archive.name).map(String::from);
+    bank.family = archive.family.clone();
+    bank.path = archive.path.to_string();
+    bank.index = number;
+    bank.bank = number;
+    bank.playable = (1..vab.vags.len()).any(|i| tones.audible[i] && !vab.vags[i].is_empty());
+    let any_volume = usable.iter().any(|t| t.vol != 0);
+    let silent_note = if bank.playable {
+        ""
+    } else if any_volume {
+        " (silent: no tone reaches a non-empty sample)"
+    } else {
+        " (silent: every tone volume is 0)"
+    };
+    bank.detail = format!("audition: {} programs, {} tones, one at a time (the game keys one tone per sound){silent_note}", vab.program_count, vab.declared_tones);
+    items.push(bank);
+
+    let at = BankAt { archive, number, qualifier: &qualifier, label: &label };
+    add_bank_samples(items, &at, &vab, &tones, body);
+    add_bank_cues(items, &at, &vab, &usable, &tones, body, cues)?;
     Ok(vab.program_mask())
 }
 
