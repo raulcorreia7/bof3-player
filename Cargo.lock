@@ -795,7 +795,6 @@ dependencies = [
  "gpui",
  "hound",
  "lewton",
- "psx-formats",
  "ratatui",
  "serde_json",
 ]
@@ -4982,7 +4981,6 @@ dependencies = [
  "flacenc",
  "psx-cd",
  "psx-formats",
- "tempfile",
  "vorbis_rs",
 ]
 
@@ -4993,7 +4991,6 @@ dependencies = [
  "cbindgen 0.29.4",
  "emi",
  "psx-formats",
- "tempfile",
 ]
 
 [[package]]
