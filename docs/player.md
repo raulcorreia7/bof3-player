@@ -7,13 +7,7 @@ Three tools read a *Breath of Fire III* disc image:
 - `bof3player-tui`: the terminal browser. It takes the shared switches and no command.
 - `bof3player-gui`: the window.
 
-Build all three from the repository root (the binaries end in `.exe` on Windows):
-
-```sh
-make build
-```
-
-`make build` links `bin/bof3player`, `bin/bof3player-tui` and `bin/bof3player-gui`.
+Build all three with `make build`; the binaries land in `bin/` (`.exe` on Windows).
 
 Every switch shows its default in `--help`, and each command has its own help, for example
 `bin/bof3player render --help`. The examples below run from the repository root.
@@ -48,8 +42,7 @@ bin/bof3player-gui -i "Breath of Fire III.cue"
 ```
 
 On Linux, gpui needs the Wayland or X11, xkbcommon, fontconfig and Vulkan development packages.
-The window takes the same switches as `bof3player`; `--help` lists them. `--names FILE` reads
-a [names file](#names-file). `--mute` starts with the sound off; click the speaker or press `M` to turn it on.
+The window takes the same switches as `bof3player`. `--mute` starts with the sound off; click the speaker or press `M` to turn it on.
 
 The window shows the disc or folder in use. When no game data opens, it says what failed, lists
 the places it tried and opens a chooser. Browse folders, then pick a `.cue` sheet, a disc image or
@@ -59,8 +52,8 @@ keys are the browser's keys ([Browser keys](#browser-keys)); `?` lists them in t
 
 ## Names file
 
-The repository ships [`data/bof3-names.json`](../data/README.md): soundtrack titles, place labels
-and duplicate marks, each with its source. `--names FILE` reads another file. Without the switch all
+[`data/bof3-names.json`](../data/README.md) holds soundtrack titles, place labels and duplicate
+marks, each with its source. `--names FILE` reads another file. Without the switch all
 three tools use the first of: `$BOF3_NAMES`, then `bof3-names.json`, `build/bof3-names.json` or
 `data/bof3-names.json` in the working directory and its parents, then in the executable's directory
 and its parents. With none found they show archive names. A copy of a track stays in the list under its own id and shows its plain title; the details and `list` show `same as ID`.

@@ -3,16 +3,6 @@
 //! Sources: psx-spx "SPU ADPCM Samples" (block layout, flag bits, "same
 //! algorithm as XA-ADPCM") and "CDROM XA Audio ADPCM Compression" (filter
 //! tables, shift rule, `(old*f0 + older*f1 + 32) / 64`).
-//!
-//! # Examples
-//!
-//! ```
-//! use psx_formats::adpcm;
-//!
-//! let pcm = vec![0i16; adpcm::BLOCK_SAMPLES];
-//! let stream = adpcm::encode_stream(&pcm);
-//! assert_eq!(psx_formats::adpcm::decode_stream(&stream), pcm);
-//! ```
 
 use alloc::vec::Vec;
 

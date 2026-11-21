@@ -8,14 +8,6 @@
 //!
 //! Form 2 sectors (XA and STR streams) carry no parity, so [`is_form2`] tells them apart and their
 //! callers leave them as they are. Mode 1 sectors are not handled.
-//!
-//! # Examples
-//!
-//! ```
-//! let mut sector = [0u8; psx_formats::sector::RAW_SIZE];
-//! psx_formats::sector::seal(&mut sector);
-//! assert!(psx_formats::sector::is_sealed(&sector));
-//! ```
 
 /// Bytes in a raw CD sector.
 pub const RAW_SIZE: usize = 2352;

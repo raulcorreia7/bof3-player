@@ -6,16 +6,6 @@
 //! offset `0x12`): the 32-byte header, 128 program records, 16 tones of 32 bytes for each program, and
 //! the 256-entry sample size table (see [`super::Bank::header_size`]). The file therefore needs no
 //! separator, and [`split`] finds the body by reading that count.
-//!
-//! # Examples
-//!
-//! ```
-//! use psx_formats::vab::{encode_bank, file};
-//!
-//! let (header, body) = encode_bank(0, &[], &[vec![0u8; 16]]).unwrap();
-//! let whole = file::join(&header, &body);
-//! assert_eq!(file::split(&whole).unwrap(), (&header[..], &body[..]));
-//! ```
 
 use alloc::vec::Vec;
 

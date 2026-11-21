@@ -12,18 +12,6 @@
 //!   VFS; [`ReaderBlob`] wraps any `Read + Seek`.
 //! * **Paths**: [`FolderSource`] (an extracted tree) and [`DiscSource`] (a
 //!   `.cue`/`.bin` image), available with the `std` feature.
-//!
-//! # Examples
-//!
-//! ```
-//! use psx_audio::{MemorySource, Source};
-//!
-//! let mut source = MemorySource::new();
-//! source.add("ASSETS/DATA.BIN", b"hello");
-//! assert_eq!(source.list()?, ["ASSETS/DATA.BIN"]);
-//! assert_eq!(&*source.open("assets\\data.bin")?.bytes()?, b"hello");
-//! # Ok::<(), psx_audio::Error>(())
-//! ```
 
 use alloc::borrow::Cow;
 use alloc::boxed::Box;

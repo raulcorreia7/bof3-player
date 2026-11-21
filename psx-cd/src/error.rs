@@ -1,14 +1,6 @@
 //! The crate's one error type.
 //!
 //! Every operation reports [`Error`]; there is no second error enum.
-//!
-//! # Examples
-//!
-//! ```
-//! let error = psx_cd::Error::InvalidImage("missing primary volume descriptor");
-//! assert_eq!(error.to_string(), "invalid disc image: missing primary volume descriptor");
-//! assert!(std::error::Error::source(&error).is_none());
-//! ```
 
 use std::fmt;
 

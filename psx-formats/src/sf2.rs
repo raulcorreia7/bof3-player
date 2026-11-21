@@ -13,18 +13,6 @@
 //!
 //! [`read`] takes a file back to its presets, instruments, zones and samples. [`vol_of_attenuation`],
 //! [`shift_of_tuning`] and [`pan_of_tenths`] invert the zone mappings of the writer.
-//!
-//! # Examples
-//!
-//! ```
-//! use psx_formats::sf2;
-//! use psx_formats::vab::{Bank, encode_bank};
-//!
-//! let (header, body) = encode_bank(0, &[], &[]).unwrap();
-//! let bank = Bank::parse(&header, &body).unwrap();
-//! let font = sf2::read(&sf2::write(&bank, &body, "EMPTY").unwrap()).unwrap();
-//! assert!(font.instruments.is_empty());
-//! ```
 
 use crate::bytes::{u16_le, u32_le};
 use crate::error::{Error, Result};

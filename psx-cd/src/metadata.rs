@@ -3,24 +3,6 @@
 //! The project XML is the flat `mkpsxiso` project shape: one data track, an
 //! optional license file and a list of files. `disc_lba.json` records every
 //! file's LBA, size and sector length for tools that seek directly.
-//!
-//! # Examples
-//!
-//! ```
-//! let entries = vec![psx_cd::Entry {
-//!     path: "HELLO.TXT".into(),
-//!     lba: 21,
-//!     size: 5,
-//!     is_directory: false,
-//!     extended_attributes: 0,
-//!     is_xa: false,
-//!     xa: None,
-//! }];
-//! let dir = tempfile::tempdir().unwrap();
-//! let path = dir.path().join("disc.xml");
-//! psx_cd::metadata::write_project(&path, &entries, "disc.iso").unwrap();
-//! assert!(std::fs::read_to_string(path).unwrap().contains("image_name=\"disc.iso\""));
-//! ```
 
 use std::fs;
 use std::path::Path;

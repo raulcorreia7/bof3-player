@@ -1,8 +1,7 @@
 # psx-machine
 
-A small PlayStation that runs game code from your own disc, records what the code tells the
-hardware, and draws the frames the game draws. The crate knows no game: it has an R3000A interpreter and its memory map, and no BIOS
-image.
+A PlayStation that runs game code from your own disc, records what the code tells the hardware, and
+draws the frames the game draws. It knows no game and needs no BIOS image.
 
 ```sh
 # from the repository root
@@ -28,29 +27,25 @@ Guide: [psx-machine](../docs/crates.md#psx-machine). The hardware sources are in
 | Kernel | stand-ins for the `A0`, `B0` and `C0` functions the game calls, exceptions, events, threads, pads, `Exec`  |
 
 The GPU log is the point of the crate. Each draw records its shape, vertices (before the drawing
-offset), colours, UVs, texture page, CLUT, depth, texture window, the drawing offset and the
-drawing area. Uploads record their rectangle and pixels; fills, copies, downloads and display
-commands are logged too.
+offset), colours, UVs, texture page, CLUT, depth, texture window, drawing offset and drawing area.
+Uploads record their rectangle and pixels; fills, copies, downloads and display commands are logged too.
 
-Uploads, fills and copies change VRAM, and so do draws: the GPU rasterizes every polygon, line
-and rectangle into VRAM on the CPU, so VRAM after a frame holds what the console's GPU would
-hold. `Machine::set_rasterize(false)` (or `Gpu::set_rasterize`) turns that off for a run that
-only reads the log; the log is the same either way. `Machine::display` returns the picture the
-GPU shows as RGBA: the display area of VRAM from `GP1(05h)`, as wide as psx-spx computes from
-the `GP1(06h)` range and the dotclock, as tall as the `GP1(07h)` range (twice that in 480-line
-interlace, both fields woven), in 15- or 24-bit colour, black while `GP1(03h)` has the display
-off. Where the range places the picture on a television, and its border, are not part of the
-frame.
+The GPU rasterizes every polygon, line and rectangle into VRAM on the CPU, so VRAM after a frame
+holds what the console's GPU would hold. `Machine::set_rasterize(false)` (or `Gpu::set_rasterize`)
+turns that off for a run that only reads the log; the log is the same either way.
+`Machine::display` returns the picture the GPU shows as RGBA: the display area of VRAM from
+`GP1(05h)`, as wide as psx-spx computes from the `GP1(06h)` range and the dotclock, as tall as the
+`GP1(07h)` range (twice that in 480-line interlace, both fields woven), in 15- or 24-bit colour,
+black while `GP1(03h)` has the display off. The television border and picture position are not part
+of the frame.
 
-The CPU frame is the contract. Nothing in this crate presents it: a front end uploads the RGBA
-frame (or VRAM) as a texture each frame, through OpenGL ES (preferred), OpenGL or Vulkan, behind
-its own cargo feature, so the log, VRAM readback, the frame, headless tests and CI never need a
-GPU.
+Nothing in this crate presents the frame. A front end uploads the RGBA frame (or VRAM) as a texture
+through OpenGL ES, OpenGL or Vulkan, behind its own cargo feature, so the log, VRAM readback, the
+frame, headless tests and CI need no GPU.
 
 The SPU log records each key-on with the voice's start address, loop address, pitch, ADSR and
-volume, the fields `psx_audio::spu::VoiceSetup` takes; together with `Spu::ram` it is enough to
-render the sounds with `psx-audio`. The machine itself mixes no audio, and CD-DA and XA sectors are
-counted, not played.
+volume, the fields `psx_audio::spu::VoiceSetup` takes; with `Spu::ram` it is enough to render the
+sounds with `psx-audio`. The machine mixes no audio; CD-DA and XA sectors are counted, not played.
 
 Unmapped reads return 0 and unmapped writes are dropped; the machine raises no bus errors. A DMA
 transfer runs to its end the moment it starts; MDEC output waits until the decoder holds the whole
@@ -64,25 +59,21 @@ machine) run it; a `Halt` names what stopped it, such as a kernel function with 
 `gpu_log`, `vram`, `display`, `ram`, `key_ons` and `kernel().tty` read the results.
 `Machine::new` gives a bare machine with no kernel, for tests on synthetic programs.
 
-With `BOF3_DISC_DIR` naming a *Breath of Fire III* (USA) image, `cargo build --release -p
-psx-machine --example boot`, then `target/release/examples/boot 600`, prints the frames run, GPU command counts and the VRAM
-rectangles written. `tests/retail.rs` checks that the game's first 32×32 texture upload equals
-the type-3 EMI entry it came from, and plays a new game with scripted buttons: Start through the
-title screen and the opening, then Cross every second. The game loads the first area
-(`WORLD00/AREA024`), fights the first boss battle (`BOSS/BOSS001`) and is back in the field at
-frame 8054, where it waits for the player to walk. The run is deterministic, so the same buttons
-give the same frames. The tty shows one `VSync: timeout`, at frame 481 just after
-the logo returns: `VSync` gives its wait for the next vertical blank 32768 polls, about one frame
-at the machine's flat two cycles per instruction, and the run carries on.
-
-`tests/retail.rs` also renders the first area once the scripted game is back in it, on two runs
-at once, and checks that the displayed frame has more than 64 colours and is the same on both
-runs; it writes the frame to `target/tmp/retail/first-area.png` to look at, and commits nothing.
+With `BOF3_DISC_DIR` naming a *Breath of Fire III* (USA) image, `cargo run --release -p psx-machine
+--example boot 600` prints the frames run, GPU command counts and the VRAM rectangles written.
+`tests/retail.rs` checks that the game's first 32×32 texture upload equals the type-3 EMI entry it
+came from, and plays a new game with scripted buttons (Start through the title screen and the
+opening, then Cross every second). The run is deterministic: the game loads the first area
+(`WORLD00/AREA024`), fights the first boss (`BOSS/BOSS001`) and is back in the field at frame 8054.
+The tty shows one `VSync: timeout` at frame 481: `VSync` waits 32768 polls for the next vertical
+blank, about one frame at the machine's flat two cycles per instruction, and the run carries on.
+The test also renders the first area on two runs at once, checks that the frame has more than 64
+colours and is the same on both, and writes it to `target/tmp/retail/first-area.png`.
 
 `PS1_TESTS_DIR`, naming an unpacked release of the MIT-licensed
-[ps1-tests](https://github.com/JaCzekanski/ps1-tests) suite, turns on `tests/ps1_tests.rs`, which
-runs the suite's self-checking DMA, GTE and GPU programs and compares the VRAM that its GPU
-programs draw with the `vram.png` dump each ships, taken from a console.
+[ps1-tests](https://github.com/JaCzekanski/ps1-tests) suite, turns on `tests/ps1_tests.rs`. It runs
+the suite's self-checking DMA, GTE and GPU programs and compares the VRAM its GPU programs draw with
+the `vram.png` dump each ships, taken from a console.
 
 ## Rasterizer
 
@@ -132,32 +123,24 @@ table of tables at 0x100, thread control blocks), because PsyQ library code read
 game's thread scheduler presets `SR` in the control blocks. Fetches from kernel RAM are traps the
 machine handles; a fetch it has no routine for stops the run with `Halt::KernelPc`.
 
-## The CD drive is hardware, not the libcd boundary
+## The CD drive is hardware
 
-The plan was to serve the disc at the libcd call boundary. The game's code argued against it:
-
-- the EMI loader reads through `CdControl(CdlReadN)` with a ready callback that pulls each sector
-  with `CdGetSector`, not through `CdRead`;
-- the logo program streams its movie through `StCdInterrupt`, which moves sectors with its own DMA
-  calls (`dma_execute`) below the public functions;
-- the logo program links its own copy of libcd at other addresses, so a symbol map per executable
-  would be needed.
-
-So the machine models the controller instead: its ports, the commands libcd sends, the response
-and interrupt order, and sector reads at single or double speed. It needs no game addresses and no
-symbol map, and both executables boot through it unchanged.
+The machine models the controller (ports, the commands libcd sends, response and interrupt order,
+sector reads at single or double speed) and not the libcd call boundary. The EMI loader reads through
+`CdControl(CdlReadN)` and `CdGetSector`, and the logo program links its own libcd at other
+addresses and moves movie sectors with `dma_execute`. Controller modelling needs no game addresses
+or symbol map, and both executables boot unchanged.
 
 ## Why the crate writes its own core
 
-The machine needs hooks no packaged emulator offers: a bus that records GPU and SPU traffic, and
-a BIOS replaced by stubs. These were checked first (November 2026):
+No packaged emulator offers a bus that records GPU and SPU traffic and a BIOS replaced by stubs
+(checked November 2026):
 
-| Candidate                | Licence | Why it is not used                                                                                                 |
-| ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------ |
-| `trapezoid-core` 0.3.0   | MIT     | The bus trait and the GTE are in private modules, so another crate cannot plug in its own bus; `Psx::new` requires a BIOS file. |
-| `trapezoid-core` GTE     | MIT (Amjad Alsharafi) | Considered on its own for the GTE. Its history records that the author consulted DuckStation's (GPL) code for the RTPS/RTPT flag behaviour (upstream commit 72d2d2d), so the GTE is written here from psx-spx instead. |
-| `rsemu` 0.0.8            | MIT     | Needs Rust 1.91 (the workspace supports 1.88); a pre-1.0 framework with no GTE and no PlayStation board.             |
-| `playastation` 0.1.0     | WTFPL   | Not on the `cargo deny` licence list.                                                                              |
-| rustation, Mednafen/Beetle, PCSX-Redux, Avocado, DuckStation | GPL, unclear or non-commercial | Not MIT-compatible; nothing was copied from them. |
+| Candidate | Licence | Why it is not used |
+| --------- | ------- | ------------------ |
+| `trapezoid-core` 0.3.0 | MIT | Bus trait and GTE are private; `Psx::new` requires a BIOS file. Its GTE author consulted DuckStation's GPL code (upstream commit 72d2d2d), so the GTE is written here from psx-spx. |
+| `rsemu` 0.0.8 | MIT | Needs Rust 1.91 (the workspace supports 1.88); no GTE, no PlayStation board. |
+| `playastation` 0.1.0 | WTFPL | Not on the `cargo deny` licence list. |
+| rustation, Mednafen/Beetle, PCSX-Redux, Avocado, DuckStation | GPL, unclear or non-commercial | Not MIT-compatible; nothing was copied. |
 
 > A fan project, not affiliated with or endorsed by Capcom. *Breath of Fire* is Capcom's trademark. No game data is included; bring your own disc.

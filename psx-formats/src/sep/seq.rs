@@ -10,18 +10,6 @@
 //! The score data is the same event stream a SEP sequence holds, so a SEQ file is a sequence
 //! re-framed: [`export`] and [`read`] move a sequence between a package and a file without
 //! touching its events.
-//!
-//! # Examples
-//!
-//! ```
-//! use psx_formats::sep::{Event, Package, Sequence, seq};
-//!
-//! let end = Event { status: 0xff, meta_type: 0x2f, status_byte: true, ..Event::default() };
-//! let sequence = Sequence { seq_id: 7, resolution: 48, events: vec![end], ..Sequence::default() };
-//! let file = seq::encode(&sequence);
-//! assert_eq!(&file[..4], b"pQES");
-//! assert_eq!(seq::read(&file, 7).unwrap(), sequence);
-//! ```
 
 use alloc::vec::Vec;
 

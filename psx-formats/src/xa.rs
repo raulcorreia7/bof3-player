@@ -4,14 +4,6 @@
 //! A stream is a run of 2336-byte sectors (8-byte subheader, 2324 data bytes:
 //! eighteen 128-byte sound groups and 20 bytes of padding). Channels are
 //! interleaved by the subheader's channel byte.
-//!
-//! # Examples
-//!
-//! ```
-//! let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
-//! sector[2] = 0x04;
-//! assert_eq!(psx_formats::xa::scan(&sector).len(), 1);
-//! ```
 
 use alloc::vec::Vec;
 

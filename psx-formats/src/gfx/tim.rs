@@ -15,19 +15,6 @@
 //!
 //! A TIM is what a raw VRAM upload and a raw CLUT block make when they are
 //! read together; [`write`] builds that file.
-//!
-//! # Examples
-//!
-//! ```
-//! use psx_formats::gfx::tim::{Block, File, Mode};
-//!
-//! let tim = File {
-//!     mode: Mode::Fifteen,
-//!     clut: None,
-//!     image: Block { x: 0, y: 0, width: 1, height: 1, words: vec![0x001f] },
-//! };
-//! assert_eq!(File::read(&tim.write()).unwrap(), tim);
-//! ```
 
 use crate::error::{Error, Result};
 

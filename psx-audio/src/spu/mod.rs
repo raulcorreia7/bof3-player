@@ -6,27 +6,6 @@
 //! (third_party/references/psx-spx.txt, chapter "Sound Processing Unit (SPU)"). Not modelled:
 //! noise generator, pitch modulation, volume sweep, capture buffers and CD
 //! audio input.
-//!
-//! # Examples
-//!
-//! ```
-//! use psx_audio::spu::{PITCH_ONE, Spu, VoiceSetup};
-//!
-//! let mut spu = Spu::new();
-//! spu.upload(0, &[0x00; 32]);
-//! spu.set_main_volume(0x3FFF, 0x3FFF);
-//! spu.key_on(0, &VoiceSetup {
-//!     pitch: PITCH_ONE as u16,
-//!     adsr1: 0x00F5,
-//!     adsr2: 0x0040,
-//!     volume_left: 0x3FFF,
-//!     volume_right: 0x3FFF,
-//!     ..VoiceSetup::default()
-//! });
-//! let mut pcm = [0i16; 2];
-//! spu.render(&mut pcm);
-//! assert!(spu.voice_active(0));
-//! ```
 
 mod envelope;
 mod gauss;

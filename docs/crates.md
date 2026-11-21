@@ -83,10 +83,9 @@ sector 16.
 
 ## psx-machine
 
-A PlayStation machine that runs a game's own code and records what it tells the GPU and the SPU,
-so a tool can show textures, sprites, sounds and whole frames as the game uses them instead of
-from a per-asset table. It has an R3000A interpreter, the memory map and the devices below the PsyQ libraries; it
-needs no BIOS image.
+Runs a game's own code and records what it tells the GPU and the SPU, so a tool can show
+textures, sprites, sounds and whole frames as the game uses them. It needs no BIOS image. The
+[crate README](../psx-machine/README.md) has the model, the run API and the design choices.
 
 | Module    | Contents                                                                  |
 | --------- | ------------------------------------------------------------------------- |
@@ -115,12 +114,6 @@ needs no BIOS image.
 | MDEC | psx-spx "MDEC I/O Ports", "MDEC Commands", "MDEC Decompression"   |
 | SPU  | psx-spx "SPU Voice Registers", "SPU Control and Status Register", "SPU Memory Access" |
 | Kernel | psx-spx "BIOS Function Summary", "BIOS Interrupt/Exception Handling", "BIOS Memory Map", "BIOS Patches" |
-
-`Machine::boot_image` boots a disc image; the run API reads back the GPU log, VRAM, the displayed
-frame (`Machine::display`), RAM and the SPU key-on log. Draws are rasterized into VRAM on the CPU
-unless `Machine::set_rasterize(false)` turns it off; showing the frame on screen is a front end's
-job, which uploads it as a texture. The crate README says why it writes its own core instead of depending on an
-emulator crate, and why the CD drive is modelled as hardware.
 
 ## psx-formats
 
