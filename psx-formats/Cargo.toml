@@ -6,7 +6,6 @@ rust-version.workspace = true
 description = "PlayStation formats: SPU and XA ADPCM, VAB sound banks, SEP sequences, Mode 2 sectors, WAVE, VRAM uploads, CLUTs and TIM images"
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 readme = "README.md"
 keywords = ["playstation", "psx", "adpcm", "vab", "tim"]
 categories = ["multimedia::audio", "multimedia::images", "parser-implementations", "no-std"]
