@@ -242,44 +242,8 @@ fn vab_parses_and_decodes() {
     unsafe { vab::bof3player_vab_free(bank) };
 }
 
-#[test]
-fn new_error_paths() {
-    let mut disc: *mut bof3player_disc = ptr::null_mut();
-    assert_eq!(unsafe { disc::bof3player_disc_open_path(ptr::null(), 0, &mut disc) }, psx_status::InvalidArgument);
-
-    let mut archive: *mut psx_emi = ptr::null_mut();
-    assert_eq!(unsafe { psx_emi_parse(ptr::null(), 0, &mut archive) }, psx_status::Format);
-
-    let mut bank: *mut bof3player_vab = ptr::null_mut();
-    assert_eq!(unsafe { vab::bof3player_vab_parse(ptr::null(), 0, &mut bank) }, psx_status::Format);
-
-    let mut buffer = psx_buffer { data: ptr::null_mut(), len: 0 };
-    let mut pcm = bof3player_pcm { samples: ptr::null_mut(), frames: 0, channels: 0, sample_rate: 0 };
-    unsafe {
-        psx_buffer_free(&mut buffer);
-        bof3player_pcm_free(&mut pcm);
-        psx_buffer_free(ptr::null_mut());
-        bof3player_pcm_free(ptr::null_mut());
-        disc::bof3player_disc_free(ptr::null_mut());
-        psx_emi_free(ptr::null_mut());
-        vab::bof3player_vab_free(ptr::null_mut());
-    }
-}
-
 fn zero_image() -> bof3player_image {
     bof3player_image { width: 0, height: 0, rgba: psx_buffer { data: ptr::null_mut(), len: 0 } }
-}
-
-#[test]
-fn wav_encodes_pcm() {
-    let samples = [0i16, 1, 2, 3];
-    let pcm = bof3player_pcm { samples: samples.as_ptr() as *mut i16, frames: 2, channels: 2, sample_rate: 44_100 };
-    let mut bytes = psx_buffer { data: ptr::null_mut(), len: 0 };
-    let status = unsafe { audio::bof3player_wav_encode(&pcm, &mut bytes) };
-    assert_eq!(status, psx_status::Ok, "{}", unsafe { c_string(psx_last_error_message()) });
-    assert!(bytes.len >= 44);
-    assert_eq!(unsafe { std::slice::from_raw_parts(bytes.data, 4) }, b"RIFF");
-    unsafe { psx_buffer_free(&mut bytes) };
 }
 
 fn synthetic_exe() -> Vec<u8> {

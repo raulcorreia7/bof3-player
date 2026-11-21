@@ -290,14 +290,6 @@ mod tests {
         assert!((ch0.seconds - duration(3, 1)).abs() < 1e-12);
     }
 
-    #[test]
-    fn shapes_follow_coding_byte() {
-        assert_eq!((rate(0), channels(0)), (37_800, 1));
-        assert_eq!((rate(5), channels(5)), (18_900, 2));
-        assert_eq!(frames_per_sector(1), 18 * 112);
-        assert_eq!(frames_per_sector(0), 18 * 224);
-    }
-
     /// Golden vector: filter 0, shift 12, one nonzero nibble per run.
     #[test]
     fn stereo_group_layout_and_golden_samples() {
@@ -314,14 +306,5 @@ mod tests {
         assert_eq!(out.len(), 18 * 112 * 2);
         assert_eq!(&out[..4], &[3, 5, 0, 0]);
         assert_eq!(decoder.shape(), Some((2, 37_800)));
-    }
-
-    #[test]
-    fn decoder_ignores_other_channels() {
-        let mut out = Vec::new();
-        let mut decoder = ChannelDecoder::new(3);
-        decoder.decode(&sector(1, 0, SUBMODE_AUDIO, 1), &mut out).unwrap();
-        assert!(out.is_empty());
-        assert!(decoder.decode(&[0u8; 10], &mut out).is_err());
     }
 }

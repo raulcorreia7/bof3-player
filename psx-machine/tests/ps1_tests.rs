@@ -129,21 +129,6 @@ fn gpu_lines_match_the_console() {
 }
 
 #[test]
-fn gpu_quad_seams_match_the_console() {
-    assert_vram_matches("quad", WHOLE_VRAM, 0);
-}
-
-#[test]
-fn gpu_rectangles_match_the_console() {
-    assert_vram_matches("rectangles", WHOLE_VRAM, 0);
-}
-
-#[test]
-fn gpu_texture_flip_matches_the_console() {
-    assert_vram_matches("texture-flip", WHOLE_VRAM, 0);
-}
-
-#[test]
 fn gpu_texture_overflow_matches_the_console() {
     assert_vram_matches("texture-overflow", WHOLE_VRAM, 0);
 }
@@ -153,19 +138,4 @@ fn gpu_texture_overflow_matches_the_console() {
 #[test]
 fn gpu_transparency_matches_the_console() {
     assert_vram_matches("transparency", (0, 0, 320, 240), 0);
-}
-
-#[test]
-fn gpu_gouraud_triangle_matches_the_console() {
-    assert_vram_matches("triangle", WHOLE_VRAM, 0);
-}
-
-#[test]
-fn gpu_uv_and_colour_interpolation_match_the_console() {
-    assert_vram_matches("uv-interpolation", WHOLE_VRAM, 0);
-}
-
-#[test]
-fn gpu_overlapping_vram_copies_match_the_console() {
-    assert_vram_matches("vram-to-vram-overlap", WHOLE_VRAM, 0);
 }

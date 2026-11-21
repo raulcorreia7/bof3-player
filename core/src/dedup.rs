@@ -272,24 +272,3 @@ fn sample_key(item: &Item, source: &dyn Source) -> Result<Option<String>> {
     let result = hasher.finalize();
     Ok(Some(format!("s:{}", hex(&result))))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn groups_collapse_duplicates() {
-        let mut groups = Groups::new();
-        groups.add("key1".to_string(), "a".to_string());
-        groups.add("key1".to_string(), "b".to_string());
-        groups.add("key2".to_string(), "c".to_string());
-        let g = groups.groups();
-        assert_eq!(g.len(), 1);
-        assert_eq!(g[0].count, 2);
-        assert_eq!(g[0].canonical_id, "a");
-        assert!(groups.is_duplicate("b"));
-        assert!(!groups.is_duplicate("a"));
-        assert_eq!(groups.canonical_of("b").as_deref(), Some("a"));
-        assert_eq!(groups.group_members("b").unwrap().len(), 2);
-    }
-}

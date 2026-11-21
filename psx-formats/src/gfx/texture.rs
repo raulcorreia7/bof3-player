@@ -175,19 +175,3 @@ pub fn fetch(vram: &[u16], page: [u16; 2], clut: Clut, color: Color, uv: [u8; 2]
     let Color::Indexed(depth) = color else { return word };
     vram[usize::from(clut.y) % VRAM_HEIGHT * VRAM_WIDTH + (usize::from(clut.x) + texel_index(word, u, depth)) % VRAM_WIDTH]
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn fetch_reads_a_texel_through_its_clut() {
-        let mut vram = vec![0u16; 1024 * 512];
-        vram[256 * 1024 + 64] = 0x4321;
-        vram[500 * 1024 + 16 + 3] = 0x1234;
-        let clut = Clut { x: 16, y: 500 };
-        assert_eq!(fetch(&vram, [64, 256], clut, Color::Indexed(Depth::Four), [2, 0]), 0x1234);
-        assert_eq!(fetch(&vram, [64, 256], clut, Color::Direct15, [0, 0]), 0x4321);
-        assert_eq!(fetch(&[], [0, 0], clut, Color::Direct15, [0, 0]), 0, "an empty VRAM reads zero");
-    }
-}

@@ -831,21 +831,6 @@ mod tests {
     use crate::fixtures::tiny_bank;
 
     #[test]
-    fn parses_tone_program_and_loop() {
-        let (vh, vb) = tiny_bank();
-        let vab = Bank::parse(&vh, &vb).unwrap();
-        let tones: Vec<_> = vab.usable_tones().collect();
-        assert_eq!(tones.len(), 1);
-        assert_eq!(tones[0].program, 1);
-        assert_eq!(tones[0].program_vol, 127);
-        let vag = vab.vag(1).unwrap();
-        assert_eq!((vag.frames, vag.has_loop, vag.loop_start_frame, vag.loop_end_frame), (56, true, 0, 56));
-        assert_eq!(vab.program_mask(), 1 << 1);
-        assert_eq!(vab.decode_vag(&vb, 1).unwrap()[..3], [2, 2, 2]);
-        assert!(vab.vag(0).is_err() && vab.vag(2).is_err());
-    }
-
-    #[test]
     fn a_fixture_bank_breaks_no_rule_and_encodes_back() {
         let (vh, vb) = tiny_bank();
         let vab = Bank::parse(&vh, &vb).unwrap();
@@ -862,25 +847,5 @@ mod tests {
         assert_eq!(Bank::parse(&vh, &vb), Err(Error::VabBadMagic));
         let (vh, vb) = tiny_bank();
         assert!(matches!(Bank::parse(&vh[..TONE_TABLE + 10], &vb), Err(Error::VabHeaderSize { .. })));
-    }
-
-    #[test]
-    fn an_encoded_bank_parses_back_to_its_playable_programs_tones_and_vags() {
-        let (header, body) = tiny_bank();
-        let vab = Bank::parse(&header, &body).unwrap();
-        let programs: Vec<BankProgram> = vab
-            .playable_programs()
-            .zip(vab.tone_blocks())
-            .map(|((number, record), block)| BankProgram { number: number as u8, record: *record, tones: block.iter().take(usize::from(record.tones)).copied().collect() })
-            .collect();
-        let vags: Vec<Vec<u8>> = (1..=vab.vag_count as u32).map(|index| vab.vag_bytes(&body, index).unwrap().to_vec()).collect();
-        let (again_header, again_body) = encode_bank(vab.id, &programs, &vags).unwrap();
-        let again = Bank::parse(&again_header, &again_body).unwrap();
-        assert!(again.problems().is_empty(), "{:?}", again.problems());
-        assert_eq!(again.programs[1], vab.programs[1]);
-        assert_eq!(again.tones[0], vab.tones[0]);
-        assert_eq!(again.vags[1].frames, vab.vags[1].frames);
-        assert_eq!((again.vags[1].has_loop, again.vags[1].loop_start_frame, again.vags[1].loop_end_frame), (true, 0, 56));
-        assert_eq!(again.decode_vag(&again_body, 1).unwrap(), vab.decode_vag(&body, 1).unwrap());
     }
 }

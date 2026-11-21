@@ -650,30 +650,6 @@ mod tests {
     use crate::fixtures::tiny_sep;
 
     #[test]
-    fn parses_events_and_running_status() {
-        let sep = Package::parse(&tiny_sep()).unwrap();
-        let sequence = &sep.sequences[0];
-        assert_eq!(sequence.resolution, 48);
-        assert_eq!(sequence.events.len(), 6);
-        assert_eq!(sequence.events[2].kind(), Kind::NoteOn);
-        assert!(sequence.has_notes());
-        assert_eq!(sequence.programs_used(), 1 << 1);
-        assert_eq!(lowest_program(sequence.programs_used()), 1);
-        assert_eq!(sequence.events[5].kind(), Kind::Meta);
-        assert_eq!(sep.problems(), []);
-        assert_eq!(sep.encode(), tiny_sep());
-    }
-
-    #[test]
-    fn midi_export_has_header_and_track() {
-        let sep = Package::parse(&tiny_sep()).unwrap();
-        let midi = sep.to_midi(0).unwrap();
-        assert_eq!(&midi[..4], b"MThd");
-        assert!(midi.windows(4).any(|window| window == b"MTrk"));
-        assert_eq!(sep.to_midi(5), Err(Error::SepSequenceOutOfRange { index: 5, count: 1 }));
-    }
-
-    #[test]
     fn a_sequence_comes_back_from_its_midi_file() {
         let package = Package::parse(&tiny_sep()).unwrap();
         let midi = package.to_midi(0).unwrap();

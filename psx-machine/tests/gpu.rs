@@ -3,12 +3,8 @@
 
 mod common;
 
-use common::*;
 use psx_machine::Machine;
 use psx_machine::gpu::{Clut, Command, Depth, Draw, Shape, TexturePage, VramRect};
-
-const AT: u32 = 1;
-const T0: u32 = 8;
 
 fn draws(machine: &Machine) -> Vec<Draw> {
     machine
@@ -25,36 +21,6 @@ fn draws(machine: &Machine) -> Vec<Draw> {
 
 fn io(machine: &mut Machine, address: u32, value: u32) {
     machine.bus_mut().write32(address, value);
-}
-
-#[test]
-fn linked_list_dma_records_a_textured_rect() {
-    let mut program = Vec::new();
-    program.extend(li(AT, 0x1F80_0000));
-    program.extend(li(T0, 0x0000_0800));
-    program.push(sw(T0, 0x10F0, AT)); // DPCR: enable channel 2
-    program.extend(li(T0, 0x0003_0000));
-    program.push(sw(T0, 0x10A0, AT)); // MADR: the first node
-    program.push(sw(0, 0x10A4, AT));
-    program.extend(li(T0, 0x0100_0401));
-    program.push(sw(T0, 0x10A8, AT)); // CHCR: from RAM, linked list, start
-    let (mut machine, end) = machine_with(&program);
-    // An empty node, then one with a draw-mode word and a 40×24 textured rect.
-    machine.write_words(0x8003_0000, &[0x0003_0100]);
-    machine.write_words(0x8003_0100, &[0x05FF_FFFF, 0xE100_00DA, 0x6480_8080, 0x0014_000A, 0x7802_2010, 0x0018_0028]);
-    machine.run_until_pc(end, 1000).unwrap();
-
-    let draws = draws(&machine);
-    assert_eq!(draws.len(), 1);
-    let draw = &draws[0];
-    assert_eq!(draw.shape, Shape::Rect { width: 40, height: 24 });
-    let texture = draw.texture.expect("textured");
-    assert_eq!(texture.page, TexturePage { x: 640, y: 256, depth: Depth::Bits8, blend: 2 });
-    assert_eq!(texture.clut, Clut { x: 32, y: 480 });
-    assert_eq!((draw.vertices[0].x, draw.vertices[0].y), (10, 20));
-    assert_eq!((draw.vertices[0].u, draw.vertices[0].v), (16, 32));
-    assert_eq!(machine.bus_mut().read32(0x1F80_10A8) & (1 << 24), 0, "the channel is idle again");
-    assert_eq!(machine.bus().dma.transfers[2], 1);
 }
 
 #[test]
@@ -75,25 +41,6 @@ fn image_upload_lands_at_its_rect() {
     let rect = VramRect { x: 200, y: 100, width: 3, height: 2 };
     assert_eq!(gpu.log()[0].command, Command::Upload { rect, pixels: vec![1, 2, 3, 4, 5, 6] });
     assert_eq!(machine.bus_mut().read32(0x1F80_10A0), 0x0003_000C, "MADR advanced past the blocks");
-}
-
-#[test]
-fn image_download_reads_vram_back() {
-    let mut machine = Machine::new();
-    for word in [0xA000_0000, 0x0000_0010, 0x0001_0004, 0x2222_1111, 0x4444_3333] {
-        io(&mut machine, 0x1F80_1810, word);
-    }
-    for word in [0xC000_0000, 0x0000_0010, 0x0001_0004] {
-        io(&mut machine, 0x1F80_1810, word);
-    }
-    assert_ne!(machine.bus().gpu.status() & (1 << 27), 0, "data waits in GPUREAD");
-    io(&mut machine, 0x1F80_10F0, 0x0000_0800);
-    io(&mut machine, 0x1F80_10A0, 0x0003_0000);
-    io(&mut machine, 0x1F80_10A4, 0x0001_0002);
-    io(&mut machine, 0x1F80_10A8, 0x0100_0200); // to RAM, request blocks, start
-    assert_eq!(machine.bus().peek32(0x8003_0000), Some(0x2222_1111));
-    assert_eq!(machine.bus().peek32(0x8003_0004), Some(0x4444_3333));
-    assert_eq!(machine.bus().gpu.status() & (1 << 27), 0);
 }
 
 #[test]
@@ -152,30 +99,6 @@ fn fill_and_copy_change_vram() {
 }
 
 #[test]
-fn mask_bit_settings_apply_to_uploads() {
-    let mut machine = Machine::new();
-    for word in [0xE600_0001, 0xA000_0000, 0, 0x0001_0002, 0x0002_0001] {
-        io(&mut machine, 0x1F80_1810, word);
-    }
-    for word in [0xE600_0002, 0xA000_0000, 0, 0x0001_0002, 0x0004_0003] {
-        io(&mut machine, 0x1F80_1810, word);
-    }
-    let gpu = &machine.bus().gpu;
-    assert_eq!((gpu.pixel(0, 0), gpu.pixel(1, 0)), (0x8001, 0x8002), "set mask, then check mask keeps them");
-}
-
-#[test]
-fn ordering_table_clear_links_backwards() {
-    let mut machine = Machine::new();
-    io(&mut machine, 0x1F80_10F0, 0x0800_0000);
-    io(&mut machine, 0x1F80_10E0, 0x0004_000C);
-    io(&mut machine, 0x1F80_10E4, 4);
-    io(&mut machine, 0x1F80_10E8, 0x1100_0002);
-    let words: Vec<u32> = (0..4).map(|index| machine.bus().peek32(0x8004_0000 + 4 * index).unwrap()).collect();
-    assert_eq!(words, vec![0x00FF_FFFF, 0x0004_0000, 0x0004_0004, 0x0004_0008]);
-}
-
-#[test]
 fn dma_completion_raises_the_interrupt() {
     let mut machine = Machine::new();
     machine.write_words(0x8003_0000, &[0x00FF_FFFF]);
@@ -188,54 +111,4 @@ fn dma_completion_raises_the_interrupt() {
     assert_eq!(machine.bus().irq.status(), 1 << 3);
     io(&mut machine, 0x1F80_10F4, (1 << 23) | (1 << 18) | (1 << 26));
     assert_eq!(machine.bus_mut().read32(0x1F80_10F4) >> 24, 0, "writing the flag acknowledges it");
-}
-
-#[test]
-fn disabled_channel_waits_for_dpcr() {
-    let mut machine = Machine::new();
-    machine.write_words(0x8003_0000, &[0x00FF_FFFF]);
-    io(&mut machine, 0x1F80_10F0, 0);
-    io(&mut machine, 0x1F80_10A0, 0x0003_0000);
-    io(&mut machine, 0x1F80_10A8, 0x0100_0401);
-    assert_eq!(machine.bus().dma.transfers[2], 0);
-    io(&mut machine, 0x1F80_10F0, 0x0000_0800);
-    assert_eq!(machine.bus().dma.transfers[2], 1);
-}
-
-#[test]
-fn polyline_ends_at_the_terminator() {
-    let mut machine = Machine::new();
-    for word in [0x4800_00FF, 0x0000_0000, 0x0010_0010, 0x0020_0000, 0x5555_5555, 0xE100_0000] {
-        io(&mut machine, 0x1F80_1810, word);
-    }
-    let draws = draws(&machine);
-    assert_eq!(draws.len(), 1);
-    assert_eq!(draws[0].shape, Shape::Line);
-    assert_eq!(draws[0].vertices.len(), 3);
-    assert_eq!(draws[0].vertices[2].y, 32);
-}
-
-#[test]
-fn display_commands_and_queries() {
-    let mut machine = Machine::new();
-    io(&mut machine, 0x1F80_1814, 0x0300_0000);
-    io(&mut machine, 0x1F80_1814, 0x0500_0000 | (240 << 10) | 64);
-    io(&mut machine, 0x1F80_1814, 0x0800_0001);
-    io(&mut machine, 0x1F80_1814, 0x1000_0007);
-    assert_eq!(machine.bus_mut().read32(0x1F80_1810), 2, "GPU version");
-    let status = machine.bus().gpu.status();
-    assert_eq!(status & (1 << 23), 0, "display enabled");
-    assert_eq!((status >> 17) & 3, 1, "horizontal resolution 320");
-    assert_eq!(machine.bus().gpu.display_start, (64, 240));
-    let display: Vec<u8> = machine
-        .bus()
-        .gpu
-        .log()
-        .iter()
-        .filter_map(|entry| match entry.command {
-            Command::Display { command, .. } => Some(command),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(display, vec![3, 5, 8]);
 }

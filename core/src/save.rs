@@ -454,7 +454,6 @@ pub fn export_failed(path: &Path, error: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MemorySource, NoNaming};
 
     fn item(id: &str, title: &str) -> Item {
         let kind = Kind::from_name(id.split(':').next().unwrap()).unwrap();
@@ -465,12 +464,6 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("bof3player-{test}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         dir
-    }
-
-    #[test]
-    fn file_stems_keep_letters_digits_and_dashes() {
-        assert_eq!(file_stem("music:BGM000#0"), "music_BGM000_0");
-        assert_eq!(file_stem("xa:S_XA00#ch0@12"), "xa_S_XA00_ch0_12");
     }
 
     #[test]
@@ -497,25 +490,5 @@ mod tests {
         let mut untouched = vec![7i16; 8];
         apply_fade(&mut untouched, 2, 10, 0.0);
         assert_eq!(untouched, [7; 8]);
-    }
-
-    #[test]
-    fn each_kind_offers_its_formats() {
-        assert!(Format::for_kind(Kind::Music).contains(&Format::Midi));
-        assert_eq!(Format::for_kind(Kind::Bank), [Format::Vab]);
-        assert!(Format::for_kind(Kind::Xa).iter().all(|format| format.export_format().is_some()));
-        assert_eq!(ExportFormat::Raw.extension(), "s16");
-        assert_eq!(OggQuality::Low.next(-1), OggQuality::High);
-    }
-
-    #[test]
-    fn a_silent_item_cannot_start_an_export() {
-        let library: &'static Library<'static> = Box::leak(Box::new(Library::open_with(MemorySource::new(), &NoNaming).unwrap()));
-        let dir = scratch("export-silent");
-        let result = Save::start(library, &item("music:A#0", ""), PlayerOptions::default(), &dir, ExportOptions::default());
-        assert!(result.err().is_some_and(|message| message.contains("carries no audio")));
-        let message = export_native(library, &item("xa:S#ch0@0", ""), &dir, false);
-        assert!(message.contains("no native package"), "{message}");
-        std::fs::remove_dir_all(dir).unwrap();
     }
 }

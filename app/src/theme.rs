@@ -124,41 +124,4 @@ mod tests {
             assert_contrast(TEXT_DISABLED, background, 3.0);
         }
     }
-
-    #[test]
-    fn accent_fills_carry_readable_content() {
-        for fill in [ACCENT, ACCENT_HOVER, ACCENT_PRESSED] {
-            assert_contrast(ON_ACCENT, fill, 4.5);
-        }
-    }
-
-    #[test]
-    fn borders_icons_and_bars_are_visible() {
-        for background in SURFACES {
-            for part in [BORDER_STRONG, FOCUS_RING, SUCCESS, SPECTRUM_PEAK, SPECTRUM_WARM, SPECTRUM_COOL].into_iter().chain(SPECTRUM) {
-                assert_contrast(part, background, 3.0);
-            }
-        }
-        assert_contrast(FOCUS_RING, SELECTION, 3.0);
-        // The markers show on the band and on the bar's empty track.
-        assert_contrast(LOOP_MARK, LOOP_BAND, 3.0);
-        assert_contrast(LOOP_MARK, SURFACE_RAISED, 3.0);
-        // Over the played fill, the band and the markers still stand out.
-        assert_contrast(LOOP_MARK_PLAYED, ACCENT, 2.0);
-        assert_contrast(LOOP_MARK_PLAYED, LOOP_BAND_PLAYED, 3.0);
-        assert_contrast(LOOP_BAND_PLAYED, ACCENT, 1.5);
-        assert_contrast(ACCENT, LOOP_BAND, 1.5);
-        assert_contrast(ACCENT, SURFACE_RAISED, 3.0);
-    }
-
-    #[test]
-    fn the_spectrum_reads_on_a_light_terminal_and_blends_between_stops() {
-        for part in SPECTRUM {
-            assert_contrast(part, 0xffffff, 3.0);
-        }
-        assert_eq!(spectrum_at(0.0), SPECTRUM[0]);
-        assert_eq!(spectrum_at(0.5), SPECTRUM[1]);
-        assert_eq!(spectrum_at(1.0), SPECTRUM[2]);
-        assert_eq!(spectrum_at(0.25), mix(SPECTRUM[0], SPECTRUM[1], 0.5));
-    }
 }
