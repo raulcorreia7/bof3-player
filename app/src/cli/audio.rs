@@ -2,7 +2,7 @@
 //! Audio files for the browsers: a decoded WAV, FLAC or Ogg file as a deck [`Source`].
 //! The deck itself lives in [`crate::deck`].
 
-use crate::player::Loop;
+use bof3player::player::Loop;
 
 pub use crate::deck::{Deck, Source};
 

@@ -4,5 +4,5 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    bof3player::gui::main(std::env::args_os().skip(1).collect())
+    bof3player_app::gui::main(std::env::args_os().skip(1).collect())
 }

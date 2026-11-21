@@ -6,9 +6,9 @@ use std::process::ExitCode;
 fn main() -> ExitCode {
     // `--names` overrides this inside `cli::tui_main`. A default file that does not read is
     // reported and the browser runs without titles.
-    let (names, failure) = bof3player::names::load(None);
+    let (names, failure) = bof3player_app::discover::load_names(None);
     if let Some(failure) = failure {
         eprintln!("bof3player-tui: {failure}; titles are not shown");
     }
-    bof3player::cli::tui_main("bof3player-tui", std::env::args_os().skip(1).collect(), &names)
+    bof3player_app::cli::tui_main("bof3player-tui", std::env::args_os().skip(1).collect(), &names)
 }

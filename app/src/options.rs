@@ -5,8 +5,8 @@ use std::path::PathBuf;
 
 use clap::Args;
 
-use crate::PlayerOptions;
-use crate::spu::ReverbModel;
+use bof3player::PlayerOptions;
+use bof3player::spu::ReverbModel;
 
 /// Settings every command shares.
 #[derive(Args, Debug, Clone)]
@@ -35,7 +35,7 @@ pub struct Global {
     #[arg(long, global = true)]
     pub legacy_reverb: bool,
     /// Folder `w`, `x` and `X` write into
-    #[arg(long, global = true, value_name = "DIR", default_value_os_t = crate::save::default_export_dir())]
+    #[arg(long, global = true, value_name = "DIR", default_value_os_t = crate::discover::default_export_dir())]
     pub export_dir: PathBuf,
     /// Plays of a looping track's window, counting the first (default 1; FLAC/Ogg music
     /// defaults to the intro plus one loop)
@@ -57,6 +57,10 @@ impl Global {
     /// The player settings these options select.
     #[must_use]
     pub fn player_options(&self) -> PlayerOptions {
-        PlayerOptions { reverb: if self.legacy_reverb { ReverbModel::Legacy } else { ReverbModel::Hardware }, ..PlayerOptions::default() }
+        let mut options = PlayerOptions::default();
+        if self.legacy_reverb {
+            options.reverb = ReverbModel::Legacy;
+        }
+        options
     }
 }

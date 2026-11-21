@@ -32,19 +32,19 @@ help:
 	@echo "  clean    cargo clean and remove the bin/ links."
 	@echo ""
 	@echo "Without make, run these cargo lines:"
-	@echo "  cargo build --release --locked -p bof3player --features cli --bin bof3player --bin bof3player-tui"
-	@echo "  cargo build --release --locked -p bof3player --features gui --bin bof3player-gui"
+	@echo "  cargo build --release --locked -p bof3player-app --no-default-features --bin bof3player --bin bof3player-tui"
+	@echo "  cargo build --release --locked -p bof3player-app --bin bof3player-gui"
 	@echo "  cargo test --workspace --all-features --locked"
 
 build: build-cli build-gui
 
 build-cli:
-	cargo build --release --locked -p bof3player --features cli --bin bof3player --bin bof3player-tui
+	cargo build --release --locked -p bof3player-app --no-default-features --bin bof3player --bin bof3player-tui
 	@mkdir -p $(BIN_DIR)
 	@for b in $(CLI_BINS); do ln -sf "$(RELEASE_DIR)/$$b" "$(BIN_DIR)/$$b"; done
 
 build-gui:
-	cargo build --release --locked -p bof3player --features gui --bin bof3player-gui
+	cargo build --release --locked -p bof3player-app --bin bof3player-gui
 	@mkdir -p $(BIN_DIR)
 	@for b in $(GUI_BINS); do ln -sf "$(RELEASE_DIR)/$$b" "$(BIN_DIR)/$$b"; done
 

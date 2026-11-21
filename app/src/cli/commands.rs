@@ -7,11 +7,12 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
-use crate::catalog::{Catalog, Filter, Item, Kind, Naming};
-use crate::player::Loop;
-use crate::render::{self, RenderStyle};
-use crate::save::ExportFormat;
-use crate::{Library, Player, discover};
+use crate::discover;
+use bof3player::catalog::{Catalog, Filter, Item, Kind, Naming};
+use bof3player::player::Loop;
+use bof3player::render::{self, RenderStyle};
+use bof3player::save::ExportFormat;
+use bof3player::{Library, Player};
 use serde_json::json;
 
 use crate::cli::audio::{Deck, FileSource};
@@ -285,7 +286,7 @@ pub fn stats(global: &Global, naming: &dyn Naming) -> Outcome {
 
 pub fn doctor(global: &Global, naming: &dyn Naming) -> Outcome {
     let discovery = discover::discover(global.dir.as_deref());
-    say!("player {}\n", crate::VERSION);
+    say!("player {}\n", bof3player::VERSION);
     match &discovery.found {
         Some((kind, path)) => say!("source:  {kind:?} {}", path.display()),
         None => say!("source:  none found"),
@@ -362,7 +363,7 @@ fn wait_deck(deck: &Deck) -> Outcome {
     Ok(ExitCode::SUCCESS)
 }
 
-use crate::save::file_stem;
+use bof3player::save::file_stem;
 
 /// The output format named on the command line.
 fn parse_format(name: &str, quality: f32) -> Result<ExportFormat, String> {
@@ -370,7 +371,7 @@ fn parse_format(name: &str, quality: f32) -> Result<ExportFormat, String> {
         "wav" => Ok(ExportFormat::Wav),
         "s16" => Ok(ExportFormat::Raw),
         "flac" => Ok(ExportFormat::Flac),
-        "ogg" if crate::export::OGG_QUALITY_RANGE.contains(&quality) => Ok(ExportFormat::Ogg),
+        "ogg" if bof3player::export::OGG_QUALITY_RANGE.contains(&quality) => Ok(ExportFormat::Ogg),
         "ogg" => Err(format!("Ogg quality {quality} is outside 0-10: pass --quality 0 (smallest) to 10 (best), for example --quality 6.")),
         other => Err(format!("unknown format {other}: use wav, s16, flac or ogg.")),
     }
@@ -441,7 +442,7 @@ pub fn export(global: &Global, what: &str, query: &str, output: &Path, naming: &
     .map_err(|e| e.to_string())?;
     std::fs::File::create(output).and_then(|mut f| f.write_all(&bytes)).map_err(|e| format!("{}: {e}", output.display()))?;
     if !global.quiet {
-        eprintln!("wrote {} ({} bytes)", crate::save::absolute(output).display(), bytes.len());
+        eprintln!("wrote {} ({} bytes)", bof3player::save::absolute(output).display(), bytes.len());
     }
     Ok(ExitCode::SUCCESS)
 }

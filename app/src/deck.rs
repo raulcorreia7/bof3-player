@@ -10,8 +10,8 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
-use crate::Player;
-use crate::player::Loop;
+use bof3player::Player;
+use bof3player::player::Loop;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
 /// A position as `minutes:seconds` with one decimal, for example `1:05.5`.

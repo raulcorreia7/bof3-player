@@ -89,9 +89,9 @@ returns `None`. `names::Names` is a `Naming` that reads the JSON names file
 
 | Feature | Default | What it adds                                                          |
 | ------- | ------- | --------------------------------------------------------------------- |
-| `std`   | yes     | `FolderSource`, `DiscSource`, `ReaderBlob` and `discover`.            |
+| `std`   | yes     | `FolderSource`, `DiscSource`, `ReaderBlob` and `discover`.          |
 | `ogg`   | yes     | `export::ogg_bytes`, through a bundled libvorbis. Needs a C compiler. |
-| `cli`   | no      | The `bof3player` binary and its terminal browser.                     |
+| `names` | no      | The names file reader, `names::Names`.                                |
 
 With `--no-default-features` the crate builds without `std` or Ogg (`no_std` plus `alloc`), and WAV
 and FLAC export still work.

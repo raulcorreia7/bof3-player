@@ -13,8 +13,8 @@ use std::process::ExitCode;
 
 use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 
-use crate::catalog::Naming;
-use crate::names::Names;
+use bof3player::catalog::Naming;
+use bof3player::names::Names;
 
 pub use crate::options::Global;
 
@@ -119,7 +119,7 @@ FLAC/Ogg music without --loops renders the intro plus one loop and tags it."
         #[arg(long, default_value = "wav")]
         format: String,
         /// Ogg Vorbis quality, 0 (smallest) to 10 (best); 6 is about 192 kbps
-        #[arg(long, default_value_t = crate::export::DEFAULT_OGG_QUALITY)]
+        #[arg(long, default_value_t = bof3player::export::DEFAULT_OGG_QUALITY)]
         quality: f32,
         /// Stop after this many seconds (default: none, so the whole item)
         #[arg(long)]

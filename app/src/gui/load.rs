@@ -4,9 +4,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver};
 
-use crate::Library;
-use crate::discover::{self, SourceKind};
-use crate::names;
+use crate::discover;
+use bof3player::{Library, discover::SourceKind};
 
 /// Game data that opened.
 pub struct Loaded {
@@ -62,7 +61,7 @@ fn open(hint: Option<&Path>, names: Option<&Path>) -> Result<Loaded, Failed> {
         return Err(Failed { message, probes });
     };
     let mut notice = None;
-    let (titles, failure) = names::load(names);
+    let (titles, failure) = discover::load_names(names);
     if let Some(failure) = failure {
         notice = Some(format!("{failure}. Titles are not shown."));
     }
