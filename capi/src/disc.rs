@@ -7,18 +7,18 @@ use std::sync::Mutex;
 
 use psx_cd::{Entry, Image};
 
-use crate::args::path_arg;
 use crate::error::{Fail, fail, guard, map_cd, poisoned};
-use crate::{bof3player_buffer, bof3player_disc, bof3player_disc_entry, bof3player_status, bof3player_string, owned_buffer, owned_string};
+use crate::{bof3player_disc, bof3player_disc_entry, owned_buffer, owned_string, psx_buffer, psx_status, psx_string};
+use psx_capi::path_arg;
 
 /// The entry at `index`, or the failure that names the range.
 fn entry_at_index(disc: &bof3player_disc, index: usize) -> Result<&Entry, Fail> {
-    disc.entries.get(index).ok_or_else(|| Fail::new(bof3player_status::InvalidIndex, format!("entry index {index} is out of range (the image has {} entries)", disc.entries.len())))
+    disc.entries.get(index).ok_or_else(|| Fail::new(psx_status::InvalidIndex, format!("entry index {index} is out of range (the image has {} entries)", disc.entries.len())))
 }
 
 /// An entry record with no path and zeroed numbers.
 fn empty_entry() -> bof3player_disc_entry {
-    bof3player_disc_entry { lba: 0, size: 0, is_directory: 0, is_xa: 0, extended_attributes: 0, reserved: 0 }
+    bof3player_disc_entry { lba: 0, size: 0, is_directory: false, is_xa: false, extended_attributes: 0 }
 }
 
 /// Open a disc image: a `.cue` sheet, a raw `.bin`, a cooked `.iso` or a folder
@@ -29,9 +29,9 @@ fn empty_entry() -> bof3player_disc_entry {
 /// `path` points to `path_len` readable bytes (or is NULL with length 0), and
 /// `out_disc` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_disc_open_path(path: *const c_char, path_len: usize, out_disc: *mut *mut bof3player_disc) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_disc_open_path(path: *const c_char, path_len: usize, out_disc: *mut *mut bof3player_disc) -> psx_status {
     if out_disc.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_disc is NULL");
+        return fail(psx_status::InvalidArgument, "out_disc is NULL");
     }
     unsafe { *out_disc = ptr::null_mut() };
     guard(|| {
@@ -63,13 +63,13 @@ pub unsafe extern "C" fn bof3player_disc_free(disc: *mut bof3player_disc) {
 ///
 /// `disc` is NULL or a live handle, and `out_count` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_disc_entry_count(disc: *const bof3player_disc, out_count: *mut usize) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_disc_entry_count(disc: *const bof3player_disc, out_count: *mut usize) -> psx_status {
     if out_count.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_count is NULL");
+        return fail(psx_status::InvalidArgument, "out_count is NULL");
     }
     unsafe { *out_count = 0 };
     if disc.is_null() {
-        return fail(bof3player_status::InvalidArgument, "disc is NULL");
+        return fail(psx_status::InvalidArgument, "disc is NULL");
     }
     guard(|| {
         let disc = unsafe { &*disc };
@@ -84,26 +84,19 @@ pub unsafe extern "C" fn bof3player_disc_entry_count(disc: *const bof3player_dis
 ///
 /// `disc` is NULL or a live handle, and `out_entry` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_disc_entry_at(disc: *const bof3player_disc, index: usize, out_entry: *mut bof3player_disc_entry) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_disc_entry_at(disc: *const bof3player_disc, index: usize, out_entry: *mut bof3player_disc_entry) -> psx_status {
     if out_entry.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_entry is NULL");
+        return fail(psx_status::InvalidArgument, "out_entry is NULL");
     }
     unsafe { *out_entry = empty_entry() };
     if disc.is_null() {
-        return fail(bof3player_status::InvalidArgument, "disc is NULL");
+        return fail(psx_status::InvalidArgument, "disc is NULL");
     }
     guard(|| {
         let disc = unsafe { &*disc };
         let entry = entry_at_index(disc, index)?;
         unsafe {
-            *out_entry = bof3player_disc_entry {
-                lba: entry.lba,
-                size: entry.size,
-                is_directory: u8::from(entry.is_directory),
-                is_xa: u8::from(entry.is_xa),
-                extended_attributes: entry.extended_attributes,
-                reserved: 0,
-            };
+            *out_entry = bof3player_disc_entry { lba: entry.lba, size: entry.size, is_directory: entry.is_directory, is_xa: entry.is_xa, extended_attributes: entry.extended_attributes };
         }
         Ok(())
     })
@@ -112,25 +105,25 @@ pub unsafe extern "C" fn bof3player_disc_entry_at(disc: *const bof3player_disc, 
 /// One entry's path, as an owned UTF-8 string.
 ///
 /// A path that is not UTF-8 is converted lossily. Free the string with
-/// `bof3player_string_free`.
+/// `psx_string_free`.
 ///
 /// # Safety
 ///
 /// `disc` is NULL or a live handle, and `out_path` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_disc_entry_path(disc: *const bof3player_disc, index: usize, out_path: *mut bof3player_string) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_disc_entry_path(disc: *const bof3player_disc, index: usize, out_path: *mut psx_string) -> psx_status {
     if out_path.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_path is NULL");
+        return fail(psx_status::InvalidArgument, "out_path is NULL");
     }
-    unsafe { *out_path = bof3player_string { data: ptr::null_mut(), len: 0 } };
+    unsafe { *out_path = psx_string { data: ptr::null_mut(), len: 0 } };
     if disc.is_null() {
-        return fail(bof3player_status::InvalidArgument, "disc is NULL");
+        return fail(psx_status::InvalidArgument, "disc is NULL");
     }
     guard(|| {
         let disc = unsafe { &*disc };
         let entry = entry_at_index(disc, index)?;
         let path = entry.path.to_string_lossy();
-        unsafe { *out_path = owned_string(&path) };
+        unsafe { *out_path = owned_string(path) };
         Ok(())
     })
 }
@@ -141,13 +134,13 @@ pub unsafe extern "C" fn bof3player_disc_entry_path(disc: *const bof3player_disc
 ///
 /// `disc` is NULL or a live handle, and `out_bytes` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_disc_read_entry(disc: *mut bof3player_disc, index: usize, out_bytes: *mut bof3player_buffer) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_disc_read_entry(disc: *mut bof3player_disc, index: usize, out_bytes: *mut psx_buffer) -> psx_status {
     if out_bytes.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_bytes is NULL");
+        return fail(psx_status::InvalidArgument, "out_bytes is NULL");
     }
-    unsafe { *out_bytes = bof3player_buffer { data: ptr::null_mut(), len: 0 } };
+    unsafe { *out_bytes = psx_buffer { data: ptr::null_mut(), len: 0 } };
     if disc.is_null() {
-        return fail(bof3player_status::InvalidArgument, "disc is NULL");
+        return fail(psx_status::InvalidArgument, "disc is NULL");
     }
     guard(|| {
         let disc = unsafe { &*disc };

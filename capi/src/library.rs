@@ -9,9 +9,9 @@ use std::sync::{Arc, Mutex};
 use bof3player::player::Loop;
 use bof3player::{DiscSource, FolderSource, Library, Player, Source};
 
-use crate::args::path_arg;
 use crate::error::{Fail, fail, guard, map_audio, poisoned};
-use crate::{bof3player_format, bof3player_item_info, bof3player_kind, bof3player_library, bof3player_loop, bof3player_player, bof3player_status, bof3player_string, free_string, owned_string};
+use crate::{bof3player_format, bof3player_item_info, bof3player_kind, bof3player_library, bof3player_loop, bof3player_player, owned_string, psx_status, psx_string};
+use psx_capi::{free_string, path_arg};
 
 /// Build a catalog from a source, with the bundled names.
 fn open_library(source: impl Source + 'static) -> Result<Library<'static>, Fail> {
@@ -22,13 +22,12 @@ fn open_library(source: impl Source + 'static) -> Result<Library<'static>, Fail>
 fn empty_item_info() -> bof3player_item_info {
     bof3player_item_info {
         kind: bof3player_kind::Music,
-        has_duration: 0,
-        playable: 0,
-        reserved: [0; 2],
+        has_duration: false,
+        playable: false,
         duration: 0.0,
-        id: bof3player_string { data: ptr::null_mut(), len: 0 },
-        name: bof3player_string { data: ptr::null_mut(), len: 0 },
-        title: bof3player_string { data: ptr::null_mut(), len: 0 },
+        id: psx_string { data: ptr::null_mut(), len: 0 },
+        name: psx_string { data: ptr::null_mut(), len: 0 },
+        title: psx_string { data: ptr::null_mut(), len: 0 },
     }
 }
 
@@ -42,9 +41,9 @@ fn empty_item_info() -> bof3player_item_info {
 /// `path` points to `path_len` readable bytes (or is NULL with length 0), and
 /// `out_library` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_library_open_disc_path(path: *const c_char, path_len: usize, out_library: *mut *mut bof3player_library) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_library_open_disc_path(path: *const c_char, path_len: usize, out_library: *mut *mut bof3player_library) -> psx_status {
     if out_library.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_library is NULL");
+        return fail(psx_status::InvalidArgument, "out_library is NULL");
     }
     unsafe { *out_library = ptr::null_mut() };
     guard(|| {
@@ -67,9 +66,9 @@ pub unsafe extern "C" fn bof3player_library_open_disc_path(path: *const c_char, 
 /// `path` points to `path_len` readable bytes (or is NULL with length 0), and
 /// `out_library` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_library_open_folder_path(path: *const c_char, path_len: usize, out_library: *mut *mut bof3player_library) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_library_open_folder_path(path: *const c_char, path_len: usize, out_library: *mut *mut bof3player_library) -> psx_status {
     if out_library.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_library is NULL");
+        return fail(psx_status::InvalidArgument, "out_library is NULL");
     }
     unsafe { *out_library = ptr::null_mut() };
     guard(|| {
@@ -101,13 +100,13 @@ pub unsafe extern "C" fn bof3player_library_free(library: *mut bof3player_librar
 ///
 /// `library` is NULL or a live handle, and `out_count` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_library_item_count(library: *const bof3player_library, out_count: *mut usize) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_library_item_count(library: *const bof3player_library, out_count: *mut usize) -> psx_status {
     if out_count.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_count is NULL");
+        return fail(psx_status::InvalidArgument, "out_count is NULL");
     }
     unsafe { *out_count = 0 };
     if library.is_null() {
-        return fail(bof3player_status::InvalidArgument, "library is NULL");
+        return fail(psx_status::InvalidArgument, "library is NULL");
     }
     guard(|| {
         let library = unsafe { &*library };
@@ -125,22 +124,21 @@ pub unsafe extern "C" fn bof3player_library_item_count(library: *const bof3playe
 ///
 /// `library` is NULL or a live handle, and `out_info` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_library_item_at(library: *const bof3player_library, index: usize, out_info: *mut bof3player_item_info) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_library_item_at(library: *const bof3player_library, index: usize, out_info: *mut bof3player_item_info) -> psx_status {
     if out_info.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_info is NULL");
+        return fail(psx_status::InvalidArgument, "out_info is NULL");
     }
     unsafe { *out_info = empty_item_info() };
     if library.is_null() {
-        return fail(bof3player_status::InvalidArgument, "library is NULL");
+        return fail(psx_status::InvalidArgument, "library is NULL");
     }
     guard(|| {
         let library = unsafe { &*library };
-        let item = library.inner.catalog().get(index).ok_or_else(|| Fail::new(bof3player_status::InvalidIndex, format!("item index {index} is out of range")))?;
+        let item = library.inner.catalog().get(index).ok_or_else(|| Fail::new(psx_status::InvalidIndex, format!("item index {index} is out of range")))?;
         let info = bof3player_item_info {
             kind: item.kind.into(),
-            has_duration: u8::from(item.duration.is_some()),
-            playable: u8::from(item.playable),
-            reserved: [0; 2],
+            has_duration: item.duration.is_some(),
+            playable: item.playable,
             duration: item.duration.unwrap_or(0.0),
             id: owned_string(&item.id),
             name: owned_string(&item.name),
@@ -178,17 +176,17 @@ pub unsafe extern "C" fn bof3player_item_info_free(info: *mut bof3player_item_in
 ///
 /// `library` is NULL or a live handle, and `out_player` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_library_player_at(library: *const bof3player_library, index: usize, out_player: *mut *mut bof3player_player) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_library_player_at(library: *const bof3player_library, index: usize, out_player: *mut *mut bof3player_player) -> psx_status {
     if out_player.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_player is NULL");
+        return fail(psx_status::InvalidArgument, "out_player is NULL");
     }
     unsafe { *out_player = ptr::null_mut() };
     if library.is_null() {
-        return fail(bof3player_status::InvalidArgument, "library is NULL");
+        return fail(psx_status::InvalidArgument, "library is NULL");
     }
     guard(|| {
         let library = unsafe { &*library };
-        let item = library.inner.catalog().get(index).ok_or_else(|| Fail::new(bof3player_status::InvalidIndex, format!("item index {index} is out of range")))?;
+        let item = library.inner.catalog().get(index).ok_or_else(|| Fail::new(psx_status::InvalidIndex, format!("item index {index} is out of range")))?;
         let player = library.inner.player(item).map_err(map_audio)?;
         // SAFETY: the player handle stores a clone of this `Arc`, so the
         // `Library` allocation the player borrows lives as long as the player.
@@ -220,13 +218,13 @@ pub unsafe extern "C" fn bof3player_player_free(player: *mut bof3player_player) 
 ///
 /// `player` is NULL or a live handle, and `out_format` is NULL or writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_player_format(player: *const bof3player_player, out_format: *mut bof3player_format) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_player_format(player: *const bof3player_player, out_format: *mut bof3player_format) -> psx_status {
     if out_format.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_format is NULL");
+        return fail(psx_status::InvalidArgument, "out_format is NULL");
     }
     unsafe { *out_format = bof3player_format { sample_rate: 0, channels: 0, duration: 0.0 } };
     if player.is_null() {
-        return fail(bof3player_status::InvalidArgument, "player is NULL");
+        return fail(psx_status::InvalidArgument, "player is NULL");
     }
     guard(|| {
         let player = unsafe { &*player };
@@ -250,27 +248,27 @@ pub unsafe extern "C" fn bof3player_player_format(player: *const bof3player_play
 /// `out_samples` points to `frames * channels` writable samples or is NULL with
 /// `frames` 0.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_player_render_i16(player: *mut bof3player_player, out_samples: *mut i16, frames: usize, out_frames: *mut usize) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_player_render_i16(player: *mut bof3player_player, out_samples: *mut i16, frames: usize, out_frames: *mut usize) -> psx_status {
     if out_frames.is_null() {
-        return fail(bof3player_status::InvalidArgument, "out_frames is NULL");
+        return fail(psx_status::InvalidArgument, "out_frames is NULL");
     }
     unsafe { *out_frames = 0 };
     if player.is_null() {
-        return fail(bof3player_status::InvalidArgument, "player is NULL");
+        return fail(psx_status::InvalidArgument, "player is NULL");
     }
     guard(|| {
         let player = unsafe { &*player };
         let mut player = player.player.lock().map_err(|_| poisoned())?;
         let channels = player.channels() as usize;
-        let samples = frames.checked_mul(channels).ok_or_else(|| Fail::new(bof3player_status::InvalidArgument, "frame count overflows"))?;
+        let samples = frames.checked_mul(channels).ok_or_else(|| Fail::new(psx_status::InvalidArgument, "frame count overflows"))?;
         if samples > isize::MAX as usize / std::mem::size_of::<i16>() {
-            return Err(Fail::new(bof3player_status::InvalidArgument, "buffer is larger than isize::MAX"));
+            return Err(Fail::new(psx_status::InvalidArgument, "buffer is larger than isize::MAX"));
         }
         if samples == 0 {
             return Ok(());
         }
         if out_samples.is_null() {
-            return Err(Fail::new(bof3player_status::InvalidArgument, "out_samples is NULL"));
+            return Err(Fail::new(psx_status::InvalidArgument, "out_samples is NULL"));
         }
         let out = unsafe { slice::from_raw_parts_mut(out_samples, samples) };
         let written = player.render_i16(out).map_err(map_audio)?;
@@ -287,9 +285,9 @@ pub unsafe extern "C" fn bof3player_player_render_i16(player: *mut bof3player_pl
 ///
 /// `player` is NULL or a live handle.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bof3player_player_set_loop(player: *mut bof3player_player, mode: bof3player_loop, times: u32) -> bof3player_status {
+pub unsafe extern "C" fn bof3player_player_set_loop(player: *mut bof3player_player, mode: bof3player_loop, times: u32) -> psx_status {
     if player.is_null() {
-        return fail(bof3player_status::InvalidArgument, "player is NULL");
+        return fail(psx_status::InvalidArgument, "player is NULL");
     }
     guard(|| {
         let player = unsafe { &*player };

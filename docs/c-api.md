@@ -7,11 +7,17 @@ command lines, the GUI, the audio device and Ogg are not part of it.
 The interface covers the read and playback path: disc images, EMI archives, VAB banks, VRAM
 images, the catalog and player, WAVE output, and the machine.
 
-The committed header is `capi/include/bof3player_capi.h`. cbindgen generates it from the Rust
-declarations; `capi/tests/header.rs` fails when the committed copy is stale. Regenerate it with:
+The committed headers are `capi/include/bof3player_capi.h` and `psx-capi/include/psx_capi.h`.
+`psx-capi` is the layer shared with the rebof3 C interface: the `psx_status` codes, the last-error
+slot, the panic guard, `psx_buffer` and `psx_string` with their free functions, and the EMI handle
+(`psx_emi_*`). `bof3player_capi.h` includes `psx_capi.h`, and the library exports both sets of
+symbols. `BOF3PLAYER_ABI_VERSION` in the header equals `bof3player_abi_version()`; it is 2.
+
+cbindgen generates the headers from the Rust declarations; each crate's `tests/header.rs` fails
+when the committed copy is stale. Regenerate them with:
 
 ```sh
-UPDATE_HEADER=1 cargo test -p bof3player-capi --test header
+UPDATE_HEADER=1 cargo test -p psx-capi -p bof3player-capi --test header
 ```
 
 The C smoke test in `capi/tests/smoke.c` compiles the header and calls the error paths. It runs in
@@ -34,7 +40,7 @@ link.
 ```
 
 ```sh
-cc -std=c11 example.c -Icapi/include -Ltarget/release -lbof3player_capi -o example
+cc -std=c11 example.c -Icapi/include -Ipsx-capi/include -Ltarget/release -lbof3player_capi -o example
 LD_LIBRARY_PATH=target/release ./example "path/to/extracted" out.pcm
 ```
 
@@ -50,13 +56,17 @@ cargo rustc -p bof3player-capi --release -- --print native-static-libs
   no-op.
 - A `bof3player_item_info` owns three strings. Free the record with
   `bof3player_item_info_free`.
-- A `bof3player_string` owns its bytes and has no terminator. Free it with
-  `bof3player_string_free`. A NULL `data` with length 0 is the empty string.
+- A `psx_string` owns its bytes and has no terminator. Free it with
+  `psx_string_free`. A NULL `data` with length 0 is the empty string.
 - A player keeps its library alive. Either handle may be freed first.
-- Every fallible call returns a `bof3player_status`. On failure the output is zeroed and
-  `bof3player_last_error_message` returns a NUL-terminated message for the calling thread, valid
+- An owned result has one `_free` of the same shape: it takes a pointer to the record, accepts NULL
+  and zeroes the record. A borrowed pointer (the last-error message) names its lifetime in the
+  header.
+- Flags are `bool`; out-parameters are named `out_<noun>`.
+- Every fallible call returns a `psx_status`. On failure the output is zeroed and
+  `psx_last_error_message` returns a NUL-terminated message for the calling thread, valid
   until the next call on that thread. A success clears it and returns NULL.
-- A Rust panic is caught at every boundary and reported as `BOF3PLAYER_STATUS_PANIC`. It does not
+- A Rust panic is caught at every boundary and reported as `PSX_STATUS_PANIC`. It does not
   cross into C. Builds with `panic = "abort"` abort instead.
 - Disc, EMI and player handles are safe to use from several threads; their calls serialize. The
   error is thread-local.
@@ -70,9 +80,9 @@ and `bof3player_disc_read_entry` returns a copy of the whole file.
 
 ## EMI archives
 
-`bof3player_emi_open_path` reads a file; `bof3player_emi_parse` takes bytes. Both copy the
+`psx_emi_open_path` reads a file; `psx_emi_parse` takes bytes. Both copy the
 container into the handle, so the caller may free its buffer after `parse`, and
-`bof3player_emi_read_entry` always returns a copy. `bof3player_emi_entry_at` reports the size,
+`psx_emi_read_entry` always returns a copy. `psx_emi_entry_at` reports the size,
 offset, RAM pointer and type of one table entry.
 
 ## VAB banks
@@ -90,14 +100,14 @@ the upload's own grid. Free the pixels with `bof3player_image_free`.
 ## Audio output
 
 `bof3player_wav_encode` writes interleaved 16-bit PCM as a RIFF/WAVE file. It borrows the PCM
-record and returns owned bytes; free them with `bof3player_buffer_free`.
+record and returns owned bytes; free them with `psx_buffer_free`.
 
 ## Machine
 
 `bof3player_machine_boot_disc_path` reads `SYSTEM.CNF`, loads the executable and installs the
 stand-in kernel. `bof3player_machine_run_frames` runs vertical blanks up to an instruction budget,
 and `bof3player_machine_display` copies the displayed frame as RGBA. A halt returns
-`BOF3PLAYER_STATUS_HALT`, writes `BOF3PLAYER_STOP_HALT` and puts the halt text in the last error.
+`PSX_STATUS_HALT`, writes `BOF3PLAYER_STOP_HALT` and puts the halt text in the last error.
 
 ## Example
 
@@ -112,22 +122,22 @@ writes its PCM as raw 16-bit samples. It needs the user's own disc dump.
 int main(int argc, char **argv) {
     if (argc != 3) return 2;
     bof3player_library *library = NULL;
-    if (bof3player_library_open_folder_path(argv[1], strlen(argv[1]), &library) != BOF3PLAYER_STATUS_OK) {
-        fprintf(stderr, "%s\n", bof3player_last_error_message());
+    if (bof3player_library_open_folder_path(argv[1], strlen(argv[1]), &library) != PSX_STATUS_OK) {
+        fprintf(stderr, "%s\n", psx_last_error_message());
         return 1;
     }
     size_t count = 0, index = 0;
     bof3player_library_item_count(library, &count);
     for (; index < count; index++) {
         bof3player_item_info info;
-        if (bof3player_library_item_at(library, index, &info) != BOF3PLAYER_STATUS_OK) continue;
+        if (bof3player_library_item_at(library, index, &info) != PSX_STATUS_OK) continue;
         int music = info.kind == BOF3PLAYER_KIND_MUSIC && info.playable;
         bof3player_item_info_free(&info);
         if (music) break;
     }
     bof3player_player *player = NULL;
-    if (index == count || bof3player_library_player_at(library, index, &player) != BOF3PLAYER_STATUS_OK) {
-        fprintf(stderr, "%s\n", bof3player_last_error_message());
+    if (index == count || bof3player_library_player_at(library, index, &player) != PSX_STATUS_OK) {
+        fprintf(stderr, "%s\n", psx_last_error_message());
         bof3player_library_free(library);
         return 1;
     }
@@ -136,7 +146,7 @@ int main(int argc, char **argv) {
     FILE *out = fopen(argv[2], "wb");
     int16_t pcm[4096 * 2];
     size_t frames = 0;
-    while (bof3player_player_render_i16(player, pcm, 4096, &frames) == BOF3PLAYER_STATUS_OK && frames > 0) {
+    while (bof3player_player_render_i16(player, pcm, 4096, &frames) == PSX_STATUS_OK && frames > 0) {
         fwrite(pcm, sizeof(int16_t), frames * format.channels, out);
     }
     fclose(out);
