@@ -31,7 +31,6 @@ required-features = ["gui"]
 
 [dependencies]
 bof3player = { workspace = true, features = ["std", "ogg", "names"] }
-psx-formats = { workspace = true, features = ["std"] }
 clap.workspace = true
 claxon.workspace = true
 cpal.workspace = true

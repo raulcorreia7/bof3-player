@@ -35,6 +35,7 @@ ratatui = "0.30.2"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 sha2 = "0.11.1"
+tempfile = "3.27.0"
 
 # The interpreter runs millions of instructions per test; unoptimized it is too slow to boot.
 [profile.dev.package.psx-machine]
