@@ -5,7 +5,6 @@
 use alloc::format;
 
 use emi::Archive;
-use psx_formats::{sep, vab};
 
 use crate::error::{Error, Result};
 
@@ -27,10 +26,10 @@ impl EntryType {
     #[must_use]
     pub fn code(self) -> u16 {
         match self {
-            Self::Vh => vab::HEADER_TYPE,
-            Self::Vb => vab::BODY_TYPE,
+            Self::Vh => emi::TYPE_VAB_HEADER,
+            Self::Vb => emi::TYPE_VAB_BODY,
             Self::Aux => emi::TYPE_CUE,
-            Self::Seq => sep::TYPE,
+            Self::Seq => emi::TYPE_SEP,
         }
     }
 }

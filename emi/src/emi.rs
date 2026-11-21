@@ -16,9 +16,6 @@ use std::io::{Read, Seek, SeekFrom, Write};
 #[cfg(feature = "std")]
 use std::path::{Path, PathBuf};
 
-#[cfg(feature = "std")]
-use psx_formats::{sep, vab};
-
 /// Header magic at offset 8.
 pub const MAGIC: &[u8; 8] = b"MATH_TBL";
 /// Payloads start on this boundary, and the table must fit before the first.
@@ -28,8 +25,13 @@ pub const HEADER_SIZE: u64 = 0x10;
 /// Bytes per table entry.
 pub const TOC_ENTRY_SIZE: u64 = 0x10;
 /// Entry type of a raw VRAM upload.
-#[cfg(feature = "std")]
-pub const TYPE_VRAM: u16 = psx_formats::vram::UPLOAD_TYPE;
+pub const TYPE_VRAM: u16 = 3;
+/// Entry type of a VAB header.
+pub const TYPE_VAB_HEADER: u16 = 6;
+/// Entry type of a VAB body.
+pub const TYPE_VAB_BODY: u16 = 7;
+/// Entry type of a SEP sequence package.
+pub const TYPE_SEP: u16 = 10;
 /// Entry type of an LZ77-packed payload.
 pub const TYPE_LZ77: u16 = 1;
 /// Entry type of a type-8 cue table.
@@ -196,9 +198,9 @@ pub fn read_entry(archive_path: impl AsRef<Path>, index: usize) -> Result<Vec<u8
 pub fn type_extension(file_type: u16) -> &'static str {
     match file_type {
         TYPE_VRAM => "img",
-        vab::HEADER_TYPE => "vh",
-        vab::BODY_TYPE => "vb",
-        sep::TYPE => "seq",
+        TYPE_VAB_HEADER => "vh",
+        TYPE_VAB_BODY => "vb",
+        TYPE_SEP => "seq",
         _ => "bin",
     }
 }

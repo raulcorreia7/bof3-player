@@ -14,9 +14,6 @@ use std::path::Path;
 use super::png;
 use crate::error::{Error, Result};
 
-/// Container entry type of a VRAM upload.
-pub const UPLOAD_TYPE: u16 = 3;
-
 /// VRAM words per frame-buffer row.
 pub const VRAM_WIDTH: usize = 1024;
 /// Frame-buffer rows.
@@ -41,18 +38,8 @@ pub struct Descriptor {
     pub chunks_per_row: u8,
 }
 
-impl Descriptor {
-    /// Unpacks a TOC load argument.
-    pub fn from_load_argument(load_argument: u32) -> Self {
-        Self { column: ((load_argument >> 24) & 0x3f) as u8, row: ((load_argument >> 16) & 0x1f) as u8, chunks_per_row: ((load_argument >> 8) & 0x3f) as u8 }
-    }
-}
-
-/// The bits of a load argument that [`Descriptor`] owns: column, row and rectangles per row.
-const PLACEMENT_BITS: u32 = 0x3f1f_3f00;
-
 /// Where a type-3 upload lands, as a name for the three load-argument fields: the same value as
-/// [`Descriptor`], read as a placement (`x`, `y`, `load_argument`, `moved`).
+/// [`Descriptor`], read as a placement (`x`, `y`, `moved`).
 pub type Placement = Descriptor;
 
 impl Descriptor {
@@ -64,12 +51,6 @@ impl Descriptor {
     /// The top edge in VRAM rows.
     pub fn y(self) -> u16 {
         u16::from(self.row) * RECTANGLE_SIDE as u16
-    }
-
-    /// `base` with this placement in the bits it owns (column, row, rectangles per row); every
-    /// other bit of `base` stays, so an unknown field of the load argument survives an edit.
-    pub fn load_argument(self, base: u32) -> u32 {
-        base & !PLACEMENT_BITS | u32::from(self.column) << 24 | u32::from(self.row) << 16 | u32::from(self.chunks_per_row) << 8
     }
 
     /// The same upload with its top-left rectangle at VRAM `column` and `row` (32-word and 32-row

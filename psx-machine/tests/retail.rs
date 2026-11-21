@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
 
-use psx_formats::gfx::vram::{self, Descriptor};
+use psx_formats::gfx::vram;
 use psx_machine::Machine;
 use psx_machine::gpu::{Command, Frame, VramRect};
 
@@ -107,11 +107,11 @@ fn first_texture_upload_matches_its_emi_entry() {
         let bytes = disc.read_file(file).expect("the EMI file reads");
         let archive = emi::Archive::parse(&bytes).expect("the EMI table parses");
         for (index, entry) in archive.entries().iter().enumerate() {
-            if entry.file_type != vram::UPLOAD_TYPE {
+            if entry.file_type != emi::TYPE_VRAM {
                 continue;
             }
             let payload = archive.payload(&bytes, index).expect("the payload is inside the file");
-            let descriptor = Descriptor::from_load_argument(entry.ram_ptr);
+            let descriptor = emi::upload::descriptor(entry.ram_ptr);
             let Ok(rectangles) = vram::decode(payload, descriptor) else { continue };
             if rectangles.iter().any(|chunk| (chunk.x, chunk.y) == (usize::from(rect.x), usize::from(rect.y)) && chunk.words[..] == pixels[..]) {
                 found = Some((file.path.clone(), index));
