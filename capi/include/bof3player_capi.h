@@ -18,30 +18,30 @@
 #define BOF3PLAYER_ABI_VERSION 3
 
 /**
- * The kind of media a catalog item is.
+ * The type of media a catalog item is.
  */
 typedef enum {
   /**
    * A sequence played through its bank.
    */
-  BOF3PLAYER_KIND_MUSIC = 0,
+  BOF3PLAYER_MEDIA_TYPE_MUSIC = 0,
   /**
    * A VAB sound bank or one of its cue records.
    */
-  BOF3PLAYER_KIND_BANK = 1,
+  BOF3PLAYER_MEDIA_TYPE_BANK = 1,
   /**
    * One raw sample of a bank.
    */
-  BOF3PLAYER_KIND_SAMPLE = 2,
+  BOF3PLAYER_MEDIA_TYPE_SAMPLE = 2,
   /**
    * Streaming XA audio.
    */
-  BOF3PLAYER_KIND_XA = 3,
+  BOF3PLAYER_MEDIA_TYPE_XA = 3,
   /**
    * A CD-DA track.
    */
-  BOF3PLAYER_KIND_CDDA = 4,
-} bof3player_kind;
+  BOF3PLAYER_MEDIA_TYPE_CDDA = 4,
+} bof3player_media_type;
 
 /**
  * Why a machine run stopped.
@@ -175,9 +175,9 @@ typedef struct {
  */
 typedef struct {
   /**
-   * The media kind.
+   * The media type.
    */
-  bof3player_kind kind;
+  bof3player_media_type media_type;
   /**
    * True when `duration` is meaningful.
    */

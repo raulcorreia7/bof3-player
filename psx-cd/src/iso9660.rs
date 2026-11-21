@@ -92,8 +92,8 @@ pub(crate) fn parse_record(bytes: &[u8]) -> Result<Option<DirectoryRecord>> {
     let system_use = NAME + name_len + usize::from(name_len.is_multiple_of(2));
     let xa = parse_xa_attributes(&bytes[system_use..length]);
     let is_xa = xa.is_some_and(|attributes| {
-        let kind = (attributes.attributes >> 8) as u8;
-        attributes.file_number != 0 || (kind & XA_FORM2 != 0 && kind & XA_FORM1 == 0)
+        let media_type = (attributes.attributes >> 8) as u8;
+        attributes.file_number != 0 || (media_type & XA_FORM2 != 0 && media_type & XA_FORM1 == 0)
     });
     Ok(Some(DirectoryRecord { extent, size, flags: bytes[FLAGS], name: bytes[NAME..name_end].to_vec(), extended_attributes: bytes[EXT_ATTR_LENGTH], is_xa, xa }))
 }

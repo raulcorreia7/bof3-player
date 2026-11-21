@@ -26,7 +26,7 @@ Common:
   bof3player play \"music:BGMOPN#0\"    play one track
 
 Examples:
-  bof3player -i \"Breath of Fire III (USA).cue\" list --kind music
+  bof3player -i \"Breath of Fire III (USA).cue\" list --type music
   bof3player music --untitled
   bof3player render -o opening.wav \"music:BGMOPN#0\"
 
@@ -45,9 +45,9 @@ struct Cli {
 /// Item filters shared by `list`, `search` and `verify`.
 #[derive(Args, Debug, Clone, Default)]
 pub struct Filters {
-    /// Only this kind: music, bank, sample, xa, cdda (default: every kind)
-    #[arg(long, value_name = "KIND")]
-    pub kind: Option<String>,
+    /// Only this type: music, bank, sample, xa, cdda (default: every type)
+    #[arg(long, value_name = "TYPE")]
+    pub media_type: Option<String>,
     /// Only this family, for example BGM or SCE_XA (default: every family)
     #[arg(long, value_name = "FAMILY")]
     pub family: Option<String>,
@@ -62,7 +62,7 @@ enum Command {
     #[command(after_help = "Examples:\n  bof3player doctor\n  bof3player -i \"Breath of Fire III (USA).cue\" doctor")]
     Doctor,
     /// List items
-    #[command(alias = "ls", after_help = "Examples:\n  bof3player list --kind music\n  bof3player list --kind xa --family BMAG_XA\n  bof3player list --limit 20\n  bof3player list --all")]
+    #[command(alias = "ls", after_help = "Examples:\n  bof3player list --type music\n  bof3player list --type xa --family BMAG_XA\n  bof3player list --limit 20\n  bof3player list --all")]
     List {
         #[command(flatten)]
         filters: Filters,
@@ -74,7 +74,7 @@ enum Command {
         all: bool,
     },
     /// Ranked search over ids, names, titles and families
-    #[command(alias = "find", after_help = "Examples:\n  bof3player search battle\n  bof3player search --kind sample drum\n  bof3player search --playable boss\n  bof3player search --all battle")]
+    #[command(alias = "find", after_help = "Examples:\n  bof3player search battle\n  bof3player search --type sample drum\n  bof3player search --playable boss\n  bof3player search --all battle")]
     Search {
         query: String,
         #[command(flatten)]
@@ -100,7 +100,7 @@ enum Command {
     /// Decode an item to WAV, FLAC, Ogg Vorbis or raw s16le
     #[command(
         alias = "save",
-        after_help = "Examples:\n  bof3player render -o song.wav \"music:BGMOPN#0\"\n  bof3player render --format flac -o song.flac \"music:BGMOPN#0\"\n  bof3player render --format ogg --quality 6 -o song.ogg \"music:BGMOPN#0\"\n  bof3player render --all --out-dir out --kind music --format flac\n  bof3player --loops 3 render -o song.flac \"music:BGMOPN#0\"
+        after_help = "Examples:\n  bof3player render -o song.wav \"music:BGMOPN#0\"\n  bof3player render --format flac -o song.flac \"music:BGMOPN#0\"\n  bof3player render --format ogg --quality 6 -o song.ogg \"music:BGMOPN#0\"\n  bof3player render --all --out-dir out --type music --format flac\n  bof3player --loops 3 render -o song.flac \"music:BGMOPN#0\"
 FLAC/Ogg music without --loops renders the intro plus one loop and tags it."
     )]
     Render {
@@ -140,7 +140,7 @@ FLAC/Ogg music without --loops renders the intro plus one loop and tags it."
         output: PathBuf,
     },
     /// Render every playable item and classify what has sound
-    #[command(alias = "check", after_help = "Examples:\n  bof3player verify --kind sample\n  bof3player verify --seconds 3 --limit 100\n  bof3player verify --kind xa")]
+    #[command(alias = "check", after_help = "Examples:\n  bof3player verify --type sample\n  bof3player verify --seconds 3 --limit 100\n  bof3player verify --type xa")]
     Verify {
         #[command(flatten)]
         filters: Filters,
@@ -151,7 +151,7 @@ FLAC/Ogg music without --loops renders the intro plus one loop and tags it."
         #[arg(long)]
         limit: Option<usize>,
     },
-    /// Catalog totals per kind and family
+    /// Catalog totals per type and family
     #[command(after_help = "Examples:\n  bof3player stats\n  bof3player stats --json")]
     Stats,
     /// List every music archive

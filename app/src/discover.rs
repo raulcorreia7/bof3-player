@@ -14,7 +14,7 @@
 use std::path::{Path, PathBuf};
 
 use bof3player::catalog::Naming;
-use bof3player::discover::{SourceKind, open_with};
+use bof3player::discover::{SourceType, open_with};
 use bof3player::names::Names;
 use bof3player::{DiscSource, Error, FolderSource, Library, Result, Source};
 
@@ -46,14 +46,14 @@ pub struct Discovery {
     /// Every probe made, in order, up to and including the accepted one.
     pub candidates: Vec<Candidate>,
     /// The accepted source, if any.
-    pub found: Option<(SourceKind, PathBuf)>,
+    pub found: Option<(SourceType, PathBuf)>,
 }
 
 impl Discovery {
     /// Open the discovered source as a library with `naming`.
     pub fn open_with(&self, naming: &dyn Naming) -> Result<Library<'static>> {
         match &self.found {
-            Some((kind, path)) => open_with(*kind, path, naming),
+            Some((media_type, path)) => open_with(*media_type, path, naming),
             None => Err(Error::io("no game data found: pass -i PATH or set BOF3_GAME_DIR")),
         }
     }
@@ -65,7 +65,7 @@ fn folder_ok(dir: &Path) -> std::result::Result<String, String> {
     if count == 0 { Err("no BIN/BGM/*.EMI archive".into()) } else { Ok(format!("BIN/BGM: {count} EMI archives")) }
 }
 
-fn probe(path: &Path) -> (Option<SourceKind>, PathBuf, String) {
+fn probe(path: &Path) -> (Option<SourceType>, PathBuf, String) {
     if !path.exists() {
         return (None, path.to_path_buf(), "does not exist".into());
     }
@@ -77,7 +77,7 @@ fn probe(path: &Path) -> (Option<SourceKind>, PathBuf, String) {
             match folder_ok(&dir) {
                 Ok(found) => {
                     let up = if ascent > 0 { format!(" ({ascent} level(s) up from the hint)") } else { String::new() };
-                    return (Some(SourceKind::Folder), dir, format!("{found}{up}"));
+                    return (Some(SourceType::Folder), dir, format!("{found}{up}"));
                 }
                 Err(why) if ascent == 0 => reason = why,
                 Err(_) => {}
@@ -90,7 +90,7 @@ fn probe(path: &Path) -> (Option<SourceKind>, PathBuf, String) {
     }
     match DiscSource::open(path) {
         Ok(disc) => match disc.list() {
-            Ok(files) if files.iter().any(|f| f.to_ascii_lowercase().starts_with("bin/")) => (Some(SourceKind::Disc), path.to_path_buf(), disc.describe()),
+            Ok(files) if files.iter().any(|f| f.to_ascii_lowercase().starts_with("bin/")) => (Some(SourceType::Disc), path.to_path_buf(), disc.describe()),
             _ => (None, path.to_path_buf(), "ISO9660 root has no BIN directory".into()),
         },
         Err(e) => (None, path.to_path_buf(), if reason.is_empty() { e.message().to_string() } else { reason }),
@@ -139,10 +139,10 @@ pub fn discover(hint: Option<&Path>) -> Discovery {
         list.truncate(2);
     }
     for (label, path) in list {
-        let (kind, path, detail) = probe(&path);
-        candidates.push(Candidate { label, path: path.clone(), accepted: kind.is_some(), detail });
-        if let Some(kind) = kind {
-            return Discovery { candidates, found: Some((kind, path)) };
+        let (media_type, path, detail) = probe(&path);
+        candidates.push(Candidate { label, path: path.clone(), accepted: media_type.is_some(), detail });
+        if let Some(media_type) = media_type {
+            return Discovery { candidates, found: Some((media_type, path)) };
         }
     }
     Discovery { candidates, found: None }
@@ -209,8 +209,8 @@ pub fn load_names(explicit: Option<&Path>) -> (Names, Option<String>) {
     match Names::read(&path) {
         Ok(names) => (names, None),
         Err(error) => {
-            let kind = if asked { "names file" } else { "default names file" };
-            (Names::default(), Some(format!("cannot read the {kind} {}: {error}", path.display())))
+            let file = if asked { "names file" } else { "default names file" };
+            (Names::default(), Some(format!("cannot read the {file} {}: {error}", path.display())))
         }
     }
 }

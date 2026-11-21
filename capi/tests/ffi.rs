@@ -18,7 +18,7 @@ fn zero_string() -> psx_string {
 }
 
 fn zero_info() -> bof3player_item_info {
-    bof3player_item_info { kind: bof3player_kind::Music, has_duration: false, playable: false, duration: 0.0, id: zero_string(), name: zero_string(), title: zero_string() }
+    bof3player_item_info { media_type: bof3player_media_type::Music, has_duration: false, playable: false, duration: 0.0, id: zero_string(), name: zero_string(), title: zero_string() }
 }
 
 #[test]

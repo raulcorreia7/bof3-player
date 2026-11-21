@@ -300,7 +300,7 @@ impl Image {
 }
 
 /// The one disc image in `directory`: a lone `.cue`, else a lone `.iso`, else a
-/// lone `.bin`. Several candidates of the first kind present are an error.
+/// lone `.bin`. Several candidates of the first type present are an error.
 pub fn discover_image(directory: &Path) -> Result<PathBuf> {
     if !directory.is_dir() {
         return Err(Error::NoImage(format!("directory not found: {}", directory.display())));

@@ -768,11 +768,11 @@ impl Machine {
                 spec.push(char::from(pattern[index]));
                 index += 1;
             }
-            let Some(&kind) = pattern.get(index) else { break };
+            let Some(&conversion) = pattern.get(index) else { break };
             index += 1;
             let zero = spec.contains('0') && !spec.contains('-');
             let width: usize = spec.trim_start_matches(['%', '-', '+', ' ', '#', '0']).split(['.', 'l', 'h']).next().and_then(|w| w.parse().ok()).unwrap_or(0);
-            let text = match kind {
+            let text = match conversion {
                 b'%' => "%".to_string(),
                 b'd' | b'i' => {
                     let value = self.arg(next) as i32;

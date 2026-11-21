@@ -44,9 +44,9 @@ const SILENCE_WINDOW: usize = 64 * 1024;
 const WAV_HEAD_BYTES: usize = 64 * 1024;
 const XA_SCAN_WINDOW_SECTORS: usize = 256;
 
-/// The kind of media an item is.
+/// The type of media an item is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Kind {
+pub enum MediaType {
     /// A sequence played through its bank.
     Music,
     /// A VAB soundfont or one of its cue records.
@@ -59,22 +59,22 @@ pub enum Kind {
     Cdda,
 }
 
-impl Kind {
-    /// All kinds, in catalog order.
-    pub const ALL: [Kind; 5] = [Kind::Music, Kind::Bank, Kind::Sample, Kind::Xa, Kind::Cdda];
+impl MediaType {
+    /// All types, in catalog order.
+    pub const ALL: [MediaType; 5] = [MediaType::Music, MediaType::Bank, MediaType::Sample, MediaType::Xa, MediaType::Cdda];
 
-    /// The kinds in the order the browsers list them.
-    pub const LIST: [Kind; 5] = [Kind::Music, Kind::Sample, Kind::Xa, Kind::Cdda, Kind::Bank];
+    /// The types in the order the browsers list them.
+    pub const LIST: [MediaType; 5] = [MediaType::Music, MediaType::Sample, MediaType::Xa, MediaType::Cdda, MediaType::Bank];
 
-    /// The heading the browsers show for the kind.
+    /// The heading the browsers show for the type.
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
-            Kind::Music => "Music",
-            Kind::Sample => "Sound effects",
-            Kind::Xa => "Streamed audio",
-            Kind::Cdda => "CD audio",
-            Kind::Bank => "Sound banks",
+            MediaType::Music => "Music",
+            MediaType::Sample => "Sound effects",
+            MediaType::Xa => "Streamed audio",
+            MediaType::Cdda => "CD audio",
+            MediaType::Bank => "Sound banks",
         }
     }
 
@@ -82,11 +82,11 @@ impl Kind {
     #[must_use]
     pub fn name(self) -> &'static str {
         match self {
-            Kind::Music => "music",
-            Kind::Bank => "bank",
-            Kind::Sample => "sample",
-            Kind::Xa => "xa",
-            Kind::Cdda => "cdda",
+            MediaType::Music => "music",
+            MediaType::Bank => "bank",
+            MediaType::Sample => "sample",
+            MediaType::Xa => "xa",
+            MediaType::Cdda => "cdda",
         }
     }
 
@@ -101,8 +101,8 @@ impl Kind {
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct Item {
-    /// Media kind.
-    pub kind: Kind,
+    /// Media type.
+    pub media_type: MediaType,
     /// Stable id, for example `music:BGM000#0`.
     pub id: String,
     /// Display name, for example `BGM000 #0`.
@@ -135,9 +135,9 @@ pub struct Item {
 }
 
 impl Item {
-    pub(crate) fn new(kind: Kind) -> Self {
+    pub(crate) fn new(media_type: MediaType) -> Self {
         Self {
-            kind,
+            media_type,
             id: String::new(),
             name: String::new(),
             title: String::new(),
@@ -174,8 +174,8 @@ pub(crate) enum Rank {
 /// Restrictions for [`Catalog::search`].
 #[derive(Debug, Clone, Default)]
 pub struct Filter<'a> {
-    /// Only these kinds; empty means every kind.
-    pub kinds: Vec<Kind>,
+    /// Only these types; empty means every type.
+    pub media_types: Vec<MediaType>,
     /// Only this family (ASCII case-insensitive).
     pub family: Option<&'a str>,
     /// Drop items without audio.
@@ -232,7 +232,7 @@ pub struct NoNaming;
 
 impl Naming for NoNaming {}
 
-/// Every item of one source, in one flat list ordered by kind then natural id order.
+/// Every item of one source, in one flat list ordered by type then natural id order.
 #[derive(Debug, Clone, Default)]
 pub struct Catalog {
     items: Vec<Item>,
@@ -305,7 +305,7 @@ impl Catalog {
         for path in source.list()? {
             add_path(&mut items, source, &cues, &path, naming)?;
         }
-        items.sort_by(|a, b| a.kind.cmp(&b.kind).then_with(|| natural_compare(&a.id, &b.id)).then_with(|| a.id.cmp(&b.id)));
+        items.sort_by(|a, b| a.media_type.cmp(&b.media_type).then_with(|| natural_compare(&a.id, &b.id)).then_with(|| a.id.cmp(&b.id)));
         for pair in items.windows(2) {
             if pair[0].id == pair[1].id {
                 return Err(Error::format(format!("duplicate catalog id: {}", pair[0].id)));
@@ -351,13 +351,13 @@ impl Catalog {
         self.items.get(index)
     }
 
-    /// What `item` repeats, for display apart from its title: the other item's id without the kind
+    /// What `item` repeats, for display apart from its title: the other item's id without the type
     /// prefix (`BGMBAT00#0`), then its title in parentheses when that differs from the item's own.
     #[must_use]
     pub fn same_as_text(&self, item: &Item) -> Option<String> {
         let other = item.same_as.as_deref()?;
         let short = other.split_once(':').map_or(other, |(_, rest)| rest);
-        let other_id = if other.contains(':') { other.to_string() } else { format!("{}:{other}", item.kind.name()) };
+        let other_id = if other.contains(':') { other.to_string() } else { format!("{}:{other}", item.media_type.name()) };
         let title = self.find(&other_id).map_or("", |o| o.title.as_str());
         Some(if title.is_empty() || title == item.title { short.to_string() } else { format!("{short} ({title})") })
     }
@@ -414,7 +414,7 @@ impl Catalog {
             .iter()
             .enumerate()
             .filter(|(_, item)| !filter.playable_only || item.playable)
-            .filter(|(_, item)| filter.kinds.is_empty() || filter.kinds.contains(&item.kind))
+            .filter(|(_, item)| filter.media_types.is_empty() || filter.media_types.contains(&item.media_type))
             .filter(|(_, item)| filter.family.is_none_or(|f| item.family.eq_ignore_ascii_case(f)))
             .map(|(i, item)| (Self::rank(item, query), i))
             .filter(|(rank, _)| *rank != Rank::None)
@@ -541,7 +541,7 @@ fn add_sequences(items: &mut Vec<Item>, archive: &Archive<'_>, payload: &[u8], b
         let used = sequence.programs_used();
         let empty = !sequence.has_notes();
         let unreachable = !empty && used & bank_programs == 0;
-        let mut item = Item::new(Kind::Music);
+        let mut item = Item::new(MediaType::Music);
         item.id = format!("music:{}#{}", archive.name, sequence.seq_id);
         item.name = format!("{} #{}", archive.name, sequence.seq_id);
         let slot = format!("{}#{}", archive.name, sequence.seq_id);
@@ -602,7 +602,7 @@ fn add_bank_samples(items: &mut Vec<Item>, at: &BankAt<'_>, vab: &Bank, tones: &
         } else {
             ""
         };
-        let mut sample = Item::new(Kind::Sample);
+        let mut sample = Item::new(MediaType::Sample);
         sample.id = format!("sample:{}{qualifier}#{}", archive.name, vag.index);
         sample.name = format!("{label} #{}", vag.index);
         sample.family = archive.family.clone();
@@ -622,7 +622,7 @@ fn add_bank_cues(items: &mut Vec<Item>, at: &BankAt<'_>, vab: &Bank, usable: &[T
     let BankAt { archive, number, qualifier, label } = *at;
     for (i, cue) in BankCues::decode(cues).map_err(emi_format::error)?.records().iter().enumerate() {
         let raw = cue.encode();
-        let mut item = Item::new(Kind::Bank);
+        let mut item = Item::new(MediaType::Bank);
         item.id = format!("bank:{}{qualifier}#cue{i}", archive.name);
         item.name = format!("{label} cue {i}");
         item.family = archive.family.clone();
@@ -665,7 +665,7 @@ fn add_bank(items: &mut Vec<Item>, archive: &Archive<'_>, number: u32, header: &
     let usable: Vec<Tone> = vab.usable_tones().copied().collect();
     let tones = bank_tones(&vab, &usable);
 
-    let mut bank = Item::new(Kind::Bank);
+    let mut bank = Item::new(MediaType::Bank);
     bank.id = format!("bank:{}{qualifier}", archive.name);
     bank.name = label.clone();
     if let Some(name) = naming.bank_name(archive.path) {
@@ -718,7 +718,7 @@ fn add_xa(items: &mut Vec<Item>, source: &dyn Source, cues: &CueTable, path: &st
         let id = format!("xa:{stream}#ch{}", channel.channel);
         let label = format!("{stream} ch{}", channel.channel);
         let shape = rate_text(xa::rate(channel.coding), xa::channels(channel.coding));
-        let mut item = Item::new(Kind::Xa);
+        let mut item = Item::new(MediaType::Xa);
         item.id = id.clone();
         item.name = label.clone();
         item.family = family.to_string();
@@ -737,7 +737,7 @@ fn add_xa(items: &mut Vec<Item>, source: &dyn Source, cues: &CueTable, path: &st
         for channel in &channels {
             for span in &channel.spans {
                 let seconds = xa::duration(span.sectors, channel.coding);
-                let mut clip = Item::new(Kind::Xa);
+                let mut clip = Item::new(MediaType::Xa);
                 clip.id = format!("xa:{stream}#ch{}@{}", channel.channel, span.first);
                 clip.name = format!("{stream} ch{} @{}", channel.channel, span.first);
                 clip.family = family.to_string();
@@ -796,7 +796,7 @@ fn add_xa_cue(items: &mut Vec<Item>, path: &str, stream: &str, family: &str, cue
         let last = first + u64::from(sectors - 1) * u64::from(cue.period);
         format!("periods {}-{}, sectors {first}-{last} ({sectors}), {shape}, {}, game cue 0x{:04x}", cue.start, cue.end, seconds_text(seconds), cue.game_id)
     };
-    let mut clip = Item::new(Kind::Xa);
+    let mut clip = Item::new(MediaType::Xa);
     clip.id = id;
     clip.name = name;
     clip.family = family.to_string();
@@ -830,7 +830,7 @@ fn payload_is_silent(blob: &dyn Blob, offset: u64, bytes: u64) -> Result<bool> {
 fn add_cdda(items: &mut Vec<Item>, source: &dyn Source, path: &str) -> Result<()> {
     let blob = source.open(path)?;
     let size = blob.len();
-    let mut item = Item::new(Kind::Cdda);
+    let mut item = Item::new(MediaType::Cdda);
     item.id = format!("cdda:{}", stem_of(path).to_ascii_lowercase());
     item.name = stem_of(path).to_string();
     item.family = "CDDA".to_string();
@@ -870,19 +870,19 @@ fn add_cdda(items: &mut Vec<Item>, source: &dyn Source, path: &str) -> Result<()
 mod tests {
     use super::*;
 
-    fn item(kind: Kind, id: &str, name: &str, title: &str, family: &str, playable: bool) -> Item {
-        Item { id: id.to_string(), name: name.to_string(), title: title.to_string(), family: family.to_string(), playable, ..Item::new(kind) }
+    fn item(media_type: MediaType, id: &str, name: &str, title: &str, family: &str, playable: bool) -> Item {
+        Item { id: id.to_string(), name: name.to_string(), title: title.to_string(), family: family.to_string(), playable, ..Item::new(media_type) }
     }
 
     fn catalog() -> Catalog {
         let mut items = vec![
-            item(Kind::Music, "music:BGM10#0", "BGM10 #0", "Battle", "BGM", true),
-            item(Kind::Music, "music:BGM2#0", "BGM2 #0", "Opening", "BGM", true),
-            item(Kind::Music, "music:BGM2#1", "BGM2 #1", "", "BGM", false),
-            item(Kind::Sample, "sample:BOSS001#3", "BOSS001 #3", "", "BOSS", true),
-            item(Kind::Xa, "xa:S_XA00#ch0@0", "S_XA00 ch0", "", "S_XA", true),
+            item(MediaType::Music, "music:BGM10#0", "BGM10 #0", "Battle", "BGM", true),
+            item(MediaType::Music, "music:BGM2#0", "BGM2 #0", "Opening", "BGM", true),
+            item(MediaType::Music, "music:BGM2#1", "BGM2 #1", "", "BGM", false),
+            item(MediaType::Sample, "sample:BOSS001#3", "BOSS001 #3", "", "BOSS", true),
+            item(MediaType::Xa, "xa:S_XA00#ch0@0", "S_XA00 ch0", "", "S_XA", true),
         ];
-        items.sort_by(|a, b| a.kind.cmp(&b.kind).then_with(|| natural_compare(&a.id, &b.id)).then_with(|| a.id.cmp(&b.id)));
+        items.sort_by(|a, b| a.media_type.cmp(&b.media_type).then_with(|| natural_compare(&a.id, &b.id)).then_with(|| a.id.cmp(&b.id)));
         let by_id = items.iter().enumerate().map(|(i, item)| (item.id.clone(), i)).collect();
         Catalog { items, by_id, groups: Groups::default() }
     }
@@ -901,10 +901,10 @@ mod tests {
     }
 
     #[test]
-    fn filters_narrow_by_kind_family_and_audio() {
+    fn filters_narrow_by_type_family_and_audio() {
         let catalog = catalog();
         let count = |filter: Filter<'_>| catalog.search("", &filter).len();
-        assert_eq!(count(Filter { kinds: vec![Kind::Music], ..Filter::default() }), 3);
+        assert_eq!(count(Filter { media_types: vec![MediaType::Music], ..Filter::default() }), 3);
         assert_eq!(count(Filter { family: Some("boss"), ..Filter::default() }), 1);
         assert_eq!(count(Filter { playable_only: true, ..Filter::default() }), 4);
     }

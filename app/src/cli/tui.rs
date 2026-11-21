@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! The terminal browser: a tree of kinds, families and items on the left, the
+//! The terminal browser: a tree of types, families and items on the left, the
 //! selected item's details on the right, and a now-playing panel with position,
 //! loop window, level meters and a spectrum.
 
@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use crate::theme;
 use bof3player::Library;
-use bof3player::catalog::{Filter, Item, Kind};
+use bof3player::catalog::{Filter, Item, MediaType};
 use bof3player::player::Loop;
 use ratatui::Frame;
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -59,8 +59,8 @@ pub const DIM: Color = Color::DarkGray;
 
 #[derive(Clone, PartialEq, Eq)]
 enum Row {
-    Kind(Kind),
-    Family(Kind, String),
+    MediaType(MediaType),
+    Family(MediaType, String),
     Item(usize, usize),
 }
 
@@ -76,7 +76,7 @@ struct App {
     /// Set by `E`; the run loop then shows the folder picker.
     choose_folder: bool,
     deck: Deck,
-    groups: BTreeMap<Kind, BTreeMap<String, Family>>,
+    groups: BTreeMap<MediaType, BTreeMap<String, Family>>,
     expanded: HashSet<String>,
     rows: Vec<Row>,
     state: ListState,
@@ -98,41 +98,41 @@ struct App {
     show_all_dupes: bool,
 }
 
-fn kind_key(kind: Kind) -> String {
-    kind.name().to_string()
+fn media_type_key(media_type: MediaType) -> String {
+    media_type.name().to_string()
 }
 
-fn family_key(kind: Kind, family: &str) -> String {
-    format!("{}/{family}", kind.name())
+fn family_key(media_type: MediaType, family: &str) -> String {
+    format!("{}/{family}", media_type.name())
 }
 
-/// The heading of a kind with its glyph.
-fn label(kind: Kind) -> String {
-    let glyph = match kind {
-        Kind::Music => "♫",
-        Kind::Bank => "▤",
-        Kind::Sample => "◈",
-        Kind::Xa => "≋",
-        Kind::Cdda => "◉",
+/// The heading of a type with its glyph.
+fn label(media_type: MediaType) -> String {
+    let glyph = match media_type {
+        MediaType::Music => "♫",
+        MediaType::Bank => "▤",
+        MediaType::Sample => "◈",
+        MediaType::Xa => "≋",
+        MediaType::Cdda => "◉",
     };
-    format!("{glyph} {}", kind.label())
+    format!("{glyph} {}", media_type.label())
 }
 
 impl App {
     fn new(library: &'static Library<'static>, global: &Global) -> Self {
-        let mut groups: BTreeMap<Kind, BTreeMap<String, Family>> = BTreeMap::new();
+        let mut groups: BTreeMap<MediaType, BTreeMap<String, Family>> = BTreeMap::new();
         for (index, item) in library.catalog().items().iter().enumerate() {
-            let family = groups.entry(item.kind).or_default().entry(item.family.clone()).or_default();
+            let family = groups.entry(item.media_type).or_default().entry(item.family.clone()).or_default();
             family.items.push(index);
             if item.playable {
                 family.playable += 1;
             }
         }
         let mut expanded = HashSet::new();
-        if let Some(families) = groups.get(&Kind::Music) {
-            expanded.insert(kind_key(Kind::Music));
+        if let Some(families) = groups.get(&MediaType::Music) {
+            expanded.insert(media_type_key(MediaType::Music));
             for family in families.keys() {
-                expanded.insert(family_key(Kind::Music, family));
+                expanded.insert(family_key(MediaType::Music, family));
             }
         }
         let mut app = Self {
@@ -203,15 +203,15 @@ impl App {
                 }
             }
         } else {
-            for kind in Kind::LIST {
-                let Some(families) = self.groups.get(&kind) else { continue };
-                self.rows.push(Row::Kind(kind));
-                if !self.expanded.contains(&kind_key(kind)) {
+            for media_type in MediaType::LIST {
+                let Some(families) = self.groups.get(&media_type) else { continue };
+                self.rows.push(Row::MediaType(media_type));
+                if !self.expanded.contains(&media_type_key(media_type)) {
                     continue;
                 }
                 for (family, group) in families {
-                    self.rows.push(Row::Family(kind, family.clone()));
-                    if !self.expanded.contains(&family_key(kind, family)) {
+                    self.rows.push(Row::Family(media_type, family.clone()));
+                    if !self.expanded.contains(&family_key(media_type, family)) {
                         continue;
                     }
                     for &index in &group.items {
@@ -245,9 +245,9 @@ impl App {
 
     fn toggle(&mut self, open: Option<bool>) {
         let key = match self.selected_row() {
-            Some(Row::Kind(k)) => kind_key(*k),
+            Some(Row::MediaType(k)) => media_type_key(*k),
             Some(Row::Family(k, f)) => family_key(*k, f),
-            Some(Row::Item(i, 0)) if self.item(*i).kind == Kind::Xa && !self.item(*i).id.contains('@') => self.item(*i).id.clone(),
+            Some(Row::Item(i, 0)) if self.item(*i).media_type == MediaType::Xa && !self.item(*i).id.contains('@') => self.item(*i).id.clone(),
             _ => return,
         };
         let now = self.expanded.contains(&key);
@@ -267,7 +267,7 @@ impl App {
     fn collapse_or_parent(&mut self) {
         let at = self.state.selected().unwrap_or(0);
         let is_open = match self.selected_row() {
-            Some(Row::Kind(k)) => self.expanded.contains(&kind_key(*k)),
+            Some(Row::MediaType(k)) => self.expanded.contains(&media_type_key(*k)),
             Some(Row::Family(k, f)) => self.expanded.contains(&family_key(*k, f)),
             Some(Row::Item(i, 0)) => self.expanded.contains(&self.item(*i).id),
             _ => false,
@@ -277,10 +277,10 @@ impl App {
             return;
         }
         if self.query.is_empty()
-            && let Some(parent) = (0..at).rev().find(|&j| matches!(self.rows[j], Row::Kind(_) | Row::Family(..)) && j < at)
+            && let Some(parent) = (0..at).rev().find(|&j| matches!(self.rows[j], Row::MediaType(_) | Row::Family(..)) && j < at)
         {
             let want_family = matches!(self.rows[at], Row::Item(..));
-            let target = (0..at).rev().find(|&j| if want_family { matches!(self.rows[j], Row::Family(..)) } else { matches!(self.rows[j], Row::Kind(_)) });
+            let target = (0..at).rev().find(|&j| if want_family { matches!(self.rows[j], Row::Family(..)) } else { matches!(self.rows[j], Row::MediaType(_)) });
             self.state.select(Some(target.unwrap_or(parent)));
         }
     }
@@ -375,7 +375,7 @@ impl App {
         };
         let item = self.item(index);
         let directory = self.global.exports();
-        let rows = Format::for_kind(item.kind).iter().map(|&format| (format, bof3player::save::export_path(&directory, item, format.extension()))).collect();
+        let rows = Format::for_media_type(item.media_type).iter().map(|&format| (format, bof3player::save::export_path(&directory, item, format.extension()))).collect();
         self.export = Some(ExportMenu { item: index, selected: 0, rows, loops: self.global.loops, quality: OggQuality::Normal });
         self.help = false;
     }
@@ -570,14 +570,14 @@ impl App {
 
 fn row_line(app: &App, row: &Row, width: usize) -> Line<'static> {
     match row {
-        Row::Kind(kind) => kind_line(app, *kind),
-        Row::Family(kind, family) => family_line(app, *kind, family),
+        Row::MediaType(media_type) => media_type_line(app, *media_type),
+        Row::Family(media_type, family) => family_line(app, *media_type, family),
         Row::Item(index, depth) => item_line(app, *index, *depth, width),
     }
 }
 
-fn kind_line(app: &App, k: Kind) -> Line<'static> {
-    let open = app.expanded.contains(&kind_key(k));
+fn media_type_line(app: &App, k: MediaType) -> Line<'static> {
+    let open = app.expanded.contains(&media_type_key(k));
     let total: usize = app.groups[&k].values().map(|f| f.items.len()).sum();
     let playable: usize = app.groups[&k].values().map(|f| f.playable).sum();
     let count = if app.playable_only { format!("{playable}/{total}") } else { total.to_string() };
@@ -588,7 +588,7 @@ fn kind_line(app: &App, k: Kind) -> Line<'static> {
     ])
 }
 
-fn family_line(app: &App, k: Kind, f: &str) -> Line<'static> {
+fn family_line(app: &App, k: MediaType, f: &str) -> Line<'static> {
     let open = app.expanded.contains(&family_key(k, f));
     let family = &app.groups[&k][f];
     let count = if app.playable_only { format!("{}/{}", family.playable, family.items.len()) } else { family.items.len().to_string() };
@@ -607,7 +607,7 @@ fn item_line(app: &App, index: usize, depth: usize, width: usize) -> Line<'stati
         Style::new()
     };
     let mark = if playing { "♪ " } else { "  " };
-    let fold = if item.kind == Kind::Xa && depth == 0 && !item.id.contains('@') { if app.expanded.contains(&item.id) { "▾ " } else { "▸ " } } else { "" };
+    let fold = if item.media_type == MediaType::Xa && depth == 0 && !item.id.contains('@') { if app.expanded.contains(&item.id) { "▾ " } else { "▸ " } } else { "" };
     let time = music_length(item.duration);
     // Columns: the id, the title filling the rest, then the duration at the right edge.
     let name_width = if width >= 50 { 12 } else { 0 };
@@ -645,7 +645,7 @@ fn details_lines(app: &App) -> Vec<Line<'static>> {
         Some(Row::Family(k, f)) => {
             vec![Line::raw(format!("{} / {f}", label(*k))), Line::raw(format!("{} items", app.groups[k][f].items.len()))]
         }
-        Some(Row::Kind(k)) => vec![Line::raw(label(*k)), Line::raw("Enter or → to open")],
+        Some(Row::MediaType(k)) => vec![Line::raw(label(*k)), Line::raw("Enter or → to open")],
         None => vec![Line::raw("nothing selected")],
     }
 }
@@ -723,8 +723,8 @@ fn draw(frame: &mut Frame<'_>, app: &mut App) {
         .enumerate()
         .map(|(at, r)| {
             let line = row_line(app, r, width);
-            // A blank line separates the kind groups.
-            if spaced && at > 0 && matches!(r, Row::Kind(_)) { ListItem::new(Text::from(vec![Line::raw(""), line])) } else { ListItem::new(line) }
+            // A blank line separates the type groups.
+            if spaced && at > 0 && matches!(r, Row::MediaType(_)) { ListItem::new(Text::from(vec![Line::raw(""), line])) } else { ListItem::new(line) }
         })
         .collect();
     let list = List::new(items).block(block).highlight_style(Style::new().bg(Color::Rgb(31, 52, 112)).fg(Color::White).add_modifier(Modifier::BOLD));
@@ -909,13 +909,13 @@ pub fn draw_playbar(frame: &mut Frame<'_>, deck: &Deck, now: Option<(String, Str
     let title = match &now {
         Some((id, label)) => {
             let state = if deck.paused() { "❚❚ " } else { "▶ " };
-            let kind = format!("   {}", id.split([':', '/']).next().unwrap_or(""));
+            let media_type = format!("   {}", id.split([':', '/']).next().unwrap_or(""));
             let room = usize::from(left.width).saturating_sub(state.chars().count());
-            let fits = label.chars().count() + kind.chars().count() <= room;
+            let fits = label.chars().count() + media_type.chars().count() <= room;
             Line::from(vec![
                 Span::styled(state, Style::new().fg(Color::Green)),
                 Span::styled(head_fit(label.clone(), room), Style::new().add_modifier(Modifier::BOLD)),
-                Span::styled(if fits { kind } else { String::new() }, Style::new().fg(DIM)),
+                Span::styled(if fits { media_type } else { String::new() }, Style::new().fg(DIM)),
             ])
         }
         None => Line::styled("Nothing playing", Style::new().fg(DIM)),

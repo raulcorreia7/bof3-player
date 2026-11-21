@@ -381,8 +381,8 @@ fn chunk(id: &[u8; 4], body: &[u8]) -> Vec<u8> {
 }
 
 /// A RIFF list chunk: the list type and its chunks.
-fn list(kind: &[u8; 4], chunks: &[Vec<u8>]) -> Vec<u8> {
-    let mut body = kind.to_vec();
+fn list(list_type: &[u8; 4], chunks: &[Vec<u8>]) -> Vec<u8> {
+    let mut body = list_type.to_vec();
     for item in chunks {
         body.extend_from_slice(item);
     }
@@ -507,9 +507,9 @@ fn chunks(bytes: &[u8]) -> Result<Vec<([u8; 4], &[u8])>> {
     Ok(found)
 }
 
-/// The chunks of the `LIST` of type `kind`.
-fn list_of<'a>(parts: &[([u8; 4], &'a [u8])], kind: &[u8; 4]) -> Result<Vec<([u8; 4], &'a [u8])>> {
-    let body = parts.iter().find(|(id, body)| id == b"LIST" && body.get(..4) == Some(&kind[..])).map(|(_, body)| *body).ok_or(Error::SoundFont("a LIST chunk is missing"))?;
+/// The chunks of the `LIST` of type `list_type`.
+fn list_of<'a>(parts: &[([u8; 4], &'a [u8])], list_type: &[u8; 4]) -> Result<Vec<([u8; 4], &'a [u8])>> {
+    let body = parts.iter().find(|(id, body)| id == b"LIST" && body.get(..4) == Some(&list_type[..])).map(|(_, body)| *body).ok_or(Error::SoundFont("a LIST chunk is missing"))?;
     chunks(&body[4..])
 }
 

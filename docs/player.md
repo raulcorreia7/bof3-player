@@ -32,7 +32,7 @@ In the browser, Enter opens, `h` goes up, `o` uses the current folder and `q` qu
 
 ## Desktop window
 
-`bof3player-gui` is a window with the terminal browser's features: the catalog as a tree of kind,
+`bof3player-gui` is a window with the terminal browser's features: the catalog as a tree of type,
 family and item, ranked search, play, pause, seek, volume (click the speaker to mute), loop, play on, level meters, a spectrum
 analyzer, and export to WAV, FLAC, Ogg Vorbis and native files. It uses [gpui](https://gpui.rs)
 and runs on Linux, macOS and Windows. `make build-gui` builds it alone. Run it from the repository root:
@@ -119,16 +119,16 @@ command is a search query: `bof3player battle` plays the best match.
 
 ```sh
 bin/bof3player -i GAME.cue doctor
-bin/bof3player -i GAME.cue list --kind music
+bin/bof3player -i GAME.cue list --type music
 bin/bof3player search "music"
 bin/bof3player play music:ITEM#0 --loops 1
 bin/bof3player render music:ITEM#0 --format flac -o opening.flac
-bin/bof3player render --all --out-dir out/ --kind music --format flac
+bin/bof3player render --all --out-dir out/ --type music --format flac
 bin/bof3player export midi music:ITEM#0 -o opening.mid
-bin/bof3player verify --kind sample --seconds 5
+bin/bof3player verify --type sample --seconds 5
 ```
 
-`ITEM` is a placeholder. Use an id from `bof3player list --kind music`.
+`ITEM` is a placeholder. Use an id from `bof3player list --type music`.
 
 ## Render formats
 

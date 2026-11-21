@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 
 use sha2::{Digest, Sha256};
 
-use crate::catalog::{Item, Kind};
+use crate::catalog::{Item, MediaType};
 use crate::error::Result;
 use crate::format::emi::{Emi, EntryType};
 use crate::format::sep::{self, Package};
@@ -147,17 +147,17 @@ fn encode_events_for(sequence: &sep::Sequence) -> Vec<u8> {
                 out.push(event.status);
                 running = event.status;
             }
-        } else if event.kind() == sep::Kind::Meta && running != 0xff {
+        } else if event.event_type() == sep::EventType::Meta && running != 0xff {
             out.push(0xff);
             running = 0xff;
         }
-        match event.kind() {
-            sep::Kind::Program | sep::Kind::ChannelAftertouch => out.push(event.data1),
-            sep::Kind::NoteOn | sep::Kind::NoteOff | sep::Kind::PolyAftertouch | sep::Kind::Control | sep::Kind::PitchBend => {
+        match event.event_type() {
+            sep::EventType::Program | sep::EventType::ChannelAftertouch => out.push(event.data1),
+            sep::EventType::NoteOn | sep::EventType::NoteOff | sep::EventType::PolyAftertouch | sep::EventType::Control | sep::EventType::PitchBend => {
                 out.push(event.data1);
                 out.push(event.data2);
             }
-            sep::Kind::Meta => {
+            sep::EventType::Meta => {
                 out.push(event.meta_type);
                 write_vlq(&mut out, event.meta.len() as u32);
                 out.extend_from_slice(&event.meta);
@@ -169,9 +169,9 @@ fn encode_events_for(sequence: &sep::Sequence) -> Vec<u8> {
 
 /// Compute the content-based grouping key for an item.
 pub fn group_key(item: &Item, source: &dyn Source) -> Result<Option<String>> {
-    match item.kind {
-        Kind::Music => music_key(item, source),
-        Kind::Sample => sample_key(item, source),
+    match item.media_type {
+        MediaType::Music => music_key(item, source),
+        MediaType::Sample => sample_key(item, source),
         _ => Ok(None),
     }
 }
@@ -248,7 +248,7 @@ fn music_key(item: &Item, source: &dyn Source) -> Result<Option<String>> {
 }
 
 fn sample_key(item: &Item, source: &dyn Source) -> Result<Option<String>> {
-    if item.kind != Kind::Sample {
+    if item.media_type != MediaType::Sample {
         return Ok(None);
     }
     let blob = source.open(&item.path)?;

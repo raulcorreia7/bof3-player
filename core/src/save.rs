@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::catalog::{Item, Kind};
+use crate::catalog::{Item, MediaType};
 use crate::player::Loop;
 use crate::{Library, Player, PlayerOptions};
 
@@ -176,7 +176,7 @@ pub struct Save {
 impl Save {
     /// Start exporting `item` into `dir` as `export.format`. Music plays
     /// `loops` passes of its loop window, or of the whole item when it has no
-    /// window, then the `fade` seconds at the end fade out. Other kinds
+    /// window, then the `fade` seconds at the end fade out. Other types
     /// render once, without fade.
     pub fn start(library: &'static Library<'static>, item: &Item, player_options: PlayerOptions, dir: &Path, export: ExportOptions) -> Result<Self, String> {
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -190,7 +190,7 @@ impl Save {
             return Err(format!("{} carries no audio: {}", item.id, item.detail));
         }
         let mut player = library.player_with(item, player_options).map_err(|e| e.to_string())?;
-        let music = item.kind == crate::catalog::Kind::Music;
+        let music = item.media_type == crate::catalog::MediaType::Music;
         let window = player.loop_window().filter(|_| music);
         let requested = export.loops.unwrap_or(1).max(1);
         let intro_loop = matches!(export.format, ExportFormat::Flac | ExportFormat::Ogg) && window.is_some() && requested == 1;
@@ -340,13 +340,13 @@ pub fn absolute(path: &Path) -> PathBuf {
 /// The bytes and file extension of an item's native package: MIDI for music, VAG for a sample,
 /// VAB for a bank, or with `sequence` the game's own sequence package of a music item.
 pub fn native_package(library: &Library<'static>, item: &Item, sequence: bool) -> Result<(Vec<u8>, &'static str), String> {
-    let (result, extension) = match (item.kind, sequence) {
-        (Kind::Music, true) => (library.export_sequence(item), "seq"),
+    let (result, extension) = match (item.media_type, sequence) {
+        (MediaType::Music, true) => (library.export_sequence(item), "seq"),
         (_, true) => return Err("only music items have a sequence package".to_string()),
-        (Kind::Music, false) => (library.export_midi(item), "mid"),
-        (Kind::Sample, false) => (library.export_vag(item), "vag"),
-        (Kind::Bank, false) => (library.export_bank(item), "vab"),
-        (Kind::Xa | Kind::Cdda, false) => {
+        (MediaType::Music, false) => (library.export_midi(item), "mid"),
+        (MediaType::Sample, false) => (library.export_vag(item), "vag"),
+        (MediaType::Bank, false) => (library.export_bank(item), "vab"),
+        (MediaType::Xa | MediaType::Cdda, false) => {
             return Err(format!("{}: no native package; export WAV, FLAC or Ogg", item.id));
         }
     };
@@ -423,17 +423,17 @@ impl Format {
         }
     }
 
-    /// The formats the export menu offers for an item kind, in menu order.
-    pub fn for_kind(kind: Kind) -> &'static [Format] {
+    /// The formats the export menu offers for an item type, in menu order.
+    pub fn for_media_type(media_type: MediaType) -> &'static [Format] {
         const MUSIC: &[Format] = &[Format::Wav, Format::Flac, Format::Ogg, Format::Midi, Format::Sequence];
         const SAMPLE: &[Format] = &[Format::Wav, Format::Flac, Format::Ogg, Format::Vag];
         const BANK: &[Format] = &[Format::Vab];
         const STREAM: &[Format] = &[Format::Wav, Format::Flac, Format::Ogg];
-        match kind {
-            Kind::Music => MUSIC,
-            Kind::Sample => SAMPLE,
-            Kind::Bank => BANK,
-            Kind::Xa | Kind::Cdda => STREAM,
+        match media_type {
+            MediaType::Music => MUSIC,
+            MediaType::Sample => SAMPLE,
+            MediaType::Bank => BANK,
+            MediaType::Xa | MediaType::Cdda => STREAM,
         }
     }
 }
@@ -456,8 +456,8 @@ mod tests {
     use super::*;
 
     fn item(id: &str, title: &str) -> Item {
-        let kind = Kind::from_name(id.split(':').next().unwrap()).unwrap();
-        Item { id: id.to_string(), title: title.to_string(), ..Item::new(kind) }
+        let media_type = MediaType::from_name(id.split(':').next().unwrap()).unwrap();
+        Item { id: id.to_string(), title: title.to_string(), ..Item::new(media_type) }
     }
 
     fn scratch(test: &str) -> PathBuf {

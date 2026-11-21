@@ -48,7 +48,7 @@ pub const CHANNELS: usize = 16;
 
 /// Message class of an event's status byte.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Kind {
+pub enum EventType {
     /// Note off.
     NoteOff = 0x80,
     /// Note on (velocity 0 is a note off).
@@ -89,7 +89,7 @@ pub struct Event {
     pub data1: u8,
     /// Second data byte.
     pub data2: u8,
-    /// Meta type, meaningful when [`Event::kind`] is [`Kind::Meta`].
+    /// Meta type, meaningful when [`Event::event_type`] is [`EventType::Meta`].
     pub meta_type: u8,
     /// Meta payload, empty for end of track.
     pub meta: Vec<u8>,
@@ -99,16 +99,16 @@ pub struct Event {
 
 impl Event {
     /// The event's message class; the parser keeps no other status byte.
-    pub fn kind(&self) -> Kind {
+    pub fn event_type(&self) -> EventType {
         match self.status & 0xf0 {
-            0x80 => Kind::NoteOff,
-            0x90 => Kind::NoteOn,
-            0xa0 => Kind::PolyAftertouch,
-            0xb0 => Kind::Control,
-            0xc0 => Kind::Program,
-            0xd0 => Kind::ChannelAftertouch,
-            0xe0 => Kind::PitchBend,
-            _ => Kind::Meta,
+            0x80 => EventType::NoteOff,
+            0x90 => EventType::NoteOn,
+            0xa0 => EventType::PolyAftertouch,
+            0xb0 => EventType::Control,
+            0xc0 => EventType::Program,
+            0xd0 => EventType::ChannelAftertouch,
+            0xe0 => EventType::PitchBend,
+            _ => EventType::Meta,
         }
     }
 
@@ -119,7 +119,7 @@ impl Event {
 
     /// The tempo a set-tempo meta event states, in microseconds per quarter note.
     pub fn tempo(&self) -> Option<u32> {
-        (self.kind() == Kind::Meta && self.meta_type == META_TEMPO && self.meta.len() >= 3).then(|| u24_be(&self.meta, 0))
+        (self.event_type() == EventType::Meta && self.meta_type == META_TEMPO && self.meta.len() >= 3).then(|| u24_be(&self.meta, 0))
     }
 }
 
@@ -211,7 +211,7 @@ impl Sequence {
 
     /// Whether the sequence keys a voice at least once.
     pub fn has_notes(&self) -> bool {
-        self.events.iter().any(|event| event.kind() == Kind::NoteOn && event.data2 != 0)
+        self.events.iter().any(|event| event.event_type() == EventType::NoteOn && event.data2 != 0)
     }
 
     /// Programs the note-carrying channels select, one bit each.
@@ -219,9 +219,9 @@ impl Sequence {
         let mut program = [0u8; CHANNELS];
         let mut mask = 0u128;
         for event in &self.events {
-            match event.kind() {
-                Kind::Program => program[usize::from(event.channel())] = event.data1,
-                Kind::NoteOn if event.data2 != 0 => {
+            match event.event_type() {
+                EventType::Program => program[usize::from(event.channel())] = event.data1,
+                EventType::NoteOn if event.data2 != 0 => {
                     mask |= 1u128 << (program[usize::from(event.channel())] & 0x7f);
                 }
                 _ => {}
@@ -427,7 +427,7 @@ impl Package {
                     running = message.status;
                 }
             }
-            let ends = item.events.last().is_some_and(|event| event.kind() == Kind::Meta && event.meta_type == META_END);
+            let ends = item.events.last().is_some_and(|event| event.event_type() == EventType::Meta && event.meta_type == META_END);
             if !ends {
                 problems.push(Problem::NoEndOfTrack { sequence });
             }

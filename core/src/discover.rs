@@ -8,9 +8,9 @@ use crate::catalog::Naming;
 use crate::error::Result;
 use crate::source::{DiscSource, FolderSource};
 
-/// What kind of data a source is.
+/// What type of data a source is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SourceKind {
+pub enum SourceType {
     /// An extracted folder.
     Folder,
     /// A disc image.
@@ -18,9 +18,9 @@ pub enum SourceKind {
 }
 
 /// Open a known source with `naming`.
-pub fn open_with(kind: SourceKind, path: &Path, naming: &dyn Naming) -> Result<Library<'static>> {
-    match kind {
-        SourceKind::Folder => Library::open_with(FolderSource::open(path)?, naming),
-        SourceKind::Disc => Library::open_with(DiscSource::open(path)?, naming),
+pub fn open_with(media_type: SourceType, path: &Path, naming: &dyn Naming) -> Result<Library<'static>> {
+    match media_type {
+        SourceType::Folder => Library::open_with(FolderSource::open(path)?, naming),
+        SourceType::Disc => Library::open_with(DiscSource::open(path)?, naming),
     }
 }

@@ -10,7 +10,7 @@ use super::widgets::{Palette, RADIUS, button, chip, field, meter, panel, slider,
 use super::{ExportMenu, Field, Gui, State, describe};
 use crate::deck::clock;
 use bof3player::catalog::Item;
-use bof3player::discover::SourceKind;
+use bof3player::discover::SourceType;
 
 /// Height of a list row.
 const ROW: f32 = 28.0;
@@ -88,12 +88,12 @@ fn overlay(card: impl IntoElement) -> Div {
 impl Gui {
     fn header(&self) -> Div {
         let palette = Palette::get();
-        let (counts, kind) = match &self.state {
+        let (counts, media_type) = match &self.state {
             State::Ready(browser) => (
                 format!("{} playable / {} items", browser.tree.playable, browser.tree.total()),
-                match browser.loaded.kind {
-                    SourceKind::Disc => "Disc image",
-                    SourceKind::Folder => "Data folder",
+                match browser.loaded.media_type {
+                    SourceType::Disc => "Disc image",
+                    SourceType::Folder => "Data folder",
                 },
             ),
             State::Loading(_) => ("Opening game data...".to_string(), ""),
@@ -117,7 +117,7 @@ impl Gui {
                     .child(div().text_color(palette.muted).child(counts))
                     .child(div().flex_1())
                     .child(div().text_color(palette.text).child(disc))
-                    .child(div().text_color(palette.muted).child(kind)),
+                    .child(div().text_color(palette.muted).child(media_type)),
             )
             .child(div().h(px(1.0)).w_full().bg(palette.border))
     }
@@ -449,11 +449,11 @@ fn row_view(ix: usize, row: Row, open: bool, selected: bool, playing: bool) -> g
         .when(!selected, |row| row.hover(|style| style.bg(palette.hover)));
     let chevron = |color| icon(if open { "chevron-down" } else { "chevron-right" }, 14.0).text_color(color);
     match row {
-        Row::Kind(kind, count) => base
+        Row::MediaType(media_type, count) => base
             .font_weight(FontWeight::BOLD)
             .child(chevron(palette.accent))
-            .child(icon(kind_icon(kind), 16.0).text_color(palette.accent))
-            .child(div().text_color(palette.text).child(kind.label()))
+            .child(icon(media_type_icon(media_type), 16.0).text_color(palette.accent))
+            .child(div().text_color(palette.text).child(media_type.label()))
             .child(div().text_color(palette.muted).font_weight(FontWeight::NORMAL).child(count.to_string())),
         Row::Family(_, family, count) => base.pl(px(34.0)).child(chevron(palette.muted)).child(div().child(family)).child(div().text_color(palette.muted).child(count.to_string())),
         Row::Item(item) => item_row(base, item, playing),
@@ -475,14 +475,14 @@ fn item_row(base: gpui::Stateful<Div>, item: &'static Item, playing: bool) -> gp
         .child(div().text_color(palette.muted).child(length))
 }
 
-/// The icon of a kind.
-fn kind_icon(kind: bof3player::catalog::Kind) -> &'static str {
-    use bof3player::catalog::Kind;
-    match kind {
-        Kind::Music => "music",
-        Kind::Sample => "volume",
-        Kind::Xa => "wave",
-        Kind::Cdda => "disc",
-        Kind::Bank => "box",
+/// The icon of a type.
+fn media_type_icon(media_type: bof3player::catalog::MediaType) -> &'static str {
+    use bof3player::catalog::MediaType;
+    match media_type {
+        MediaType::Music => "music",
+        MediaType::Sample => "volume",
+        MediaType::Xa => "wave",
+        MediaType::Cdda => "disc",
+        MediaType::Bank => "box",
     }
 }

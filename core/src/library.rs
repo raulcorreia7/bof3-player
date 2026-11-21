@@ -6,7 +6,7 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::catalog::{Catalog, Item, Kind, Naming, NoNaming};
+use crate::catalog::{Catalog, Item, MediaType, Naming, NoNaming};
 use crate::driver::{MusicEngine, SampleEngine};
 use crate::error::{Error, Result};
 use crate::format::emi::{Emi, EntryType};
@@ -71,24 +71,24 @@ impl<'a> Library<'a> {
         if !item.playable {
             return Err(Error::State(format!("{} carries no audio - {}", item.id, item.detail)));
         }
-        match item.kind {
-            Kind::Music => {
+        match item.media_type {
+            MediaType::Music => {
                 let blob = self.source.open(&item.path)?;
                 let engine = MusicEngine::new(&blob.bytes()?, item.index, options.reverb)?;
                 Ok(Player::new(engine))
             }
-            Kind::Sample => {
+            MediaType::Sample => {
                 let blob = self.source.open(&item.path)?;
                 let engine = SampleEngine::new(&blob.bytes()?, item.bank as usize, item.sub_index, options.reverb)?;
                 Ok(Player::new(engine))
             }
-            Kind::Bank => Err(Error::Unsupported(String::from("bank audition is not available; play its samples or music"))),
-            Kind::Xa => {
+            MediaType::Bank => Err(Error::Unsupported(String::from("bank audition is not available; play its samples or music"))),
+            MediaType::Xa => {
                 let blob = self.source.open(&item.path)?;
                 let stream = XaStream { channel: item.index as u8, first_sector: item.sub_index, sector_count: item.sectors, duration: item.duration.unwrap_or(0.0) };
                 Ok(Player::xa(blob, stream)?)
             }
-            Kind::Cdda => {
+            MediaType::Cdda => {
                 let blob = self.source.open(&item.path)?;
                 let raw = item.path.to_ascii_lowercase().ends_with(".raw");
                 Ok(Player::cdda(blob, raw)?)
@@ -98,7 +98,7 @@ impl<'a> Library<'a> {
 
     /// A music item's sequence as a Standard MIDI File.
     pub fn export_midi(&self, item: &Item) -> Result<Vec<u8>> {
-        if item.kind != Kind::Music {
+        if item.media_type != MediaType::Music {
             return Err(Error::invalid(format!("{} is not a music item", item.id)));
         }
         let blob = self.source.open(&item.path)?;
@@ -109,7 +109,7 @@ impl<'a> Library<'a> {
 
     /// The raw ADPCM blocks of a sample item (the body of a `.VAG` without its header).
     pub fn export_vag(&self, item: &Item) -> Result<Vec<u8>> {
-        if item.kind != Kind::Sample {
+        if item.media_type != MediaType::Sample {
             return Err(Error::invalid(format!("{} is not a sample item", item.id)));
         }
         let blob = self.source.open(&item.path)?;
@@ -123,7 +123,7 @@ impl<'a> Library<'a> {
     /// The sequence package of a music item: the bytes the disc stores, the
     /// `.seq` file.
     pub fn export_sequence(&self, item: &Item) -> Result<Vec<u8>> {
-        if item.kind != Kind::Music {
+        if item.media_type != MediaType::Music {
             return Err(Error::invalid(format!("{} is not a music item", item.id)));
         }
         let blob = self.source.open(&item.path)?;
@@ -135,7 +135,7 @@ impl<'a> Library<'a> {
     /// The whole sound bank of a bank item: the `.vh` header followed by the
     /// `.vb` body, which is the standard VAB file.
     pub fn export_bank(&self, item: &Item) -> Result<Vec<u8>> {
-        if item.kind != Kind::Bank {
+        if item.media_type != MediaType::Bank {
             return Err(Error::invalid(format!("{} is not a bank item", item.id)));
         }
         let blob = self.source.open(&item.path)?;
