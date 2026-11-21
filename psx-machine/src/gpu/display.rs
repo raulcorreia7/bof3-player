@@ -2,6 +2,8 @@
 //! The displayed picture, written from psx-spx "GPU Display Control Commands" (`GP1(05h)` to
 //! `GP1(08h)`), "GPU Video Memory (VRAM)" (15- and 24-bit display) and "GPU Timings" (dotclocks).
 
+use psx_formats::gfx::color::expanded;
+
 use super::{Gpu, VRAM_HEIGHT, VRAM_WIDTH};
 
 /// The picture the GPU sends to the television, as 8-bit RGBA.
@@ -63,11 +65,7 @@ pub(super) fn frame(gpu: &Gpu) -> Frame {
                 [byte(at), byte(at + 1), byte(at + 2)]
             } else {
                 let word = source[(start_x + column) % VRAM_WIDTH];
-                let widen = |shift: u16| {
-                    let channel = ((word >> shift) & 0x1F) as u8;
-                    channel << 3 | channel >> 2
-                };
-                [widen(0), widen(5), widen(10)]
+                expanded(word)
             };
             pixel[..3].copy_from_slice(&rgb);
         }

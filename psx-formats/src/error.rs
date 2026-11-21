@@ -3,13 +3,6 @@
 use core::fmt;
 
 /// Everything a parser or codec in this crate can report.
-///
-/// # Examples
-///
-/// ```
-/// let error = psx_formats::Error::VabBadMagic;
-/// assert_eq!(error.to_string(), "not a VAB header (bad magic)");
-/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Error {
@@ -84,6 +77,8 @@ pub enum Error {
         /// What the file breaks or lacks.
         reason: &'static str,
     },
+    /// A PS-X EXE header that does not hold together, and why.
+    Exe(&'static str),
     /// A CD-ROM XA sector is not the stored 2336 bytes.
     XaSectorSize(usize),
     /// A type-3 payload is empty or not a whole number of rectangles.
@@ -170,6 +165,7 @@ impl fmt::Display for Error {
             }
             Self::SepNoResolution => write!(f, "sequence has no resolution"),
             Self::MidiFile { reason } => write!(f, "not a MIDI file this reader takes: {reason}"),
+            Self::Exe(reason) => write!(f, "PS-X EXE: {reason}"),
             Self::XaSectorSize(length) => {
                 write!(f, "XA sector is {length} bytes; it must be 2336")
             }
@@ -200,15 +196,4 @@ impl fmt::Display for Error {
 impl core::error::Error for Error {}
 
 /// The crate's result type.
-///
-/// # Examples
-///
-/// ```
-/// fn first(bytes: &[u8]) -> psx_formats::Result<u8> {
-///     bytes.first().copied().ok_or(psx_formats::Error::XaSectorSize(0))
-/// }
-///
-/// assert_eq!(first(&[1]), Ok(1));
-/// assert!(first(&[]).is_err());
-/// ```
 pub type Result<T, E = Error> = core::result::Result<T, E>;

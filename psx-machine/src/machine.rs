@@ -101,7 +101,7 @@ impl Machine {
     ///
     /// [`Error::Boot`] when `bytes` is not a PS-X EXE.
     pub fn load_executable(&mut self, bytes: &[u8], stack: Option<u32>) -> Result<(), Error> {
-        let exe = Executable::parse(bytes).map_err(|message| Error::Boot(message.into()))?;
+        let exe = Executable::parse(bytes).map_err(|error| Error::Boot(error.to_string()))?;
         self.write_ram(exe.load_address, exe.body);
         for offset in (0..exe.bss_size).step_by(4) {
             self.bus.write32(exe.bss.wrapping_add(offset), 0);
