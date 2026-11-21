@@ -15,8 +15,10 @@ extern crate alloc;
 pub mod cue;
 pub mod emi;
 mod error;
-
-pub use emi::{Archive, Entry, HEADER_SIZE, MAGIC, SECTOR_SIZE, TOC_ENTRY_SIZE, TYPE_CUE, TYPE_LZ77, align_sector};
 #[cfg(feature = "std")]
-pub use emi::{TYPE_VRAM, ensure_parent, entry_name, read_entry, type_extension};
+pub mod upload;
+
+pub use emi::{Archive, Entry, HEADER_SIZE, MAGIC, SECTOR_SIZE, TOC_ENTRY_SIZE, TYPE_CUE, TYPE_LZ77, TYPE_SEP, TYPE_VAB_BODY, TYPE_VAB_HEADER, TYPE_VRAM, align_sector};
+#[cfg(feature = "std")]
+pub use emi::{ensure_parent, entry_name, read_entry, type_extension};
 pub use error::{Error, Result};

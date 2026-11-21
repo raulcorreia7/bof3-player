@@ -143,7 +143,7 @@ Conversions between the container-free parts:
 
 | Path                                        | What it does                                                                             |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `gfx::vram::Placement` (`Descriptor`)       | where an upload lands: `x`, `y`, `load_argument(base)`, `moved(column, row, rectangles)` |
+| `gfx::vram::Placement` (`Descriptor`)       | where an upload lands: `x`, `y`, `moved(column, row, rectangles)` |
 | `gfx::upload`                               | an upload to a TIM (`tim_with_clut`, `tim_direct`) and a TIM back (`from_tim`)          |
 | `vab::file`                                 | the one-file `.vab`: `join`, `split` (checked), `check` a header and body pair           |
 | `sep::seq`                                  | the SEQ file: `encode`, `export`, `read`, `package`; `sep::Package::validate` for a SEP  |

@@ -3,7 +3,7 @@
 
 use std::ptr;
 
-use psx_formats::gfx::vram::{self, Descriptor};
+use psx_formats::gfx::vram;
 
 use crate::error::{fail, guard, map_formats};
 use crate::{bof3player_image, owned_buffer, psx_buffer, psx_status};
@@ -27,7 +27,7 @@ pub unsafe extern "C" fn bof3player_vram_decode(load_argument: u32, payload: *co
     unsafe { *out_image = bof3player_image { width: 0, height: 0, rgba: psx_buffer { data: ptr::null_mut(), len: 0 } } };
     guard(|| {
         let payload = unsafe { input(payload, payload_len, "payload")? };
-        let descriptor = Descriptor::from_load_argument(load_argument);
+        let descriptor = emi::upload::descriptor(load_argument);
         let image = vram::upload_image(payload, descriptor).map_err(map_formats)?;
         unsafe { *out_image = bof3player_image { width: image.width, height: image.height, rgba: owned_buffer(image.rgba) } };
         Ok(())

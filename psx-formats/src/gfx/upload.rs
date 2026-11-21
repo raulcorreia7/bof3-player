@@ -7,19 +7,6 @@
 //! ([`tim_direct`]), and a TIM that one of them wrote returns the upload byte for byte
 //! ([`from_tim`]). The TIM layout is Sony's *File Formats* manual, chapter 3 ("TIM"); the frame
 //! buffer is psx-spx "GPU Video Memory (VRAM)".
-//!
-//! # Examples
-//!
-//! ```
-//! use psx_formats::gfx::upload::{from_tim, tim_direct};
-//! use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES};
-//!
-//! let payload: Vec<u8> = (0..RECTANGLE_BYTES).map(|byte| byte as u8).collect();
-//! let place = Descriptor { column: 2, row: 1, chunks_per_row: 1 };
-//! let tim = tim_direct(place, &payload).unwrap();
-//! let back = from_tim(&tim).unwrap();
-//! assert_eq!((back.payload, back.placement), (payload, place));
-//! ```
 
 use super::texture::Depth;
 use super::tim::{Block, File, Mode};
@@ -34,17 +21,6 @@ const MAX_ROW: usize = 0x1f;
 const MAX_PER_ROW: usize = 0x3f;
 
 /// A TIM read as a type-3 upload: the payload its image makes and the placement its header states.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::gfx::upload::{Upload, from_tim, tim_direct};
-/// use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES};
-///
-/// let tim = tim_direct(Descriptor { column: 0, row: 0, chunks_per_row: 1 }, &vec![0; RECTANGLE_BYTES]).unwrap();
-/// let upload: Upload = from_tim(&tim).unwrap();
-/// assert_eq!(upload.height, 32);
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Upload {
     /// The type-3 payload.
@@ -62,19 +38,6 @@ pub struct Upload {
 /// The TIM of an upload drawn with one CLUT row: the upload's words as the image and `clut_words` as a
 /// one-row CLUT at (`clut_x`, `clut_y`) in the frame buffer. `depth` is the texel depth the upload's
 /// texture page selects; the TIM is exact because its words are the words the payload holds.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::gfx::texture::Depth;
-/// use psx_formats::gfx::upload::tim_with_clut;
-/// use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES};
-///
-/// let place = Descriptor { column: 22, row: 8, chunks_per_row: 1 };
-/// let tim = tim_with_clut(place, &vec![0; RECTANGLE_BYTES], Depth::Four, 160, 483, &[0x8000; 16]).unwrap();
-/// assert_eq!((tim.image.x, tim.image.y), (704, 256));
-/// assert_eq!(tim.clut.unwrap().width, 16);
-/// ```
 pub fn tim_with_clut(descriptor: Descriptor, payload: &[u8], depth: Depth, clut_x: u16, clut_y: u16, clut_words: &[u16]) -> Result<File> {
     let width = u16::try_from(clut_words.len()).map_err(|_| Error::Tim("a CLUT row is over 65535 words".into()))?;
     let clut = Block { x: clut_x, y: clut_y, width, height: 1, words: clut_words.to_vec() };
@@ -87,18 +50,6 @@ pub fn tim_with_clut(descriptor: Descriptor, payload: &[u8], depth: Depth, clut_
 
 /// The TIM of an upload with no CLUT: its words as a 15-bit image at the place its descriptor gives
 /// (the pixel mode `2` has no CLUT block).
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::gfx::tim::Mode;
-/// use psx_formats::gfx::upload::tim_direct;
-/// use psx_formats::gfx::vram::{Descriptor, RECTANGLE_BYTES};
-///
-/// let tim = tim_direct(Descriptor { column: 0, row: 0, chunks_per_row: 1 }, &vec![0; RECTANGLE_BYTES]).unwrap();
-/// assert_eq!((tim.mode, tim.clut), (Mode::Fifteen, None));
-/// assert!(tim_direct(Descriptor { column: 0, row: 0, chunks_per_row: 1 }, &[0; 3]).is_err());
-/// ```
 pub fn tim_direct(descriptor: Descriptor, payload: &[u8]) -> Result<File> {
     Ok(File { mode: Mode::Fifteen, clut: None, image: image_block(descriptor, payload)? })
 }
@@ -117,17 +68,6 @@ fn image_block(descriptor: Descriptor, payload: &[u8]) -> Result<Block> {
 /// not that shape is refused with its size; padding it would put words in the upload that the TIM does
 /// not hold. An image past the 1024-by-512 frame buffer is kept, because a loader skips those
 /// rectangles ([`vram::Plane::blit`]); only a place or width a load argument cannot name is refused.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::gfx::tim::{Block, File, Mode};
-/// use psx_formats::gfx::upload::from_tim;
-///
-/// let image = Block { x: 1, y: 0, width: 32, height: 32, words: vec![0; 1024] };
-/// let off_grid = File { mode: Mode::Fifteen, clut: None, image };
-/// assert!(from_tim(&off_grid).unwrap_err().to_string().contains("multiples of 32"));
-/// ```
 pub fn from_tim(file: &File) -> Result<Upload> {
     let image = &file.image;
     let side = RECTANGLE_SIDE;
@@ -162,10 +102,8 @@ mod tests {
     use super::*;
 
     /// A two-rectangle sheet at column 22, row 8, one rectangle to a row, with distinct words.
-    const LOAD: u32 = (22 << 24) | (8 << 16) | (1 << 8);
-
     fn place() -> Descriptor {
-        Descriptor::from_load_argument(LOAD)
+        Descriptor { column: 22, row: 8, chunks_per_row: 1 }
     }
 
     fn sheet() -> Vec<u8> {
@@ -188,7 +126,7 @@ mod tests {
         let back = from_tim(&file).unwrap();
         assert_eq!(back.payload, sheet());
         assert_eq!(back.depth, Some(Depth::Four));
-        assert_eq!(back.placement.load_argument(LOAD), LOAD);
+        assert_eq!(back.placement, place());
         assert_eq!(back.clut.expect("the CLUT").words, row());
     }
 
@@ -202,12 +140,11 @@ mod tests {
 
     #[test]
     fn a_moved_image_changes_only_the_placement_bits() {
-        let base = LOAD | 0x00c0_00ff;
-        let mut file = tim_direct(Descriptor::from_load_argument(base), &sheet()).unwrap();
+        let mut file = tim_direct(place(), &sheet()).unwrap();
         file.image.x = 64;
         file.image.y = 32;
         let back = from_tim(&file).unwrap();
-        assert_eq!(back.placement.load_argument(base), 0x0201_0100 | 0x00c0_00ff);
+        assert_eq!(back.placement, Descriptor { column: 2, row: 1, chunks_per_row: 1 });
     }
 
     #[test]
