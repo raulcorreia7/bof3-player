@@ -24,7 +24,6 @@ use psx_formats::vab::Bank as VabBank;
 pub mod audio;
 pub mod disc;
 mod error;
-pub mod gfx;
 pub mod library;
 pub mod machine;
 pub mod vab;
@@ -32,7 +31,7 @@ pub mod vab;
 pub use psx_capi::*;
 
 /// The C ABI version; the header defines it too. Version 2 shares the `psx_` layer.
-pub const BOF3PLAYER_ABI_VERSION: u32 = 2;
+pub const BOF3PLAYER_ABI_VERSION: u32 = 3;
 
 /// The C ABI version of the loaded library.
 #[unsafe(no_mangle)]

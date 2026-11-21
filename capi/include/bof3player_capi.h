@@ -15,7 +15,7 @@
 /**
  * The C ABI version; the header defines it too. Version 2 shares the `psx_` layer.
  */
-#define BOF3PLAYER_ABI_VERSION 2
+#define BOF3PLAYER_ABI_VERSION 3
 
 /**
  * The kind of media a catalog item is.
@@ -617,23 +617,6 @@ psx_status bof3player_vab_vag_count(const bof3player_vab *bank, size_t *out_coun
 psx_status bof3player_vab_vag_decode(const bof3player_vab *bank,
                                      size_t index,
                                      bof3player_pcm *out_pcm);
-
-/**
- * Decode a type-3 VRAM upload into RGBA.
- *
- * `load_argument` is the entry's TOC load argument; it gives the upload's
- * column, row and rectangles per row. Free the pixels with
- * `bof3player_image_free`.
- *
- * # Safety
- *
- * `payload` points to `payload_len` readable bytes (or is NULL with length 0),
- * and `out_image` is NULL or writable.
- */
-psx_status bof3player_vram_decode(uint32_t load_argument,
-                                  const uint8_t *payload,
-                                  size_t payload_len,
-                                  bof3player_image *out_image);
 
 /**
  * Write interleaved 16-bit PCM as a RIFF/WAVE file.

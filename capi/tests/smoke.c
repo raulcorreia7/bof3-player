@@ -43,7 +43,6 @@ int bof3player_capi_smoke(void) {
     bof3player_pcm_free(&pcm);
 
     bof3player_image image = {0};
-    if (bof3player_vram_decode(0, 0, 0, &image) != PSX_STATUS_FORMAT) return 17;
     bof3player_image_free(&image);
     if (image.rgba.data != 0 || image.rgba.len != 0) return 18;
 
