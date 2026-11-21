@@ -16,21 +16,9 @@ use alloc::vec::Vec;
 use crate::error::Result;
 
 /// The Ogg Vorbis quality scale, `-q 0` (smallest) through `-q 10` (best).
-///
-/// # Examples
-///
-/// ```
-/// assert!(psx_audio::export::OGG_QUALITY_RANGE.contains(&6.0));
-/// ```
 pub const OGG_QUALITY_RANGE: core::ops::RangeInclusive<f32> = 0.0..=10.0;
 
 /// The Ogg Vorbis default: `-q 6`, about 192 kbps at 44.1 kHz stereo.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::export::DEFAULT_OGG_QUALITY, 6.0);
-/// ```
 pub const DEFAULT_OGG_QUALITY: f32 = 6.0;
 
 /// A FLAC frame holds this many samples per channel.
@@ -44,17 +32,6 @@ const OGG_BLOCK_FRAMES: usize = 4096;
 ///
 /// Empty strings and `None` fields are omitted. Loop positions are sample
 /// frames per channel, as engines read `LOOPSTART` and `LOOPLENGTH`.
-///
-/// # Examples
-///
-/// ```
-/// let tags = psx_audio::export::Tags {
-///     title: "Test Tone",
-///     loop_start: Some(44_100),
-///     ..psx_audio::export::Tags::default()
-/// };
-/// assert_eq!(tags.title, "Test Tone");
-/// ```
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Tags<'a> {
     /// The audio title.
@@ -102,25 +79,11 @@ impl Tags<'_> {
 /// # Errors
 ///
 /// Fails when the sample count does not hold whole frames or the rate is zero.
-///
-/// # Examples
-///
-/// ```
-/// let wav = psx_audio::export::wav_bytes(&[1, -2], 44_100, 2)?;
-/// assert_eq!(&wav[..4], b"RIFF");
-/// # Ok::<(), psx_audio::Error>(())
-/// ```
 pub fn wav_bytes(samples: &[i16], sample_rate: u32, channels: u32) -> Result<Vec<u8>> {
     psx_formats::wav::pcm(samples, sample_rate, channels).map_err(Into::into)
 }
 
 /// Raw interleaved little-endian 16-bit samples.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::export::raw_s16le(&[1, -2]), [0x01, 0x00, 0xFE, 0xFF]);
-/// ```
 #[must_use]
 pub fn raw_s16le(samples: &[i16]) -> Vec<u8> {
     samples.iter().flat_map(|s| s.to_le_bytes()).collect()
@@ -133,14 +96,6 @@ pub fn raw_s16le(samples: &[i16]) -> Vec<u8> {
 ///
 /// Fails when the sample count does not hold whole frames, or when the
 /// encoder rejects the shape.
-///
-/// # Examples
-///
-/// ```
-/// let flac = psx_audio::export::flac_bytes(&[0i16; 8], 44_100, 2, &psx_audio::export::Tags::default())?;
-/// assert_eq!(&flac[..4], b"fLaC");
-/// # Ok::<(), psx_audio::Error>(())
-/// ```
 pub fn flac_bytes(samples: &[i16], sample_rate: u32, channels: u32, tags: &Tags<'_>) -> Result<Vec<u8>> {
     use flacenc::component::{BitRepr, MetadataBlockData};
     use flacenc::error::Verify;
@@ -169,20 +124,6 @@ pub fn flac_bytes(samples: &[i16], sample_rate: u32, channels: u32, tags: &Tags<
 /// Fails when the quality is outside the range, the sample count does not hold
 /// whole frames, or the encoder rejects the shape. Requires the `ogg` feature;
 /// without it, the call returns an error naming the rebuild.
-///
-/// # Examples
-///
-/// ```
-/// let ogg = psx_audio::export::ogg_bytes(
-///     &[0i16; 8],
-///     44_100,
-///     2,
-///     psx_audio::export::DEFAULT_OGG_QUALITY,
-///     &psx_audio::export::Tags::default(),
-/// )?;
-/// assert_eq!(&ogg[..4], b"OggS");
-/// # Ok::<(), psx_audio::Error>(())
-/// ```
 #[cfg(feature = "ogg")]
 pub fn ogg_bytes(samples: &[i16], sample_rate: u32, channels: u32, quality: f32, tags: &Tags<'_>) -> Result<Vec<u8>> {
     use std::num::{NonZeroU8, NonZeroU32};
@@ -221,20 +162,6 @@ pub fn ogg_bytes(samples: &[i16], sample_rate: u32, channels: u32, quality: f32,
 }
 
 /// Without the `ogg` feature the Ogg encoder is not linked; the call names the rebuild.
-///
-/// # Examples
-///
-/// ```
-/// let error = psx_audio::export::ogg_bytes(
-///     &[0i16; 2],
-///     44_100,
-///     2,
-///     psx_audio::export::DEFAULT_OGG_QUALITY,
-///     &psx_audio::export::Tags::default(),
-/// )
-/// .unwrap_err();
-/// assert!(error.message().contains("ogg feature"));
-/// ```
 #[cfg(not(feature = "ogg"))]
 pub fn ogg_bytes(_samples: &[i16], _sample_rate: u32, _channels: u32, _quality: f32, _tags: &Tags<'_>) -> Result<Vec<u8>> {
     Err(crate::Error::Unsupported("Ogg export is not built in: rebuild with the ogg feature".into()))

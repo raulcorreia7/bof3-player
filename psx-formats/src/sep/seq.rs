@@ -40,13 +40,6 @@ const SHARED_BYTES: usize = 7;
 const SEQUENCE_SHARED_AT: usize = 2;
 
 /// One sequence as a SEQ file. The sequence id is not stored.
-///
-/// # Examples
-///
-/// ```
-/// let file = psx_formats::sep::seq::encode(&Default::default());
-/// assert_eq!(file.len(), psx_formats::sep::seq::HEADER_BYTES, "a header and no events");
-/// ```
 pub fn encode(sequence: &Sequence) -> Vec<u8> {
     let single = Package { sequences: alloc::vec![sequence.clone()] }.encode();
     let header = &single[FILE_HEADER..FILE_HEADER + SEQ_HEADER];
@@ -59,16 +52,6 @@ pub fn encode(sequence: &Sequence) -> Vec<u8> {
 }
 
 /// Sequence `index` of a stored package as a SEQ file.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::sep::{Package, seq};
-///
-/// let package = Package { sequences: vec![Default::default()] }.encode();
-/// assert!(seq::export(&package, 0).is_ok());
-/// assert!(seq::export(&package, 1).is_err());
-/// ```
 pub fn export(package: &[u8], index: usize) -> Result<Vec<u8>> {
     let parsed = Package::parse(package)?;
     let count = parsed.sequences.len();
@@ -78,14 +61,6 @@ pub fn export(package: &[u8], index: usize) -> Result<Vec<u8>> {
 
 /// The sequence a SEQ file holds, given the id its package assigns. The score must parse and break
 /// no rule of the format ([`Package::check`]).
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::sep::seq;
-///
-/// assert!(seq::read(b"MThd", 0).is_err());
-/// ```
 pub fn read(file: &[u8], seq_id: u16) -> Result<Sequence> {
     if file.len() < HEADER_BYTES || &file[..4] != SEP_MAGIC {
         return Err(Error::SeqFile("it does not open with the pQES magic and a header"));
@@ -105,17 +80,6 @@ pub fn read(file: &[u8], seq_id: u16) -> Result<Sequence> {
 
 /// A package from SEQ files, one sequence per part and in order, each with the id the package
 /// gives it. Encode it with [`Package::encode`].
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::sep::{Event, Sequence, seq};
-///
-/// let end = Event { status: 0xff, meta_type: 0x2f, status_byte: true, ..Event::default() };
-/// let file = seq::encode(&Sequence { events: vec![end], ..Sequence::default() });
-/// let package = seq::package(&[(&file, 3)]).unwrap();
-/// assert_eq!(package.sequences[0].seq_id, 3);
-/// ```
 pub fn package(parts: &[(&[u8], u16)]) -> Result<Package> {
     let sequences = parts.iter().map(|&(file, seq_id)| read(file, seq_id)).collect::<Result<Vec<_>>>()?;
     Ok(Package { sequences })

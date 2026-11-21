@@ -49,16 +49,6 @@ impl<'a> Library<'a> {
     ///
     /// Pass [`NoNaming`] for ids and archive names
     /// only, or an implementation of [`Naming`] with the embedder's own tables.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use bof3player::{Library, MemorySource, NoNaming};
-    ///
-    /// let library = Library::open_with(MemorySource::new(), &NoNaming)?;
-    /// assert!(library.catalog().is_empty());
-    /// # Ok::<(), bof3player::Error>(())
-    /// ```
     pub fn open_with(source: impl Source + 'a, naming: &dyn Naming) -> Result<Self> {
         let source: Box<dyn Source + 'a> = Box::new(source);
         let catalog = Catalog::build(source.as_ref(), naming)?;

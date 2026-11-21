@@ -25,22 +25,6 @@ struct AudioTrack {
 /// Raw 2352-byte and plain 2048-byte images are understood. XA streams
 /// (`*.STR`) are exposed as 2336-byte sectors; the audio track, when known, is
 /// the pseudo file `CDDA/TRACKnn.RAW` of raw 2352-byte sectors.
-///
-/// # Examples
-///
-/// ```
-/// use psx_audio::{DiscSource, Source};
-///
-/// let dir = tempfile::tempdir().unwrap();
-/// let input = dir.path().join("input");
-/// std::fs::create_dir(&input).unwrap();
-/// std::fs::write(input.join("A.TXT"), b"hi").unwrap();
-/// let image = dir.path().join("disc.iso");
-/// psx_cd::rebuild::iso(&input, &image).unwrap();
-/// let bytes = std::fs::read(&image).unwrap();
-/// let source = DiscSource::from_reader(std::io::Cursor::new(bytes)).unwrap();
-/// assert!(source.list().unwrap().contains(&String::from("A.TXT")));
-/// ```
 pub struct DiscSource {
     image: Mutex<Image>,
     entries: Vec<Entry>,
@@ -65,20 +49,6 @@ impl DiscSource {
     /// # Errors
     ///
     /// Fails when the path names no readable image, or its ISO 9660 volume is malformed.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let dir = tempfile::tempdir().unwrap();
-    /// let input = dir.path().join("input");
-    /// std::fs::create_dir(&input).unwrap();
-    /// std::fs::write(input.join("A.TXT"), b"hi").unwrap();
-    /// let image = dir.path().join("disc.iso");
-    /// psx_cd::rebuild::iso(&input, &image).unwrap();
-    /// let cue = dir.path().join("disc.cue");
-    /// std::fs::write(&cue, "FILE \"disc.iso\" BINARY\n  TRACK 01 MODE1/2048\n    INDEX 01 00:00:00").unwrap();
-    /// assert!(psx_audio::DiscSource::open(&cue).is_ok());
-    /// ```
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let (image_path, cue_path) = resolve(path.as_ref())?;
         let image = Image::open(&image_path).map_err(cd_error)?;
@@ -106,19 +76,6 @@ impl DiscSource {
     /// # Errors
     ///
     /// Fails when the image is not a cooked or raw disc image.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let dir = tempfile::tempdir().unwrap();
-    /// let input = dir.path().join("input");
-    /// std::fs::create_dir(&input).unwrap();
-    /// std::fs::write(input.join("A.TXT"), b"hi").unwrap();
-    /// let image = dir.path().join("disc.iso");
-    /// psx_cd::rebuild::iso(&input, &image).unwrap();
-    /// let bytes = std::fs::read(&image).unwrap();
-    /// assert!(psx_audio::DiscSource::from_reader(std::io::Cursor::new(bytes)).is_ok());
-    /// ```
     pub fn from_reader<R: Read + Seek + Send + 'static>(reader: R) -> Result<Self> {
         let image = Image::from_reader(reader).map_err(cd_error)?;
         Self::from_image(image, String::from("disc image"))

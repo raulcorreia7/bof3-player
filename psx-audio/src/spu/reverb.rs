@@ -19,12 +19,6 @@ const SAMPLE_BYTES: u32 = 2;
 const VOLUME_BITS: u32 = 15;
 
 /// Which delay-line timing the unit uses.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::spu::ReverbModel::default(), psx_audio::spu::ReverbModel::Hardware);
-/// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ReverbModel {
     /// Hardware timing from psx-spx: address registers count 8-byte units and

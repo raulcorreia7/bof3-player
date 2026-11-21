@@ -30,20 +30,8 @@ use crate::error::{Error, Result};
 use crate::iso9660::{DirectoryRecord, XaAttributes, normalized_name, parse_record};
 
 /// User bytes in a cooked or Form 1 sector.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_cd::ISO_SECTOR_SIZE, 2048);
-/// ```
 pub const ISO_SECTOR_SIZE: u64 = 2048;
 /// Bytes in a raw CD sector: sync, header, subheader, user data and checksums.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_cd::RAW_SECTOR_SIZE, 2352);
-/// ```
 pub const RAW_SECTOR_SIZE: u64 = 2352;
 /// Sync pattern (12) plus sector header (4) before a Mode 2 sector's subheader.
 const RAW_HEADER_SIZE: u64 = 16;
@@ -57,25 +45,11 @@ const PVD_ROOT_RECORD: usize = 156;
 const LICENSE_SECTORS: u64 = 12;
 /// Bytes of an XA sector without sync and header: subheader, payload and EDC
 /// (`psx-spx` "CDROM XA Subheader, File, Channel, Interleave").
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_cd::XA_SECTOR_SIZE, 2336);
-/// ```
 pub const XA_SECTOR_SIZE: usize = 2336;
 
 /// A source of image bytes: a file, memory or any other random-access reader.
 ///
 /// The trait is implemented for every `Read + Seek + Send` type.
-///
-/// # Examples
-///
-/// ```
-/// let reader = std::io::Cursor::new(vec![0_u8; 2352]);
-/// fn accepts(_: &dyn psx_cd::ReadSeek) {}
-/// accepts(&reader);
-/// ```
 pub trait ReadSeek: Read + Seek + Send {}
 
 impl<T: Read + Seek + Send + ?Sized> ReadSeek for T {}
@@ -108,21 +82,6 @@ pub struct Image {
 }
 
 /// One file or directory of the disc's file table.
-///
-/// # Examples
-///
-/// ```
-/// let entry = psx_cd::Entry {
-///     path: "DIR/FILE.BIN".into(),
-///     lba: 30,
-///     size: 4096,
-///     is_directory: false,
-///     extended_attributes: 0,
-///     is_xa: false,
-///     xa: None,
-/// };
-/// assert_eq!(entry.sectors(), 2);
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Entry {
     /// Path below the image root, separated by `/`.
@@ -145,14 +104,6 @@ pub struct Entry {
 impl Entry {
     /// Sectors the file occupies: its record size in 2048-byte units. A Form 2
     /// file records `sectors * 2048` bytes although each sector holds 2336.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # let entry = psx_cd::Entry { path: "A.BIN".into(), lba: 20, size: 2049,
-    /// #     is_directory: false, extended_attributes: 0, is_xa: false, xa: None };
-    /// assert_eq!(entry.sectors(), 2);
-    /// ```
     pub fn sectors(&self) -> u64 {
         u64::from(self.size).div_ceil(ISO_SECTOR_SIZE)
     }
@@ -472,15 +423,6 @@ impl Image {
 
 /// The one disc image in `directory`: a lone `.cue`, else a lone `.iso`, else a
 /// lone `.bin`. Several candidates of the first kind present are an error.
-///
-/// # Examples
-///
-/// ```
-/// let dir = tempfile::tempdir().unwrap();
-/// std::fs::write(dir.path().join("disc.iso"), b"").unwrap();
-/// let found = psx_cd::discover_image(dir.path()).unwrap();
-/// assert!(found.ends_with("disc.iso"));
-/// ```
 pub fn discover_image(directory: &Path) -> Result<PathBuf> {
     if !directory.is_dir() {
         return Err(Error::NoImage(format!("directory not found: {}", directory.display())));

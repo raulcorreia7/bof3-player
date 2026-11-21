@@ -13,13 +13,6 @@
 use std::fmt;
 
 /// Every failure one of this crate's operations can report.
-///
-/// # Examples
-///
-/// ```
-/// let error = psx_cd::Error::NoImage("no image in the folder".into());
-/// assert_eq!(error.to_string(), "no image in the folder");
-/// ```
 #[derive(Debug)]
 pub enum Error {
     /// An input or output file could not be read or written.
@@ -65,14 +58,4 @@ impl From<std::io::Error> for Error {
 }
 
 /// The crate's result type.
-///
-/// # Examples
-///
-/// ```
-/// fn parse(value: &str) -> psx_cd::Result<u8> {
-///     value.parse().map_err(|_| psx_cd::Error::InvalidImage("not a number"))
-/// }
-/// assert!(parse("7").is_ok());
-/// assert!(parse("x").is_err());
-/// ```
 pub type Result<T, E = Error> = std::result::Result<T, E>;

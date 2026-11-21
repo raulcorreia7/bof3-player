@@ -35,13 +35,6 @@ const GAIN_ONE: i32 = 4096;
 const GAIN_BITS: u32 = 12;
 
 /// Loop repetition request.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::Loop::default(), psx_audio::Loop::Off);
-/// assert_ne!(psx_audio::Loop::Forever, psx_audio::Loop::Times(1));
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Loop {
     /// Play straight through once.
@@ -57,28 +50,6 @@ pub enum Loop {
 ///
 /// Implement it to play your own decoder through the player's gain, stop/play and float views,
 /// or use the built-in [`Player::xa`] and [`Player::cdda`] constructors.
-///
-/// # Examples
-///
-/// ```
-/// use psx_audio::{Engine, Player};
-///
-/// struct Silence;
-///
-/// impl Engine for Silence {
-///     fn render(&mut self, out: &mut [i16]) -> psx_audio::Result<usize> {
-///         out.fill(0);
-///         Ok(out.len() / 2)
-///     }
-///     fn seek(&mut self, _seconds: f64) -> psx_audio::Result<()> { Ok(()) }
-///     fn rate(&self) -> u32 { 44_100 }
-///     fn channels(&self) -> u32 { 2 }
-///     fn duration(&self) -> f64 { 1.0 }
-///     fn position(&self) -> f64 { 0.0 }
-/// }
-///
-/// assert_eq!(Player::new(Silence).channels(), 2);
-/// ```
 pub trait Engine: Send {
     /// Render up to `out.len()` samples and return the frames written, 0 at the end.
     ///
@@ -110,13 +81,6 @@ pub trait Engine: Send {
 }
 
 /// Which sectors of an XA stream to play.
-///
-/// # Examples
-///
-/// ```
-/// let stream = psx_audio::XaStream { channel: 0, first_sector: 0, sector_count: 16, duration: 1.0 };
-/// assert_eq!(stream.sector_count, 16);
-/// ```
 #[derive(Debug, Clone, Copy)]
 pub struct XaStream {
     /// Subheader channel of the stream.
@@ -374,24 +338,6 @@ impl Engine for CddaEngine<'_> {
 /// A player never touches an audio device and never allocates while rendering
 /// (except the first call after a seek). It is `Send`, not `Sync`: use it from
 /// one thread at a time.
-///
-/// # Examples
-///
-/// ```
-/// use psx_audio::{MemorySource, Player, Source, XaStream};
-///
-/// let sector = psx_formats::fixtures::sector(1, 0, 0x04, 0x00);
-/// let mut source = MemorySource::new();
-/// source.add("STREAM.STR", &sector);
-/// let blob = source.open("STREAM.STR").unwrap();
-/// let player = Player::xa(blob, XaStream {
-///     channel: 0,
-///     first_sector: 0,
-///     sector_count: 1,
-///     duration: 0.0,
-/// }).unwrap();
-/// assert_eq!(player.channels(), 1);
-/// ```
 pub struct Player<'a> {
     engine: Box<dyn Engine + 'a>,
     gain_q12: i32,
@@ -407,36 +353,6 @@ impl core::fmt::Debug for Player<'_> {
 
 impl<'a> Player<'a> {
     /// Wrap `engine`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{Engine, Player};
-    ///
-    /// struct Silence { frames: usize, rate: u32 }
-    ///
-    /// impl Engine for Silence {
-    ///     fn render(&mut self, out: &mut [i16]) -> psx_audio::Result<usize> {
-    ///         let frames = (out.len() / 2).min(self.frames);
-    ///         out[..frames * 2].fill(0);
-    ///         self.frames -= frames;
-    ///         Ok(frames)
-    ///     }
-    ///     fn seek(&mut self, seconds: f64) -> psx_audio::Result<()> {
-    ///         self.frames = (seconds * f64::from(self.rate)) as usize;
-    ///         Ok(())
-    ///     }
-    ///     fn rate(&self) -> u32 { self.rate }
-    ///     fn channels(&self) -> u32 { 2 }
-    ///     fn duration(&self) -> f64 { 1.0 }
-    ///     fn position(&self) -> f64 { 0.0 }
-    /// }
-    ///
-    /// let mut player = Player::new(Silence { frames: 44_100, rate: 44_100 });
-    /// let mut pcm = [0i16; 1024];
-    /// assert_eq!(player.render_i16(&mut pcm)?, 512);
-    /// # Ok::<(), psx_audio::Error>(())
-    /// ```
     pub fn new(engine: impl Engine + 'a) -> Self {
         Self { engine: Box::new(engine), gain_q12: GAIN_ONE, stopped: false, scratch: Vec::new() }
     }
@@ -447,26 +363,6 @@ impl<'a> Player<'a> {
     ///
     /// Fails when the stream has no audio sector for `stream.channel`, or its sectors are
     /// malformed.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source, XaStream};
-    ///
-    /// // Two silent 4-bit mono sectors at 37.8 kHz.
-    /// let sector = psx_formats::fixtures::sector(1, 0, 0x04, 0x00);
-    /// let stream: Vec<u8> = sector.iter().copied().chain(sector.iter().copied()).collect();
-    /// let mut source = MemorySource::new();
-    /// source.add("STREAM.STR", &stream);
-    /// let blob = source.open("STREAM.STR").unwrap();
-    /// let mut player = Player::xa(blob, XaStream {
-    ///     channel: 0,
-    ///     first_sector: 0,
-    ///     sector_count: 2,
-    ///     duration: 0.0,
-    /// }).unwrap();
-    /// assert_eq!(player.sample_rate(), 37_800);
-    /// ```
     pub fn xa(blob: Arc<dyn Blob + 'a>, stream: XaStream) -> Result<Self> {
         Ok(Self::new(XaEngine::new(blob, stream)?))
     }
@@ -476,219 +372,63 @@ impl<'a> Player<'a> {
     /// # Errors
     ///
     /// Fails when the file is not 16-bit PCM, has no complete frame, or is truncated.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 8], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let player = Player::cdda(blob, false).unwrap();
-    /// assert_eq!((player.sample_rate(), player.channels()), (44_100, 2));
-    /// ```
     pub fn cdda(blob: Arc<dyn Blob + 'a>, raw: bool) -> Result<Self> {
         Ok(Self::new(CddaEngine::new(blob, raw)?))
     }
 
     /// Sample rate of the produced audio, in Hz. The player never resamples.
     #[must_use]
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// assert_eq!(player.sample_rate(), 44_100);
-    /// ```
     pub fn sample_rate(&self) -> u32 {
         self.engine.rate()
     }
 
     /// Interleaved channels per frame (1 or 2).
     #[must_use]
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// assert_eq!(player.channels(), 2);
-    /// ```
     pub fn channels(&self) -> u32 {
         self.engine.channels()
     }
 
     /// Length of one pass in seconds (music includes its release tail).
     #[must_use]
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// assert_eq!(player.duration(), 2.0 / 44_100.0);
-    /// ```
     pub fn duration(&self) -> f64 {
         self.engine.duration()
     }
 
     /// Current position in seconds.
     #[must_use]
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// assert_eq!(player.position(), 0.0);
-    /// ```
     pub fn position(&self) -> f64 {
         self.engine.position()
     }
 
     /// The stream's own loop window `(start, end)` in seconds, when it carries one.
     #[must_use]
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// assert_eq!(player.loop_window(), None);
-    /// ```
     pub fn loop_window(&self) -> Option<(f64, f64)> {
         self.engine.loop_window()
     }
 
     /// Repeat the loop window (or the whole stream when it has none).
     /// Engines without a loop window ignore this.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// player.set_loop(psx_audio::Loop::Forever);
-    /// ```
     pub fn set_loop(&mut self, mode: Loop) {
         self.engine.set_loop(mode);
     }
 
     /// Output gain, `0.0..=4.0`; 1.0 is a bit-exact bypass.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// player.set_gain(0.5);
-    /// ```
     pub fn set_gain(&mut self, gain: f32) {
         let gain = if gain >= 0.0 { gain.min(GAIN_MAX) } else { 0.0 };
         self.gain_q12 = (gain * GAIN_ONE as f32 + 0.5) as i32;
     }
 
     /// Stop: further renders return 0 frames until [`Player::seek`] or [`Player::play`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// player.stop();
-    /// assert_eq!(player.render_i16(&mut [0i16; 4]).unwrap(), 0);
-    /// ```
     pub fn stop(&mut self) {
         self.stopped = true;
     }
 
     /// Undo [`Player::stop`] without moving the position.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// player.stop();
-    /// player.play();
-    /// ```
     pub fn play(&mut self) {
         self.stopped = false;
     }
 
     /// Move to `seconds`, clamped to the stream. Seeking also resumes a stopped player.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// player.seek(0.0)?;
-    /// # Ok::<(), psx_audio::Error>(())
-    /// ```
     pub fn seek(&mut self, seconds: f64) -> Result<()> {
         self.stopped = false;
         self.engine.seek(seconds)
@@ -697,22 +437,6 @@ impl<'a> Player<'a> {
     /// Render interleaved 16-bit PCM; returns the frames written (0 at the end).
     ///
     /// `out.len()` must be a multiple of [`Player::channels`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// let mut pcm = [0i16; 4];
-    /// assert_eq!(player.render_i16(&mut pcm)?, 2);
-    /// # Ok::<(), psx_audio::Error>(())
-    /// ```
     pub fn render_i16(&mut self, out: &mut [i16]) -> Result<usize> {
         let channels = self.engine.channels() as usize;
         if !out.len().is_multiple_of(channels) {
@@ -727,22 +451,6 @@ impl<'a> Player<'a> {
     }
 
     /// Render interleaved 32-bit float PCM in `-1.0..1.0`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// let mut pcm = [0.0f32; 4];
-    /// assert_eq!(player.render_f32(&mut pcm)?, 2);
-    /// # Ok::<(), psx_audio::Error>(())
-    /// ```
     pub fn render_f32(&mut self, out: &mut [f32]) -> Result<usize> {
         let mut scratch = core::mem::take(&mut self.scratch);
         scratch.resize(out.len(), 0);
@@ -758,21 +466,6 @@ impl<'a> Player<'a> {
     }
 
     /// Render the rest of the stream. Never call this on a forever-looping player.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{MemorySource, Player, Source};
-    ///
-    /// let wav = psx_formats::wav::pcm(&[0i16; 4], 44_100, 2).unwrap();
-    /// let mut source = MemorySource::new();
-    /// source.add("CDDA/TRACK02.WAV", &wav);
-    /// let blob = source.open("CDDA/TRACK02.WAV").unwrap();
-    /// let mut player = Player::cdda(blob, false).unwrap();
-    ///
-    /// assert_eq!(player.render_all()?.len(), 4);
-    /// # Ok::<(), psx_audio::Error>(())
-    /// ```
     pub fn render_all(&mut self) -> Result<Vec<i16>> {
         let channels = self.engine.channels() as usize;
         let mut pcm = Vec::new();

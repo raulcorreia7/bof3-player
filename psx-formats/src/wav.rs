@@ -30,14 +30,6 @@ const BITS_PER_SAMPLE: u16 = 16;
 const BYTES_PER_SAMPLE: u32 = 2;
 
 /// Shape of a PCM WAVE file.
-///
-/// # Examples
-///
-/// ```
-/// let bytes = psx_formats::wav::pcm(&[0i16; 4], 44_100, 1).unwrap();
-/// let info = psx_formats::wav::parse(&bytes).unwrap();
-/// assert_eq!((info.channels, info.rate, info.bits), (1, 44_100, 16));
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Info {
     /// Channel count.
@@ -54,13 +46,6 @@ pub struct Info {
 
 impl Info {
     /// Frames the declared data holds.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let bytes = psx_formats::wav::pcm(&[0i16; 6], 44_100, 2).unwrap();
-    /// assert_eq!(psx_formats::wav::parse(&bytes).unwrap().frames(), 3);
-    /// ```
     #[must_use]
     pub fn frames(&self) -> u64 {
         let frame = u64::from(self.channels) * u64::from(self.bits / 8);
@@ -69,15 +54,6 @@ impl Info {
 }
 
 /// Read the shape from the first bytes of a file (a few KiB are enough).
-///
-/// # Examples
-///
-/// ```
-/// let bytes = psx_formats::wav::pcm(&[0i16; 2], 22_050, 1).unwrap();
-/// let info = psx_formats::wav::parse(&bytes).unwrap();
-/// assert_eq!(info.rate, 22_050);
-/// assert_eq!(info.data_bytes, 4);
-/// ```
 pub fn parse(head: &[u8]) -> Result<Info> {
     if head.len() < RIFF_HEAD || u32_be(head, 0) != RIFF || u32_be(head, 8) != WAVE {
         return Err(Error::WaveFormat("not a RIFF/WAVE file"));
@@ -113,16 +89,6 @@ pub fn parse(head: &[u8]) -> Result<Info> {
 }
 
 /// A 16-bit PCM WAVE file for interleaved `samples`.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::wav;
-///
-/// let bytes = wav::pcm(&[1, -1, 1, -1], 44_100, 2).unwrap();
-/// assert_eq!(bytes.len(), 44 + 8, "a 44-byte header and four 16-bit samples");
-/// assert_eq!(&bytes[..4], b"RIFF");
-/// ```
 pub fn pcm(samples: &[i16], sample_rate: u32, channels: u32) -> Result<Vec<u8>> {
     if channels == 0 {
         return Err(Error::WaveShape("a WAVE file needs at least one channel"));

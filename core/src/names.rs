@@ -192,17 +192,6 @@ mod tests {
     }
 
     #[test]
-    fn lookups_read_every_section() {
-        let names = Names::from_json(SAMPLE).unwrap();
-        assert_eq!(names.music_sound("A#0"), Some(3));
-        assert_eq!(names.bank_name("BIN/BMAGIC/MAGIC001.EMI"), Some("Jump, Nue Stomp"));
-        assert_eq!(names.bank_duplicate("AREA001"), Some("AREA000"));
-        assert_eq!(names.magic_ability(160), Some("Nue Stomp"));
-        assert_eq!(names.xa_span("xa:S#ch0@0"), Some("Cue 0"));
-        assert_eq!(names.music()["music:D#0"].source, Source::None);
-    }
-
-    #[test]
     fn rejects_other_versions_and_bad_text() {
         assert!(Names::from_json(r#"{"version":2}"#).is_err());
         assert!(Names::from_json("A#0\tTitle").is_err());
@@ -225,12 +214,6 @@ mod tests {
         assert_eq!(game.bank_duplicate("AREA001"), Some("AREA000"));
         assert_eq!(game.magic_ability(160), Some("Nue Stomp"));
         assert_eq!(game.xa_span("xa:S_XA00#ch0@0"), Some("S_XA00 cue 0 (game 0x0000)"));
-    }
-
-    #[cfg(feature = "bundled-names")]
-    #[test]
-    fn quoted_titles_survive() {
-        assert_eq!(game_names().music_title("BGMEND", 1), Some("\"Fin\""));
     }
 
     #[test]

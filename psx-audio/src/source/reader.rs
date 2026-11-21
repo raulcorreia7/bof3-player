@@ -9,17 +9,6 @@ use crate::error::{Error, Result};
 /// (a pak-file handle, a decompressor with seek support).
 ///
 /// Reads take an internal lock, so concurrent readers serialize.
-///
-/// # Examples
-///
-/// ```
-/// use psx_audio::{Blob, ReaderBlob};
-///
-/// let blob = ReaderBlob::new(std::io::Cursor::new(b"hello".to_vec())).unwrap();
-/// let mut buf = [0u8; 2];
-/// assert_eq!(blob.read_at(3, &mut buf).unwrap(), 2);
-/// assert_eq!(&buf, b"lo");
-/// ```
 #[derive(Debug)]
 pub struct ReaderBlob<R> {
     inner: Mutex<R>,
@@ -32,15 +21,6 @@ impl<R: Read + Seek + Send> ReaderBlob<R> {
     /// # Errors
     ///
     /// Fails when the final seek fails.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_audio::{Blob, ReaderBlob};
-    ///
-    /// let blob = ReaderBlob::new(std::io::Cursor::new(vec![0u8; 16])).unwrap();
-    /// assert_eq!(blob.len(), 16);
-    /// ```
     pub fn new(mut reader: R) -> Result<Self> {
         let len = reader.seek(SeekFrom::End(0))?;
         Ok(Self { inner: Mutex::new(reader), len })

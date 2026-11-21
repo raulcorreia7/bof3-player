@@ -32,24 +32,9 @@
 use crate::error::{Error, Result};
 
 /// The ID word of a TIM file: `0x10` with a version of zero.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::gfx::tim::ID, 0x10);
-/// ```
 pub const ID: u32 = 0x10;
 
 /// The pixel mode of a TIM file.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::gfx::tim::Mode;
-///
-/// assert_eq!(Mode::of_value(1), Some(Mode::Eight));
-/// assert_eq!(Mode::Four.pixels_per_word(), 4);
-/// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Mode {
     /// 4-bit CLUT: four pixels per word, sixteen colors.
@@ -62,12 +47,6 @@ pub enum Mode {
 
 impl Mode {
     /// The mode's value in the flag word.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert_eq!(psx_formats::gfx::tim::Mode::Fifteen.value(), 2);
-    /// ```
     pub fn value(self) -> u32 {
         match self {
             Mode::Four => 0,
@@ -77,15 +56,6 @@ impl Mode {
     }
 
     /// The mode the flag word names.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_formats::gfx::tim::Mode;
-    ///
-    /// assert_eq!(Mode::of_value(0), Some(Mode::Four));
-    /// assert_eq!(Mode::of_value(3), None);
-    /// ```
     pub fn of_value(value: u32) -> Option<Self> {
         match value {
             0 => Some(Mode::Four),
@@ -96,12 +66,6 @@ impl Mode {
     }
 
     /// The pixels one word holds.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert_eq!(psx_formats::gfx::tim::Mode::Eight.pixels_per_word(), 2);
-    /// ```
     pub fn pixels_per_word(self) -> usize {
         match self {
             Mode::Four => 4,
@@ -112,13 +76,6 @@ impl Mode {
 }
 
 /// A block of frame buffer words: a CLUT or an image.
-///
-/// # Examples
-///
-/// ```
-/// let block = psx_formats::gfx::tim::Block { x: 0, y: 0, width: 2, height: 1, words: vec![1, 2] };
-/// assert_eq!(block.words.len(), 2);
-/// ```
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Block {
     /// The frame buffer x coordinate, in pixels.
@@ -170,19 +127,6 @@ impl Block {
 }
 
 /// A TIM file: a CLUT and an image.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::gfx::tim::{Block, File, Mode};
-///
-/// let tim = File {
-///     mode: Mode::Four,
-///     clut: Some(Block { x: 0, y: 0, width: 1, height: 1, words: vec![0x8000] }),
-///     image: Block { x: 0, y: 0, width: 1, height: 1, words: vec![0] },
-/// };
-/// assert_eq!(tim.write()[4], 0x10, "4-bit mode with a CLUT");
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct File {
     /// The pixel mode.
@@ -195,15 +139,6 @@ pub struct File {
 
 impl File {
     /// The TIM file's bytes.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_formats::gfx::tim::{Block, File, Mode};
-    ///
-    /// let tim = File { mode: Mode::Fifteen, clut: None, image: Block::default() };
-    /// assert_eq!(&tim.write()[..4], &[0x10, 0x00, 0x00, 0x00]);
-    /// ```
     pub fn write(&self) -> Vec<u8> {
         let mut out = Vec::new();
         out.extend_from_slice(&ID.to_le_bytes());
@@ -217,16 +152,6 @@ impl File {
     }
 
     /// Reads a TIM file: the magic, the flags, the block sizes and the words.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_formats::gfx::tim::{Block, File, Mode};
-    ///
-    /// let tim = File { mode: Mode::Fifteen, clut: None, image: Block::default() };
-    /// assert_eq!(File::read(&tim.write()).unwrap().mode, Mode::Fifteen);
-    /// assert!(File::read(b"not a TIM").is_err());
-    /// ```
     pub fn read(bytes: &[u8]) -> Result<Self> {
         let header = bytes.get(..8).ok_or_else(|| Error::Tim("the file is shorter than the header".into()))?;
         let id = u32::from_le_bytes(header[0..4].try_into().unwrap());

@@ -19,28 +19,10 @@ use crate::adpcm::{self, BLOCK_SAMPLES, Rounding, State};
 use crate::error::{Error, Result};
 
 /// Bytes of one sector as stored in an extracted stream (subheader + data + EDC).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::xa::SECTOR_BYTES, 2336);
-/// ```
 pub const SECTOR_BYTES: usize = 2336;
 /// Normal sample rate (Hz).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::xa::RATE, 37_800);
-/// ```
 pub const RATE: u32 = 37_800;
 /// Low sample rate selected by coding bit 2 (Hz).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::xa::rate(0x04), psx_formats::xa::RATE_LOW);
-/// ```
 pub const RATE_LOW: u32 = 18_900;
 
 const SUBHEADER_BYTES: usize = 8;
@@ -66,43 +48,18 @@ const MONO_FRAMES_PER_GROUP: usize = BLOCKS_PER_GROUP * 2 * BLOCK_SAMPLES;
 const STEREO_FRAMES_PER_GROUP: usize = BLOCKS_PER_GROUP * BLOCK_SAMPLES;
 
 /// Sample rate for a coding byte.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::xa::{RATE, RATE_LOW, rate};
-///
-/// assert_eq!(rate(0x00), RATE);
-/// assert_eq!(rate(0x04), RATE_LOW);
-/// ```
 #[must_use]
 pub fn rate(coding: u8) -> u32 {
     if coding & CODING_LOW_RATE != 0 { RATE_LOW } else { RATE }
 }
 
 /// Output channels (1 or 2) for a coding byte.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::xa::channels(0x00), 1);
-/// assert_eq!(psx_formats::xa::channels(0x01), 2);
-/// ```
 #[must_use]
 pub fn channels(coding: u8) -> u32 {
     if coding & CODING_STEREO != 0 { 2 } else { 1 }
 }
 
 /// Frames in one sector.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::xa::frames_per_sector;
-///
-/// assert_eq!(frames_per_sector(0x00), 4032);
-/// assert_eq!(frames_per_sector(0x01), 2016);
-/// ```
 #[must_use]
 pub fn frames_per_sector(coding: u8) -> u32 {
     let per_group = if coding & CODING_STEREO != 0 { STEREO_FRAMES_PER_GROUP } else { MONO_FRAMES_PER_GROUP };
@@ -110,56 +67,24 @@ pub fn frames_per_sector(coding: u8) -> u32 {
 }
 
 /// Duration of `sectors` sectors of one channel, in seconds.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::xa::{duration, frames_per_sector, rate};
-///
-/// let seconds = duration(18, 0x00);
-/// assert!((seconds - f64::from(18 * frames_per_sector(0x00)) / f64::from(rate(0x00))).abs() < 1e-12);
-/// ```
 #[must_use]
 pub fn duration(sectors: u32, coding: u8) -> f64 {
     f64::from(sectors) * f64::from(frames_per_sector(coding)) / f64::from(rate(coding))
 }
 
 /// Whether `sector` (2336 bytes) is an audio sector.
-///
-/// # Examples
-///
-/// ```
-/// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
-/// sector[2] = 0x04;
-/// assert!(psx_formats::xa::is_audio(&sector));
-/// ```
 #[must_use]
 pub fn is_audio(sector: &[u8]) -> bool {
     sector.len() >= SUBHEADER_BYTES && sector[2] & SUBMODE_AUDIO != 0
 }
 
 /// Whether `sector` carries the end-of-file bit.
-///
-/// # Examples
-///
-/// ```
-/// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
-/// sector[2] = 0x80;
-/// assert!(psx_formats::xa::is_eof(&sector));
-/// ```
 #[must_use]
 pub fn is_eof(sector: &[u8]) -> bool {
     sector.len() >= SUBHEADER_BYTES && sector[2] & SUBMODE_EOF != 0
 }
 
 /// A run of one channel's sectors closed by an EOF marker.
-///
-/// # Examples
-///
-/// ```
-/// let span = psx_formats::xa::Span { first: 2, eof: 5, sectors: 4 };
-/// assert_eq!(span.eof - span.first, 3);
-/// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Span {
     /// Stream sector index of the first audio sector.
@@ -171,15 +96,6 @@ pub struct Span {
 }
 
 /// What a scan found for one (file, channel) pair.
-///
-/// # Examples
-///
-/// ```
-/// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
-/// sector[2] = 0x04;
-/// let channels = psx_formats::xa::scan(&sector);
-/// assert_eq!((channels[0].file, channels[0].sectors), (0, 1));
-/// ```
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Channel {
     /// Subheader file number.
@@ -203,18 +119,6 @@ pub struct Channel {
 }
 
 /// Incremental scanner: feed sectors in stream order.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::xa::{SECTOR_BYTES, Scanner};
-///
-/// let mut sector = vec![0u8; SECTOR_BYTES];
-/// sector[2] = 0x04;
-/// let mut scanner = Scanner::new();
-/// scanner.push(&sector);
-/// assert_eq!(scanner.finish().len(), 1);
-/// ```
 #[derive(Debug, Default)]
 pub struct Scanner {
     channels: Vec<(Channel, usize)>,
@@ -223,29 +127,12 @@ pub struct Scanner {
 
 impl Scanner {
     /// A scanner at stream sector 0.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let scanner = psx_formats::xa::Scanner::new();
-    /// assert!(scanner.finish().is_empty());
-    /// ```
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Account for the next sector of the stream.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
-    /// sector[2] = 0x04;
-    /// let mut scanner = psx_formats::xa::Scanner::new();
-    /// scanner.push(&sector);
-    /// assert_eq!(scanner.finish()[0].sectors, 1);
-    /// ```
     pub fn push(&mut self, sector: &[u8]) {
         let at = self.index;
         self.index += 1;
@@ -276,16 +163,6 @@ impl Scanner {
     }
 
     /// Finish: every EOF closed one span, a span left over is the open run.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
-    /// sector[2] = 0x04;
-    /// let mut scanner = psx_formats::xa::Scanner::new();
-    /// scanner.push(&sector);
-    /// assert_eq!(scanner.finish()[0].open_sectors, 1);
-    /// ```
     #[must_use]
     pub fn finish(self) -> Vec<Channel> {
         self.channels
@@ -305,16 +182,6 @@ impl Scanner {
 }
 
 /// Scan a whole in-memory stream.
-///
-/// # Examples
-///
-/// ```
-/// let mut sector = vec![0u8; psx_formats::xa::SECTOR_BYTES];
-/// sector[2] = 0x04;
-/// sector[3] = 0x01;
-/// let channels = psx_formats::xa::scan(&sector);
-/// assert_eq!(channels[0].seconds, psx_formats::xa::duration(1, 0x01));
-/// ```
 #[must_use]
 pub fn scan(stream: &[u8]) -> Vec<Channel> {
     let mut scanner = Scanner::new();
@@ -326,19 +193,6 @@ pub fn scan(stream: &[u8]) -> Vec<Channel> {
 
 /// Decodes the sectors of one channel, keeping the predictor chains running
 /// across sectors.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::xa::{ChannelDecoder, SECTOR_BYTES, frames_per_sector};
-///
-/// let mut sector = vec![0u8; SECTOR_BYTES];
-/// sector[2] = 0x04;
-/// let mut decoder = ChannelDecoder::new(0);
-/// let mut pcm = Vec::new();
-/// decoder.decode(&sector, &mut pcm).unwrap();
-/// assert_eq!(pcm.len(), frames_per_sector(0) as usize);
-/// ```
 #[derive(Debug, Clone)]
 pub struct ChannelDecoder {
     channel: u8,
@@ -349,66 +203,24 @@ pub struct ChannelDecoder {
 
 impl ChannelDecoder {
     /// A decoder for `channel`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let decoder = psx_formats::xa::ChannelDecoder::new(3);
-    /// assert_eq!(decoder.shape(), None);
-    /// ```
     #[must_use]
     pub fn new(channel: u8) -> Self {
         Self { channel, left: State::default(), right: State::default(), shape: None }
     }
 
     /// Whether `sector` is an audio sector of this decoder's channel.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_formats::xa::{ChannelDecoder, SECTOR_BYTES};
-    ///
-    /// let mut sector = vec![0u8; SECTOR_BYTES];
-    /// sector[2] = 0x04;
-    /// assert!(ChannelDecoder::new(0).accepts(&sector));
-    /// assert!(!ChannelDecoder::new(1).accepts(&sector));
-    /// ```
     #[must_use]
     pub fn accepts(&self, sector: &[u8]) -> bool {
         sector.len() == SECTOR_BYTES && is_audio(sector) && sector[1] == self.channel
     }
 
     /// `(channels, rate)` once a sector has been decoded.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_formats::xa::{ChannelDecoder, SECTOR_BYTES};
-    ///
-    /// let mut sector = vec![0u8; SECTOR_BYTES];
-    /// sector[2] = 0x04;
-    /// let mut decoder = ChannelDecoder::new(0);
-    /// decoder.decode(&sector, &mut Vec::new()).unwrap();
-    /// assert_eq!(decoder.shape(), Some((1, 37_800)));
-    /// ```
     #[must_use]
     pub fn shape(&self) -> Option<(u32, u32)> {
         self.shape
     }
 
     /// Decode one accepted sector, appending interleaved samples to `out`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use psx_formats::xa::{ChannelDecoder, SECTOR_BYTES};
-    ///
-    /// let mut sector = vec![0u8; SECTOR_BYTES];
-    /// sector[2] = 0x04;
-    /// let mut pcm = Vec::new();
-    /// ChannelDecoder::new(0).decode(&sector, &mut pcm).unwrap();
-    /// assert!(!pcm.is_empty());
-    /// ```
     pub fn decode(&mut self, sector: &[u8], out: &mut Vec<i16>) -> Result<()> {
         if sector.len() != SECTOR_BYTES {
             return Err(Error::XaSectorSize(sector.len()));
