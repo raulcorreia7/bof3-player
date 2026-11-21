@@ -45,7 +45,8 @@ impl From<&psx_emi_entry> for emi::Entry {
 pub struct psx_emi {
     /// The parsed table.
     pub archive: Archive,
-    bytes: Vec<u8>,
+    /// The container bytes the payloads live in.
+    pub bytes: Vec<u8>,
 }
 
 fn open(archive: Archive, bytes: Vec<u8>, out_archive: *mut *mut psx_emi) -> Result<(), Fail> {
