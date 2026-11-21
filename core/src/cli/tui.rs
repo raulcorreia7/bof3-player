@@ -191,27 +191,13 @@ impl App {
         self.rows.clear();
         let catalog = self.library.catalog();
         let groups = catalog.groups();
-        use std::collections::HashSet;
-        let mut seen_canon: HashSet<String> = HashSet::new();
+        let mut seen_canon = std::collections::BTreeSet::new();
         if !self.query.is_empty() {
             let filter = Filter { playable_only: self.playable_only, ..Filter::default() };
             for hit in catalog.search(&self.query, &filter).into_iter().take(MAX_HITS) {
                 if let Some(index) = catalog.index_of(&hit.id) {
-                    if !self.show_all_dupes {
-                        if let Some(canon) = groups.canonical_of(&hit.id) {
-                            if canon != hit.id {
-                                continue;
-                            }
-                            if seen_canon.contains(&canon) {
-                                continue;
-                            }
-                            seen_canon.insert(canon);
-                        } else if groups.group_members(&hit.id).is_some() && groups.canonical_of(&hit.id).as_deref() == Some(hit.id.as_str()) {
-                            if seen_canon.contains(&hit.id) {
-                                continue;
-                            }
-                            seen_canon.insert(hit.id.clone());
-                        }
+                    if !self.show_all_dupes && groups.is_repeat(&hit.id, &mut seen_canon) {
+                        continue;
                     }
                     self.rows.push(Row::Item(index, 0));
                 }
@@ -233,21 +219,8 @@ impl App {
                         if !self.visible(item) {
                             continue;
                         }
-                        if !self.show_all_dupes {
-                            if let Some(canon) = groups.canonical_of(&item.id) {
-                                if canon != item.id {
-                                    continue;
-                                }
-                                if seen_canon.contains(&canon) {
-                                    continue;
-                                }
-                                seen_canon.insert(canon);
-                            } else if groups.group_members(&item.id).is_some() && groups.canonical_of(&item.id).as_deref() == Some(item.id.as_str()) {
-                                if seen_canon.contains(&item.id) {
-                                    continue;
-                                }
-                                seen_canon.insert(item.id.clone());
-                            }
+                        if !self.show_all_dupes && groups.is_repeat(&item.id, &mut seen_canon) {
+                            continue;
                         }
                         match item.id.split_once('@') {
                             None => self.rows.push(Row::Item(index, 0)),
@@ -597,66 +570,130 @@ impl App {
 
 fn row_line(app: &App, row: &Row, width: usize) -> Line<'static> {
     match row {
-        Row::Kind(k) => {
-            let open = app.expanded.contains(&kind_key(*k));
-            let total: usize = app.groups[k].values().map(|f| f.items.len()).sum();
-            let playable: usize = app.groups[k].values().map(|f| f.playable).sum();
-            let count = if app.playable_only { format!("{playable}/{total}") } else { total.to_string() };
-            Line::from(vec![
-                Span::styled(if open { "▾ " } else { "▸ " }, Style::new().fg(ACCENT)),
-                Span::styled(label(*k), Style::new().add_modifier(Modifier::BOLD)),
-                Span::styled(format!("  {count}"), Style::new().fg(DIM)),
-            ])
-        }
-        Row::Family(k, f) => {
-            let open = app.expanded.contains(&family_key(*k, f));
-            let family = &app.groups[k][f];
-            let count = if app.playable_only { format!("{}/{}", family.playable, family.items.len()) } else { family.items.len().to_string() };
-            Line::from(vec![Span::raw("  "), Span::styled(if open { "▾ " } else { "▸ " }, Style::new().fg(ACCENT)), Span::raw(f.clone()), Span::styled(format!("  {count}"), Style::new().fg(DIM))])
-        }
-        Row::Item(index, depth) => {
-            let item = app.item(*index);
-            let pad = if app.query.is_empty() { 4 + depth * 2 } else { 0 };
-            let playing = app.current == Some(*index);
-            let style = if !item.playable {
-                Style::new().fg(DIM)
-            } else if playing {
-                Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)
-            } else {
-                Style::new()
-            };
-            let mark = if playing { "♪ " } else { "  " };
-            let fold = if item.kind == Kind::Xa && *depth == 0 && !item.id.contains('@') { if app.expanded.contains(&item.id) { "▾ " } else { "▸ " } } else { "" };
-            let time = music_length(item.duration);
-            // Columns: the id, the title filling the rest, then the duration at the right edge.
-            let name_width = if width >= 50 { 12 } else { 0 };
-            let time_width = 7;
-            let fixed = pad + 4 + name_width + time_width;
-            let (name, title) = match (item.title.as_str(), name_width) {
-                ("", 0) => (String::new(), item.name.clone()),
-                ("", _) => (format!("{:<name_width$}", item.name), String::new()),
-                (title, 0) => (String::new(), format!("{title} · {}", item.name)),
-                (title, _) => (format!("{:<name_width$}", item.name), title.to_string()),
-            };
-            let room = width.saturating_sub(fixed);
-            let title = head_fit(title, room);
-            let used = pad + 4 + name.chars().count() + title.chars().count();
-            let gap = width.saturating_sub(used + time_width).max(1);
-            Line::from(vec![
-                Span::raw(" ".repeat(pad)),
-                Span::styled(mark, Style::new().fg(Color::Green)),
-                Span::styled(fold, Style::new().fg(ACCENT)),
-                Span::styled(name, style),
-                Span::styled(title, style),
-                Span::styled(format!("{}{time:>time_width$}", " ".repeat(gap)), Style::new().fg(DIM)),
-            ])
-        }
+        Row::Kind(kind) => kind_line(app, *kind),
+        Row::Family(kind, family) => family_line(app, *kind, family),
+        Row::Item(index, depth) => item_line(app, *index, *depth, width),
     }
+}
+
+fn kind_line(app: &App, k: Kind) -> Line<'static> {
+    let open = app.expanded.contains(&kind_key(k));
+    let total: usize = app.groups[&k].values().map(|f| f.items.len()).sum();
+    let playable: usize = app.groups[&k].values().map(|f| f.playable).sum();
+    let count = if app.playable_only { format!("{playable}/{total}") } else { total.to_string() };
+    Line::from(vec![
+        Span::styled(if open { "▾ " } else { "▸ " }, Style::new().fg(ACCENT)),
+        Span::styled(label(k), Style::new().add_modifier(Modifier::BOLD)),
+        Span::styled(format!("  {count}"), Style::new().fg(DIM)),
+    ])
+}
+
+fn family_line(app: &App, k: Kind, f: &str) -> Line<'static> {
+    let open = app.expanded.contains(&family_key(k, f));
+    let family = &app.groups[&k][f];
+    let count = if app.playable_only { format!("{}/{}", family.playable, family.items.len()) } else { family.items.len().to_string() };
+    Line::from(vec![Span::raw("  "), Span::styled(if open { "▾ " } else { "▸ " }, Style::new().fg(ACCENT)), Span::raw(f.to_owned()), Span::styled(format!("  {count}"), Style::new().fg(DIM))])
+}
+
+fn item_line(app: &App, index: usize, depth: usize, width: usize) -> Line<'static> {
+    let item = app.item(index);
+    let pad = if app.query.is_empty() { 4 + depth * 2 } else { 0 };
+    let playing = app.current == Some(index);
+    let style = if !item.playable {
+        Style::new().fg(DIM)
+    } else if playing {
+        Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)
+    } else {
+        Style::new()
+    };
+    let mark = if playing { "♪ " } else { "  " };
+    let fold = if item.kind == Kind::Xa && depth == 0 && !item.id.contains('@') { if app.expanded.contains(&item.id) { "▾ " } else { "▸ " } } else { "" };
+    let time = music_length(item.duration);
+    // Columns: the id, the title filling the rest, then the duration at the right edge.
+    let name_width = if width >= 50 { 12 } else { 0 };
+    let time_width = 7;
+    let fixed = pad + 4 + name_width + time_width;
+    let (name, title) = match (item.title.as_str(), name_width) {
+        ("", 0) => (String::new(), item.name.clone()),
+        ("", _) => (format!("{:<name_width$}", item.name), String::new()),
+        (title, 0) => (String::new(), format!("{title} · {}", item.name)),
+        (title, _) => (format!("{:<name_width$}", item.name), title.to_string()),
+    };
+    let room = width.saturating_sub(fixed);
+    let title = head_fit(title, room);
+    let used = pad + 4 + name.chars().count() + title.chars().count();
+    let gap = width.saturating_sub(used + time_width).max(1);
+    Line::from(vec![
+        Span::raw(" ".repeat(pad)),
+        Span::styled(mark, Style::new().fg(Color::Green)),
+        Span::styled(fold, Style::new().fg(ACCENT)),
+        Span::styled(name, style),
+        Span::styled(title, style),
+        Span::styled(format!("{}{time:>time_width$}", " ".repeat(gap)), Style::new().fg(DIM)),
+    ])
 }
 
 /// A section heading in the details panel.
 fn heading(text: &str) -> Line<'static> {
     Line::styled(text.to_uppercase(), Style::new().fg(DIM).add_modifier(Modifier::BOLD))
+}
+
+/// The details panel text for the selected row.
+fn details_lines(app: &App) -> Vec<Line<'static>> {
+    match app.selected_row() {
+        Some(Row::Item(index, _)) => item_details(app, *index),
+        Some(Row::Family(k, f)) => {
+            vec![Line::raw(format!("{} / {f}", label(*k))), Line::raw(format!("{} items", app.groups[k][f].items.len()))]
+        }
+        Some(Row::Kind(k)) => vec![Line::raw(label(*k)), Line::raw("Enter or → to open")],
+        None => vec![Line::raw("nothing selected")],
+    }
+}
+
+/// The details panel text for one item.
+fn item_details(app: &App, index: usize) -> Vec<Line<'static>> {
+    let item = app.item(index);
+    let catalog = app.library.catalog();
+    let mut lines = vec![Line::styled(item.id.clone(), Style::new().fg(ACCENT).add_modifier(Modifier::BOLD)), Line::raw(item.name.clone())];
+    if !item.title.is_empty() {
+        lines.push(Line::raw(item.title.clone()));
+    }
+    if let Some(same) = catalog.same_as_text(item) {
+        lines.push(Line::raw(format!("Same as   {same}")));
+    }
+    if let Some(members) = catalog.groups().group_members(&item.id) {
+        lines.push(Line::raw(format!("Duplicates: {}", members.len())));
+        for m in &members {
+            if let Some(it) = catalog.find(m) {
+                lines.push(Line::styled(format!("  {} {}", it.id, it.name), Style::new().fg(Color::Gray)));
+            } else {
+                lines.push(Line::styled(format!("  {}", m), Style::new().fg(Color::Gray)));
+            }
+        }
+    }
+    lines.push(Line::raw(""));
+    lines.push(heading("Properties"));
+    lines.push(Line::raw(format!("Family    {}", item.family)));
+    lines.push(Line::raw(format!("Length    {}", music_length(item.duration))));
+    lines.push(Line::raw(format!("Plays     {}", if item.playable { "yes" } else { "no" })));
+    lines.push(Line::raw(format!("File      {}", item.path)));
+    lines.push(Line::raw(""));
+    lines.push(heading("Description"));
+    lines.push(Line::styled(item.detail.clone(), Style::new().fg(Color::Gray)));
+    lines
+}
+
+/// The save progress, else the last message.
+fn status_line(app: &App) -> Line<'static> {
+    if let Some(save) = &app.save {
+        let duration = save.duration();
+        let percent = if duration > 0.0 { (save.rendered() / duration * 100.0) as u32 } else { 0 };
+        Line::styled(format!("saving {}  {} / {}  ({percent}%)", save.id(), clock(save.rendered()), clock(duration)), Style::new().fg(Color::Yellow))
+    } else if app.message.is_empty() {
+        Line::raw("")
+    } else {
+        Line::styled(app.message.clone(), Style::new().fg(Color::Yellow))
+    }
 }
 
 fn draw(frame: &mut Frame<'_>, app: &mut App) {
@@ -698,44 +735,7 @@ fn draw(frame: &mut Frame<'_>, app: &mut App) {
         frame.render_widget(Paragraph::new(Line::styled(message, Style::new().fg(DIM))), inner);
     }
 
-    let details = match app.selected_row() {
-        Some(Row::Item(index, _)) => {
-            let item = app.item(*index);
-            let catalog = app.library.catalog();
-            let mut lines = vec![Line::styled(item.id.clone(), Style::new().fg(ACCENT).add_modifier(Modifier::BOLD)), Line::raw(item.name.clone())];
-            if !item.title.is_empty() {
-                lines.push(Line::raw(item.title.clone()));
-            }
-            if let Some(same) = catalog.same_as_text(item) {
-                lines.push(Line::raw(format!("Same as   {same}")));
-            }
-            if let Some(members) = catalog.groups().group_members(&item.id) {
-                lines.push(Line::raw(format!("Duplicates: {}", members.len())));
-                for m in &members {
-                    if let Some(it) = catalog.find(m) {
-                        lines.push(Line::styled(format!("  {} {}", it.id, it.name), Style::new().fg(Color::Gray)));
-                    } else {
-                        lines.push(Line::styled(format!("  {}", m), Style::new().fg(Color::Gray)));
-                    }
-                }
-            }
-            lines.push(Line::raw(""));
-            lines.push(heading("Properties"));
-            lines.push(Line::raw(format!("Family    {}", item.family)));
-            lines.push(Line::raw(format!("Length    {}", music_length(item.duration))));
-            lines.push(Line::raw(format!("Plays     {}", if item.playable { "yes" } else { "no" })));
-            lines.push(Line::raw(format!("File      {}", item.path)));
-            lines.push(Line::raw(""));
-            lines.push(heading("Description"));
-            lines.push(Line::styled(item.detail.clone(), Style::new().fg(Color::Gray)));
-            lines
-        }
-        Some(Row::Family(k, f)) => {
-            vec![Line::raw(format!("{} / {f}", label(*k))), Line::raw(format!("{} items", app.groups[k][f].items.len()))]
-        }
-        Some(Row::Kind(k)) => vec![Line::raw(label(*k)), Line::raw("Enter or → to open")],
-        None => vec![Line::raw("nothing selected")],
-    };
+    let details = details_lines(app);
     if columns[1].width > 0 {
         let [text, levels] = split_details(columns[1], area);
         frame.render_widget(Paragraph::new(details).wrap(Wrap { trim: false }).block(Block::default().borders(Borders::ALL).padding(padding(area)).title(" Details ")), text);
@@ -747,15 +747,7 @@ fn draw(frame: &mut Frame<'_>, app: &mut App) {
     draw_now_playing(frame, app, rows[2]);
 
     let help = help_line(area.width as usize);
-    let status = if let Some(save) = &app.save {
-        let duration = save.duration();
-        let percent = if duration > 0.0 { (save.rendered() / duration * 100.0) as u32 } else { 0 };
-        Line::styled(format!("saving {}  {} / {}  ({percent}%)", save.id(), clock(save.rendered()), clock(duration)), Style::new().fg(Color::Yellow))
-    } else if app.message.is_empty() {
-        Line::raw("")
-    } else {
-        Line::styled(app.message.clone(), Style::new().fg(Color::Yellow))
-    };
+    let status = status_line(app);
     frame.render_widget(Paragraph::new(status), rows[3]);
     frame.render_widget(Paragraph::new(help), rows[4]);
 

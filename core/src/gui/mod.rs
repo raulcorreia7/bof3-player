@@ -273,29 +273,8 @@ impl Gui {
         if !self.show_all_dupes {
             let catalog = browser.loaded.library.catalog();
             let groups = catalog.groups();
-            use std::collections::HashSet;
-            let mut seen: HashSet<String> = HashSet::new();
-            rows.retain(|row| {
-                if let Row::Item(item) = row {
-                    if let Some(canon) = groups.canonical_of(&item.id) {
-                        if canon != item.id {
-                            return false;
-                        }
-                        if seen.contains(&canon) {
-                            return false;
-                        }
-                        seen.insert(canon);
-                        return true;
-                    } else if groups.group_members(&item.id).is_some() && groups.canonical_of(&item.id).as_deref() == Some(item.id.as_str()) {
-                        if seen.contains(&item.id) {
-                            return false;
-                        }
-                        seen.insert(item.id.clone());
-                        return true;
-                    }
-                }
-                true
-            });
+            let mut seen = std::collections::BTreeSet::new();
+            rows.retain(|row| !matches!(row, Row::Item(item) if groups.is_repeat(&item.id, &mut seen)));
         }
         browser.rows = rows;
         browser.selected = keep.and_then(|key| browser.rows.iter().position(|row| row.key() == key)).unwrap_or_else(|| browser.rows.iter().position(|row| matches!(row, Row::Item(_))).unwrap_or(0));

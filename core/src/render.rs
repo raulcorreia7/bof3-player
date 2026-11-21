@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 //! Rendering catalog items to audio files without a terminal or an audio device.
 
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use crate::catalog::{Filter, Item};
@@ -58,10 +58,10 @@ pub fn render_item(library: &'static Library<'static>, item: &Item, path: &Path,
 pub fn render(library: &'static Library<'static>, query: &str, dir: &Path, filter: &Filter<'_>, style: &RenderStyle, with_duplicates: bool) -> usize {
     let catalog = library.catalog();
     let groups = catalog.groups();
-    let mut written: HashSet<String> = HashSet::new();
+    let mut written = BTreeSet::new();
     let mut failed = 0;
     for hit in catalog.search(query, filter) {
-        let repeat = !with_duplicates && groups.canonical_of(&hit.id).is_some_and(|canon| canon != hit.id || !written.insert(canon));
+        let repeat = !with_duplicates && groups.is_repeat(&hit.id, &mut written);
         if repeat {
             continue;
         }

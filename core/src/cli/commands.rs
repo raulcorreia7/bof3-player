@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 //! The non-interactive commands.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -63,7 +63,7 @@ fn not_found(discovery: &discover::Discovery) -> String {
     )
 }
 
-pub fn filter_of<'a>(filters: &'a Filters) -> Result<Filter<'a>, String> {
+pub fn filter_of(filters: &Filters) -> Result<Filter<'_>, String> {
     let kinds = match &filters.kind {
         Some(name) => vec![Kind::from_name(name).ok_or_else(|| format!("unknown kind {name}: use music, bank, sample, xa or cdda"))?],
         None => Vec::new(),
@@ -84,17 +84,13 @@ pub fn resolve<'a>(library: &'a Library<'static>, query: &str) -> Result<&'a Ite
         return Ok(item);
     }
     let hits = catalog.search(query, &Filter { playable_only: true, ..Filter::default() });
-    match hits.first() {
-        Some(best) => {
-            eprintln!("player: \"{query}\" resolved to {}", best.id);
-            Ok(best)
-        }
-        None => {
-            let hint = catalog.search(query, &Filter::default());
-            let list = hint.iter().take(5).map(|i| i.id.as_str()).collect::<Vec<_>>().join(", ");
-            Err(format!("no item matches \"{query}\"{}. Try `bof3player list` or a shorter query.", if list.is_empty() { String::new() } else { format!("; closest: {list}") }))
-        }
+    if let Some(best) = hits.first() {
+        eprintln!("player: \"{query}\" resolved to {}", best.id);
+        return Ok(best);
     }
+    let hint = catalog.search(query, &Filter::default());
+    let list = hint.iter().take(5).map(|i| i.id.as_str()).collect::<Vec<_>>().join(", ");
+    Err(format!("no item matches \"{query}\"{}. Try `bof3player list` or a shorter query.", if list.is_empty() { String::new() } else { format!("; closest: {list}") }))
 }
 
 fn item_json(item: &Item) -> serde_json::Value {
@@ -105,47 +101,27 @@ fn item_json(item: &Item) -> serde_json::Value {
     })
 }
 
+/// One table row; `copies` adds the `×N` suffix of a duplicate group.
+fn row_text(catalog: &Catalog, item: &Item, copies: Option<usize>) -> String {
+    let title = if item.title.is_empty() { String::new() } else { format!("{} · ", item.title) };
+    let same = catalog.same_as_text(item).map_or_else(String::new, |text| format!("  same as {text}"));
+    let times = copies.map_or_else(String::new, |n| format!(" ×{n}"));
+    format!("{:<6} {:<28} {:>8}  {title}{}{same}{times}", item.kind.name(), item.id, duration_text(item), item.name)
+}
+
 fn print_rows(global: &Global, catalog: &Catalog, rows: &[&Item], total: usize, show_all: bool) {
     if global.json {
         say!("{}", serde_json::to_string_pretty(&rows.iter().map(|i| item_json(i)).collect::<Vec<_>>()).unwrap_or_default());
         return;
     }
     let groups = catalog.groups();
-    use std::collections::HashSet;
-    let mut seen_group: HashSet<String> = HashSet::new();
+    let mut seen_group = BTreeSet::new();
     for item in rows {
-        if !show_all {
-            if let Some(canon) = groups.canonical_of(&item.id) {
-                if canon != item.id {
-                    continue;
-                }
-                if let Some(members) = groups.group_members(&item.id) {
-                    if seen_group.contains(&canon) {
-                        continue;
-                    }
-                    seen_group.insert(canon);
-                    let title = if item.title.is_empty() { String::new() } else { format!("{} · ", item.title) };
-                    let same = catalog.same_as_text(item).map_or_else(String::new, |text| format!("  same as {text}"));
-                    say!("{:<6} {:<28} {:>8}  {}{}{} ×{}", item.kind.name(), item.id, duration_text(item), title, item.name, same, members.len());
-                    continue;
-                }
-            }
-            if let Some(members) = groups.group_members(&item.id)
-                && groups.canonical_of(&item.id).as_deref() == Some(item.id.as_str())
-            {
-                if seen_group.contains(&item.id) {
-                    continue;
-                }
-                seen_group.insert(item.id.clone());
-                let title = if item.title.is_empty() { String::new() } else { format!("{} · ", item.title) };
-                let same = catalog.same_as_text(item).map_or_else(String::new, |text| format!("  same as {text}"));
-                say!("{:<6} {:<28} {:>8}  {}{}{} ×{}", item.kind.name(), item.id, duration_text(item), title, item.name, same, members.len());
-                continue;
-            }
+        if !show_all && groups.is_repeat(&item.id, &mut seen_group) {
+            continue;
         }
-        let title = if item.title.is_empty() { String::new() } else { format!("{} · ", item.title) };
-        let same = catalog.same_as_text(item).map_or_else(String::new, |text| format!("  same as {text}"));
-        say!("{:<6} {:<28} {:>8}  {}{}{}", item.kind.name(), item.id, duration_text(item), title, item.name, same);
+        let copies = if show_all { None } else { groups.group_members(&item.id).map(|members| members.len()) };
+        say!("{}", row_text(catalog, item, copies));
     }
     if rows.len() < total && !global.quiet {
         eprintln!("({} of {total} shown)", rows.len());
@@ -175,8 +151,6 @@ pub fn search_with(global: &Global, query: &str, filters: &Filters, limit: usize
     let library = open_library(global, naming)?;
     let filter = filter_of(filters)?;
     let hits = library.catalog().search(query, &filter);
-    // If not showing all, we still need to find matches - but search should match any member; our current search looks up by item properties
-    // The requirement says "Search matches any member" - so ensure we find items if any member matches; our existing search does substring matching on item fields, should be fine
     let shown = &hits[..limit.min(hits.len())];
     print_rows(global, library.catalog(), shown, hits.len(), show_all);
     Ok(if hits.is_empty() { ExitCode::from(1) } else { ExitCode::SUCCESS })
@@ -236,6 +210,11 @@ pub(crate) fn music_length(seconds: Option<f64>) -> String {
     )
 }
 
+/// How many of an archive's items play and how many carry a title.
+fn archive_counts(items: &[&Item]) -> (usize, usize) {
+    (items.iter().filter(|i| i.playable).count(), items.iter().filter(|i| !i.title.is_empty()).count())
+}
+
 pub fn music(global: &Global, all: bool, untitled: bool, naming: &dyn Naming) -> Outcome {
     let library = open_library(global, naming)?;
     let filter = Filter { kinds: vec![Kind::Music], ..Filter::default() };
@@ -249,8 +228,7 @@ pub fn music(global: &Global, all: bool, untitled: bool, naming: &dyn Naming) ->
         let rows: Vec<_> = archives
             .iter()
             .map(|(path, items)| {
-                let playable = items.iter().filter(|i| i.playable).count();
-                let titled = items.iter().filter(|i| !i.title.is_empty()).count();
+                let (playable, titled) = archive_counts(items);
                 json!({
                     "path": path,
                     "playable": playable,
@@ -263,8 +241,7 @@ pub fn music(global: &Global, all: bool, untitled: bool, naming: &dyn Naming) ->
         say!("{}", serde_json::to_string_pretty(&rows).unwrap_or_default());
     } else {
         for (path, items) in &archives {
-            let playable = items.iter().filter(|i| i.playable).count();
-            let titled = items.iter().filter(|i| !i.title.is_empty()).count();
+            let (playable, titled) = archive_counts(items);
             say!("{path}  ({playable}/{} playable, {titled} titled)", items.len());
             for item in items.iter().copied().filter(|i| selected(i)) {
                 let title = if item.title.is_empty() { "-" } else { item.title.as_str() };
@@ -477,6 +454,24 @@ struct Tally {
     failed: usize,
 }
 
+/// Whether the item renders any non-zero sample within `seconds`.
+fn renders_sound(global: &Global, library: &Library<'static>, item: &Item, seconds: f64) -> Result<bool, String> {
+    let mut player = start(global, library, item)?;
+    let channels = player.channels() as usize;
+    let cap = (seconds * f64::from(player.sample_rate())) as usize;
+    let mut chunk = vec![0i16; 4096 * channels];
+    let (mut frames_total, mut loud) = (0usize, false);
+    while frames_total < cap {
+        let frames = player.render_i16(&mut chunk).map_err(|e| e.to_string())?;
+        if frames == 0 {
+            break;
+        }
+        frames_total += frames;
+        loud |= chunk[..frames * channels].iter().any(|&s| s != 0);
+    }
+    Ok(loud)
+}
+
 pub fn verify(global: &Global, filters: &Filters, seconds: f64, limit: Option<usize>, naming: &dyn Naming) -> Outcome {
     let library = open_library(global, naming)?;
     let filter = filter_of(filters)?;
@@ -488,22 +483,7 @@ pub fn verify(global: &Global, filters: &Filters, seconds: f64, limit: Option<us
             tally.empty += 1;
             continue;
         }
-        let verdict = (|| -> Result<bool, String> {
-            let mut player = start(global, library, item)?;
-            let channels = player.channels() as usize;
-            let cap = (seconds * f64::from(player.sample_rate())) as usize;
-            let mut chunk = vec![0i16; 4096 * channels];
-            let (mut frames_total, mut loud) = (0usize, false);
-            while frames_total < cap {
-                let frames = player.render_i16(&mut chunk).map_err(|e| e.to_string())?;
-                if frames == 0 {
-                    break;
-                }
-                frames_total += frames;
-                loud |= chunk[..frames * channels].iter().any(|&s| s != 0);
-            }
-            Ok(loud)
-        })();
+        let verdict = renders_sound(global, library, item, seconds);
         match verdict {
             Ok(true) => tally.sound += 1,
             Ok(false) => {
