@@ -8,22 +8,6 @@
 //! record that gives the file's size is updated, and so is the sector that
 //! holds it. Form 2 streams (XA and STR) are not replaced. Every other sector,
 //! the audio track and the cue sheet are copied as stored.
-//!
-//! # Examples
-//!
-//! ```no_run
-//! # fn main() -> Result<(), psx_cd::Error> {
-//! use psx_cd::patch::Replacement;
-//!
-//! let summary = psx_cd::patch::apply(
-//!     std::path::Path::new("disc.cue"),
-//!     std::path::Path::new("patched"),
-//!     &[Replacement { path: "DATA.BIN".into(), bytes: b"new".to_vec() }],
-//! )?;
-//! assert_eq!(summary.files, 1);
-//! # Ok(())
-//! # }
-//! ```
 
 use std::collections::BTreeSet;
 use std::fs::{self, File, OpenOptions};
@@ -74,22 +58,6 @@ pub struct Summary {
 /// Writes a patched copy of the disc named by `cue_path` into the directory
 /// `output`. The copy has the cue sheet and every track file under their own
 /// names, with the replacements applied to the data track.
-///
-/// # Examples
-///
-/// ```no_run
-/// # fn main() -> Result<(), psx_cd::Error> {
-/// use psx_cd::patch::{Replacement, apply};
-///
-/// let summary = apply(
-///     std::path::Path::new("disc.cue"),
-///     std::path::Path::new("patched"),
-///     &[Replacement { path: "DATA.BIN".into(), bytes: b"new".to_vec() }],
-/// )?;
-/// assert_eq!(summary.files, 1);
-/// # Ok(())
-/// # }
-/// ```
 pub fn apply(cue_path: &Path, output: &Path, replacements: &[Replacement]) -> Result<Summary> {
     let sheet = cue::read(cue_path)?;
     let data_track = sheet.tracks.iter().find(|track| track.mode != cue::TrackMode::Audio).ok_or_else(|| Error::Patch(format!("{} has no data track", cue_path.display())))?;

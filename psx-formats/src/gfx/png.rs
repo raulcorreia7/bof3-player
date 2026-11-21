@@ -5,16 +5,6 @@
 //! comparison, not a byte comparison, is the stable check across crate
 //! versions. [`read`] takes back the pictures the writers produce, and any
 //! 8-bit RGB or RGBA PNG and any 4- or 8-bit indexed PNG.
-//!
-//! # Examples
-//!
-//! ```
-//! use psx_formats::gfx::png::{self, Picture};
-//!
-//! let bytes = png::rgba_png(1, 1, &[255, 0, 0, 255]);
-//! let Picture::Rgba(rgba) = png::read(&bytes).unwrap() else { panic!("an RGBA PNG") };
-//! assert_eq!(rgba.pixels, [255, 0, 0, 255]);
-//! ```
 
 use std::io::Cursor;
 

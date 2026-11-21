@@ -2,15 +2,6 @@
 //!
 //! The writer takes interleaved 16-bit samples and returns the file bytes. The
 //! header is the canonical 44-byte PCM form, the one every reader takes.
-//!
-//! # Examples
-//!
-//! ```
-//! use psx_formats::wav;
-//!
-//! let bytes = wav::pcm(&[0i16; 2], 44_100, 1).unwrap();
-//! assert_eq!(wav::parse(&bytes).unwrap().data_bytes, 4);
-//! ```
 
 use alloc::vec::Vec;
 

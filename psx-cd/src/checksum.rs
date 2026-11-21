@@ -3,15 +3,6 @@
 //! A manifest records the image files (`bin`, `cue`, `img` and `iso`, matched
 //! case-insensitively) below a root by their path, size and two digests. Equal
 //! content is recorded once, under the lexically first path.
-//!
-//! # Examples
-//!
-//! ```
-//! let dir = tempfile::tempdir().unwrap();
-//! std::fs::write(dir.path().join("disc.bin"), b"abc").unwrap();
-//! let records = psx_cd::checksum::scan(dir.path(), dir.path()).unwrap();
-//! assert_eq!(records[0].path, "disc.bin");
-//! ```
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};

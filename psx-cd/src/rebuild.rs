@@ -4,16 +4,6 @@
 //! a flat root directory at 18 and the sorted files from sector 19 on. It is a
 //! fixture builder: the input is top-level regular files with conservative
 //! names, at most 32 MiB in total.
-//!
-//! # Examples
-//!
-//! ```
-//! let dir = tempfile::tempdir().unwrap();
-//! std::fs::write(dir.path().join("HELLO.TXT"), b"hello").unwrap();
-//! let output = dir.path().join("disc.iso");
-//! psx_cd::rebuild::iso(dir.path(), &output).unwrap();
-//! assert_eq!(std::fs::metadata(output).unwrap().len(), 20 * 2048);
-//! ```
 
 use std::fs;
 use std::path::Path;

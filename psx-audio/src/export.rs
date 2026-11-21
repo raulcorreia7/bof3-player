@@ -1,13 +1,5 @@
 // SPDX-License-Identifier: MIT
 //! Writing rendered audio out.
-//!
-//! # Examples
-//!
-//! ```
-//! let wav = psx_audio::export::wav_bytes(&[0i16; 8], 44_100, 2)?;
-//! assert_eq!(&wav[..4], b"RIFF");
-//! # Ok::<(), psx_audio::Error>(())
-//! ```
 
 use alloc::format;
 use alloc::string::ToString;

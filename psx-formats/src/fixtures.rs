@@ -2,14 +2,6 @@
 //!
 //! Enabled by the `fixtures` feature; this crate's own tests always have it. Every value is
 //! generated here from constants.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! let (header, body) = psx_formats::fixtures::tiny_bank();
-//! let bank = psx_formats::vab::Bank::parse(&header, &body).unwrap();
-//! assert!(bank.problems().is_empty());
-//! ```
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -33,13 +25,6 @@ const SIZE_ENTRIES: usize = 256;
 
 /// A bank with one program (number 1) in tone block 0, one tone answering every note, and one
 /// looping two-block sample. Returns the header and the body; the pair breaks no format rule.
-///
-/// # Examples
-///
-/// ```ignore
-/// let (header, body) = psx_formats::fixtures::tiny_bank();
-/// assert_eq!(psx_formats::vab::Bank::parse(&header, &body).unwrap().vag_count, 1);
-/// ```
 pub fn tiny_bank() -> (Vec<u8>, Vec<u8>) {
     let size_table = TONE_TABLE + TONES_PER_BLOCK * TONE_BYTES;
     let mut vh = vec![0u8; size_table + SIZE_ENTRIES * 2];
@@ -76,13 +61,6 @@ pub fn tiny_bank() -> (Vec<u8>, Vec<u8>) {
 }
 
 /// A package with one sequence: program 1 on channel 0, loop markers around one note.
-///
-/// # Examples
-///
-/// ```ignore
-/// let package = psx_formats::sep::Package::parse(&psx_formats::fixtures::tiny_sep()).unwrap();
-/// assert_eq!(package.sequences.len(), 1);
-/// ```
 pub fn tiny_sep() -> Vec<u8> {
     let events: &[u8] = &[
         0x00, 0xC0, 0x01, // program change 1
@@ -105,13 +83,6 @@ pub fn tiny_sep() -> Vec<u8> {
 }
 
 /// A stored XA sector of silence (all-zero nibbles) for `file` and `channel`.
-///
-/// # Examples
-///
-/// ```ignore
-/// let sector = psx_formats::fixtures::sector(1, 0, 0x04, 0);
-/// assert!(psx_formats::xa::is_audio(&sector));
-/// ```
 pub fn sector(file: u8, channel: u8, submode: u8, coding: u8) -> Vec<u8> {
     let mut sector = vec![0u8; SECTOR_BYTES];
     sector[0] = file;

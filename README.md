@@ -37,18 +37,13 @@ three tools and `data/bof3-names.json`, and has a `.sha256` file to check with `
 - `bof3player-macos-arm64.tar.gz` or `bof3player-macos-x86_64.tar.gz`
 - `bof3player-windows-x86_64.zip`
 
-No game data is in this repository. Keep the disc dump outside Git.
-
-## Set up
-
-```sh
-git clone https://github.com/raulcorreia7/bof3-player.git
-cd bof3-player
-```
+Keep the disc dump outside Git.
 
 ## Build
 
 ```sh
+git clone https://github.com/raulcorreia7/bof3-player.git
+cd bof3-player
 make build
 ```
 
@@ -81,19 +76,9 @@ found. The commands and switches are in [docs/player.md](docs/player.md) and in 
 
 ## Game data
 
-`-i` takes any of these:
-
-- a `.cue` sheet, with its `.bin` next to it;
-- a raw disc image (`.bin` or `.iso`);
-- a folder of files extracted from the disc. Use the folder that holds `SLUS_004.22` and `BIN/`,
-  or the `BIN` folder itself.
-
-To extract a folder, run `bof3 disc extract` from
-[bof3-tools](https://github.com/raulcorreia7/bof3-tools), then pass the folder:
-
-```sh
-bin/bof3player -i ~/games/bof3-extracted list --kind music
-```
+`-i` takes a `.cue` sheet (its `.bin` next to it), a raw disc image (`.bin` or `.iso`), or a folder of
+files extracted from the disc: the folder that holds `SLUS_004.22` and `BIN/`, or `BIN` itself.
+`bof3 disc extract` from [bof3-tools](https://github.com/raulcorreia7/bof3-tools) makes that folder.
 
 ## Supported formats
 
@@ -106,9 +91,8 @@ bin/bof3player -i ~/games/bof3-extracted list --kind music
 ## Names file
 
 The disc names no track, so `data/bof3-names.json` ships soundtrack titles, place labels and
-duplicate marks, each with its source. The tools find it next to the program, in the working
-directory or in `data/`. `--names FILE` or `$BOF3_NAMES` picks another file. See
-[data/README.md](data/README.md) and [docs/player.md](docs/player.md#names-file).
+duplicate marks, each with its source. `--names FILE` or `$BOF3_NAMES` picks another file. See
+[docs/player.md](docs/player.md#names-file).
 
 ## Use it as a library
 
@@ -128,21 +112,9 @@ The crates are not on crates.io. Use them as path or git dependencies.
 
 ## Check
 
-```sh
-make check
-```
-
 `make check` runs the format check, `cargo clippy`, the tests, a `--no-default-features` check and
-`cargo deny`.
-
-## Next
-
-- [docs/player.md](docs/player.md): the tools, switches, keys and names file.
-- [docs/rust-api.md](docs/rust-api.md), [docs/crates.md](docs/crates.md) and
-  [docs/spu-model.md](docs/spu-model.md): the library and the SPU model.
-- [CONTRIBUTING.md](CONTRIBUTING.md), the [code of conduct](CODE_OF_CONDUCT.md) and the
-  [security policy](SECURITY.md).
-- The [bof3 workspace](https://github.com/raulcorreia7/bof3) links this project with the others.
+`cargo deny`. More: [docs/](docs/), [CONTRIBUTING.md](CONTRIBUTING.md),
+[SECURITY.md](SECURITY.md) and the [bof3 workspace](https://github.com/raulcorreia7/bof3).
 
 ## License
 

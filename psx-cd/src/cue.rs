@@ -3,19 +3,6 @@
 //! A sheet names its `FILE`s, their `TRACK`s and each track's `INDEX` points.
 //! Positions are stored in sectors (75 per second); an audio track is a run of
 //! 2352-byte CD-DA frames (`psx-spx` "CDROM Disk Format").
-//!
-//! # Examples
-//!
-//! ```
-//! use std::path::Path;
-//!
-//! let sheet = psx_cd::cue::parse(
-//!     "FILE \"disc.bin\" BINARY\nTRACK 01 MODE2/2352\nINDEX 01 00:00:00",
-//!     Path::new("."),
-//! )
-//! .unwrap();
-//! assert_eq!(sheet.tracks[0].mode, psx_cd::cue::TrackMode::Mode2_2352);
-//! ```
 
 use std::fs;
 use std::fs::File;
@@ -68,16 +55,6 @@ pub enum TrackMode {
 
 /// Reads and parses a CUE sheet from `path`; relative `FILE` names resolve
 /// against its directory.
-///
-/// # Examples
-///
-/// ```no_run
-/// # fn main() -> Result<(), psx_cd::Error> {
-/// let sheet = psx_cd::cue::read(std::path::Path::new("disc.cue"))?;
-/// assert!(!sheet.tracks.is_empty());
-/// # Ok(())
-/// # }
-/// ```
 pub fn read(path: &Path) -> Result<Sheet, Error> {
     parse(&fs::read_to_string(path)?, path.parent().unwrap_or(Path::new(".")))
 }

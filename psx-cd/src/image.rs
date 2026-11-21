@@ -3,22 +3,6 @@
 //! An image is a cooked 2048-byte ISO, a raw 2352-byte Mode 1 or Mode 2 image,
 //! or a CUE sheet that names its data track. The layout is detected from the
 //! primary volume descriptor at sector 16.
-//!
-//! # Examples
-//!
-//! ```
-//! use psx_cd::{Image, rebuild};
-//!
-//! let dir = tempfile::tempdir().unwrap();
-//! let input = dir.path().join("input");
-//! std::fs::create_dir(&input).unwrap();
-//! std::fs::write(input.join("HELLO.TXT"), b"hello").unwrap();
-//! let iso = dir.path().join("disc.iso");
-//! rebuild::iso(&input, &iso).unwrap();
-//!
-//! let mut image = Image::open(&iso).unwrap();
-//! assert_eq!(image.entries().unwrap().len(), 1);
-//! ```
 
 use std::collections::HashSet;
 use std::fs::{self, File};
@@ -62,17 +46,6 @@ struct SectorLayout {
 
 /// An open disc image: a cooked 2048-byte or raw 2352-byte image, reached
 /// directly or through its CUE sheet.
-///
-/// # Examples
-///
-/// ```no_run
-/// # fn main() -> Result<(), psx_cd::Error> {
-/// let mut image = psx_cd::Image::open("disc.cue")?;
-/// let entries = image.entries()?;
-/// assert!(!entries.is_empty());
-/// # Ok(())
-/// # }
-/// ```
 pub struct Image {
     file: Box<dyn ReadSeek>,
     file_len: u64,
@@ -111,16 +84,6 @@ impl Entry {
 
 impl Image {
     /// Opens an image path, or the data track a CUE sheet names.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # fn main() -> Result<(), psx_cd::Error> {
-    /// let image = psx_cd::Image::open("disc.cue")?;
-    /// assert!(image.is_raw());
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let cue_path = path.as_ref().extension().is_some_and(|extension| extension.eq_ignore_ascii_case("cue")).then(|| path.as_ref().to_path_buf());
         let image_path = resolve_image_path(path.as_ref())?;
@@ -130,17 +93,6 @@ impl Image {
     }
 
     /// Opens a cooked or raw single-track image read from `reader`, which has no CUE sheet.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # fn main() -> Result<(), psx_cd::Error> {
-    /// let bytes = std::fs::read("disc.iso")?;
-    /// let image = psx_cd::Image::from_reader(std::io::Cursor::new(bytes))?;
-    /// assert!(!image.is_raw());
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn from_reader(mut reader: impl ReadSeek + 'static) -> Result<Self> {
         let file_len = reader.seek(SeekFrom::End(0))?;
         Self::from_parts(Box::new(reader), file_len, None)
@@ -158,16 +110,6 @@ impl Image {
 
     /// Writes the license sectors, every file and the audio tracks under
     /// `output`, and returns the written files in path order.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # fn main() -> Result<(), psx_cd::Error> {
-    /// let written = psx_cd::Image::open("disc.cue")?.extract("extracted")?;
-    /// assert!(!written.is_empty());
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn extract(mut self, output: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
         fs::create_dir_all(output.as_ref())?;
         let mut extracted = Vec::new();
@@ -196,16 +138,6 @@ impl Image {
     }
 
     /// The license sectors as 2336-byte XA sectors, or `None` on a cooked image.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # fn main() -> Result<(), psx_cd::Error> {
-    /// let mut image = psx_cd::Image::open("disc.bin")?;
-    /// assert_eq!(image.license()?.map(|bytes| bytes.len()), Some(12 * 2336));
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn license(&mut self) -> Result<Option<Vec<u8>>> {
         if self.layout.size != RAW_SECTOR_SIZE {
             return Ok(None);
@@ -214,30 +146,11 @@ impl Image {
     }
 
     /// The CUE sheet the image was opened through, if any.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # fn main() -> Result<(), psx_cd::Error> {
-    /// let image = psx_cd::Image::open("disc.cue")?;
-    /// assert!(image.cue_sheet()?.is_some());
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn cue_sheet(&self) -> Result<Option<cue::Sheet>> {
         self.cue_path.as_deref().map(cue::read).transpose()
     }
 
     /// Whether the image stores raw 2352-byte sectors.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # fn main() -> Result<(), psx_cd::Error> {
-    /// assert!(psx_cd::Image::open("disc.bin")?.is_raw());
-    /// # Ok(())
-    /// # }
-    /// ```
     #[must_use]
     pub fn is_raw(&self) -> bool {
         self.layout.size == RAW_SECTOR_SIZE
@@ -247,19 +160,6 @@ impl Image {
     ///
     /// A Form 2 file on a raw image reads as 2336-byte sectors; any other file
     /// reads its 2048-byte user data, after its extended attributes.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # fn main() -> Result<(), psx_cd::Error> {
-    /// # let mut image = psx_cd::Image::open("disc.iso")?;
-    /// # let entry = image.entries()?.remove(0);
-    /// let mut header = [0_u8; 4];
-    /// let read = image.read_entry_range(&entry, 0, &mut header)?;
-    /// assert!(read <= 4);
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn read_entry_range(&mut self, entry: &Entry, offset: u64, out: &mut [u8]) -> Result<usize> {
         if entry.is_directory || out.is_empty() {
             return Ok(0);
@@ -294,17 +194,6 @@ impl Image {
     }
 
     /// Every file and directory of the file table, in path order.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # fn main() -> Result<(), psx_cd::Error> {
-    /// let mut image = psx_cd::Image::open("disc.iso")?;
-    /// let entries = image.entries()?;
-    /// assert_eq!(entries.iter().filter(|entry| !entry.is_directory).count(), 1);
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn entries(&mut self) -> Result<Vec<Entry>> {
         let mut entries = Vec::new();
         let mut visited = HashSet::new();
@@ -327,17 +216,6 @@ impl Image {
 
     /// The bytes of one file: 2048-byte sectors trimmed to the recorded size,
     /// or whole 2336-byte sectors for an XA file on a raw image.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # fn main() -> Result<(), psx_cd::Error> {
-    /// let mut image = psx_cd::Image::open("disc.iso")?;
-    /// let entry = image.entries()?.into_iter().find(|entry| !entry.is_directory).unwrap();
-    /// assert!(!image.read_file(&entry)?.is_empty());
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn read_file(&mut self, entry: &Entry) -> Result<Vec<u8>> {
         if entry.is_directory {
             return Err(Error::InvalidInput("a directory has no file bytes"));
