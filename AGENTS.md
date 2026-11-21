@@ -40,6 +40,7 @@ cargo clippy --workspace --all-features --all-targets -- -D warnings
 cargo test --workspace --all-features
 cargo check -p psx-formats -p emi -p psx-audio -p bof3player --no-default-features
 cargo deny check
+python3 scripts/check-layers.py
 ```
 
 ## Rules

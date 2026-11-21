@@ -59,6 +59,8 @@ jobs:
           persist-credentials: false
       - name: Check formatting
         run: cargo fmt --all --check
+      - name: Check the crate layers
+        run: python3 scripts/check-layers.py
       # The lock rarely changes; the nightly deny workflow keeps advisories current between changes.
       - if: needs.changes.outputs.lock == 'true' || github.event_name != 'pull_request'
         uses: EmbarkStudios/cargo-deny-action@17aeb3c839e42274e2b8adf721c8c65edfdc74dd # v2.1.3
