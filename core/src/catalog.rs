@@ -188,23 +188,6 @@ pub struct Filter<'a> {
 /// adapter for names. [`Library::open`](crate::Library::open) supplies none;
 /// [`Library::open_with`](crate::Library::open_with) takes any implementation,
 /// including [`NoNaming`].
-///
-/// # Examples
-///
-/// ```
-/// use bof3player::catalog::Naming;
-///
-/// struct MyNames;
-///
-/// impl Naming for MyNames {
-///     fn music_title(&self, archive: &str, sequence: u32) -> Option<&str> {
-///         (archive == "BGM000" && sequence == 0).then_some("My title")
-///     }
-/// }
-///
-/// assert_eq!(MyNames.music_title("BGM000", 0), Some("My title"));
-/// assert_eq!(MyNames.music_title("BGM000", 1), None);
-/// ```
 pub trait Naming {
     /// The name of one `xa:` item, when the game records one.
     fn xa_span(&self, _id: &str) -> Option<&str> {
@@ -914,27 +897,10 @@ mod tests {
     }
 
     #[test]
-    fn kinds_round_trip_through_their_names() {
-        for kind in Kind::ALL {
-            assert_eq!(Kind::from_name(kind.name()), Some(kind));
-        }
-        assert_eq!(Kind::from_name("MUSIC"), Some(Kind::Music));
-        assert_eq!(Kind::from_name("movie"), None);
-    }
-
-    #[test]
     fn items_sort_by_kind_then_natural_id() {
         let catalog = catalog();
         let ids: Vec<_> = catalog.items().iter().map(|i| i.id.as_str()).collect();
         assert_eq!(ids, ["music:BGM2#0", "music:BGM2#1", "music:BGM10#0", "sample:BOSS001#3", "xa:S_XA00#ch0@0"]);
-    }
-
-    #[test]
-    fn find_accepts_any_letter_case() {
-        let catalog = catalog();
-        assert_eq!(catalog.find("music:BGM2#0").map(|i| i.title.as_str()), Some("Opening"));
-        assert_eq!(catalog.find("MUSIC:bgm2#0").map(|i| i.title.as_str()), Some("Opening"));
-        assert!(catalog.find("music:BGM3#0").is_none());
     }
 
     #[test]

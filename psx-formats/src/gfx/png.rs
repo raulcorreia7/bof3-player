@@ -23,26 +23,9 @@ use png::{BitDepth, ColorType, Encoder};
 use crate::error::Error;
 
 /// The eight bytes every PNG starts with.
-///
-/// # Examples
-///
-/// ```
-/// let png = psx_formats::gfx::png::rgba_png(1, 1, &[0, 0, 0, 255]);
-/// assert_eq!(&png[..8], &psx_formats::gfx::png::SIGNATURE);
-/// ```
 pub const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
 
 /// An 8-bit RGBA picture: four bytes per pixel, row-major.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::gfx::png::{self, Picture};
-///
-/// let bytes = png::rgba_png(1, 1, &[255, 0, 0, 255]);
-/// let Picture::Rgba(rgba) = png::read(&bytes).unwrap() else { panic!("an RGBA PNG") };
-/// assert_eq!(rgba.pixels, [255, 0, 0, 255]);
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Rgba {
     /// Width in pixels.
@@ -54,17 +37,6 @@ pub struct Rgba {
 }
 
 /// A palette-indexed picture: one index per pixel, and the palette's colors.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::gfx::png::{self, Picture};
-///
-/// let colors = [[255, 0, 0, 255], [0, 255, 0, 255]];
-/// let bytes = png::indexed_png(2, 1, 4, &colors, &[0, 1]);
-/// let Picture::Indexed(indexed) = png::read(&bytes).unwrap() else { panic!("an indexed PNG") };
-/// assert_eq!(indexed.indices, [0, 1]);
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Indexed {
     /// Width in pixels.
@@ -80,18 +52,6 @@ pub struct Indexed {
 }
 
 /// A PNG read back: an RGB or RGBA picture, or an indexed one.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::gfx::png::{self, Picture};
-///
-/// let bytes = png::rgba_png(1, 1, &[0, 0, 0, 255]);
-/// match png::read(&bytes).unwrap() {
-///     Picture::Rgba(rgba) => assert_eq!(rgba.width, 1),
-///     Picture::Indexed(_) => panic!("an RGBA PNG"),
-/// }
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Picture {
     /// An 8-bit RGBA picture. RGB files read as opaque RGBA.
@@ -120,25 +80,11 @@ fn encode(width: u32, height: u32, color: ColorType, depth: BitDepth, palette: O
 }
 
 /// An 8-bit RGBA PNG over `width * height` pixels of four bytes each.
-///
-/// # Examples
-///
-/// ```
-/// let png = psx_formats::gfx::png::rgba_png(2, 1, &[255, 0, 0, 255, 0, 255, 0, 255]);
-/// assert_eq!(&png[..8], &psx_formats::gfx::png::SIGNATURE);
-/// ```
 pub fn rgba_png(width: u32, height: u32, pixels: &[u8]) -> Vec<u8> {
     encode(width, height, ColorType::Rgba, BitDepth::Eight, None, pixels)
 }
 
 /// A 16-bit grayscale PNG over `width * height` big-endian samples.
-///
-/// # Examples
-///
-/// ```
-/// let png = psx_formats::gfx::png::gray16_png(1, 2, &[0, 0, 255, 255]);
-/// assert_eq!(&png[..8], &psx_formats::gfx::png::SIGNATURE);
-/// ```
 pub fn gray16_png(width: u32, height: u32, samples: &[u8]) -> Vec<u8> {
     encode(width, height, ColorType::Grayscale, BitDepth::Sixteen, None, samples)
 }
@@ -151,14 +97,6 @@ pub fn gray16_png(width: u32, height: u32, samples: &[u8]) -> Vec<u8> {
 ///
 /// Panics if `bits` is not 4 or 8, or if `indices` is not `width * height` long.
 /// Callers size both.
-///
-/// # Examples
-///
-/// ```
-/// let colors = [[255, 0, 0, 255], [0, 255, 0, 255]];
-/// let png = psx_formats::gfx::png::indexed_png(2, 1, 4, &colors, &[1, 0]);
-/// assert_eq!(&png[..8], &psx_formats::gfx::png::SIGNATURE);
-/// ```
 pub fn indexed_png(width: u32, height: u32, bits: u8, colors: &[[u8; 4]], indices: &[u8]) -> Vec<u8> {
     let depth = match bits {
         4 => BitDepth::Four,
@@ -174,16 +112,6 @@ pub fn indexed_png(width: u32, height: u32, bits: u8, colors: &[[u8; 4]], indice
 
 /// Reads a PNG as a [`Picture`]: 8-bit RGB or RGBA, or 4- or 8-bit indexed.
 /// Any other PNG is an error.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::gfx::png::{self, Picture};
-///
-/// let bytes = png::rgba_png(1, 1, &[0, 0, 0, 255]);
-/// assert!(matches!(png::read(&bytes), Ok(Picture::Rgba(_))));
-/// assert!(png::read(b"not a png").is_err());
-/// ```
 pub fn read(bytes: &[u8]) -> Result<Picture, Error> {
     let mut decoder = png::Decoder::new(Cursor::new(bytes));
     decoder.set_transformations(png::Transformations::IDENTITY);

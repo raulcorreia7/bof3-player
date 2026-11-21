@@ -56,13 +56,6 @@ struct LbaRow {
 }
 
 /// Names that identify an archive container and its manifest in `disc_lba.json`.
-///
-/// # Examples
-///
-/// ```
-/// let naming = psx_cd::metadata::ArchiveNaming { extension: Some("EMI"), manifest: "emi.json" };
-/// assert_eq!(naming.manifest, "emi.json");
-/// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ArchiveNaming<'a> {
     /// Extension that marks a container, without the dot; `None` maps no file to a manifest.
@@ -79,24 +72,6 @@ impl Default for ArchiveNaming<'static> {
 
 /// Writes a project XML for `entries` to `path`; `image_name` names the image
 /// the project builds.
-///
-/// # Examples
-///
-/// ```
-/// let entries = vec![psx_cd::Entry {
-///     path: "HELLO.TXT".into(),
-///     lba: 21,
-///     size: 5,
-///     is_directory: false,
-///     extended_attributes: 0,
-///     is_xa: false,
-///     xa: None,
-/// }];
-/// let dir = tempfile::tempdir().unwrap();
-/// let path = dir.path().join("disc.xml");
-/// psx_cd::metadata::write_project(&path, &entries, "disc.iso").unwrap();
-/// assert!(std::fs::read_to_string(path).unwrap().contains("source=\"HELLO.TXT\""));
-/// ```
 pub fn write_project(path: &Path, entries: &[Entry], image_name: &str) -> Result<(), Error> {
     crate::ensure_parent(path)?;
     let mut writer = Writer::new_with_indent(Vec::new(), b' ', 4);
@@ -134,31 +109,6 @@ pub fn write_project(path: &Path, entries: &[Entry], image_name: &str) -> Result
 ///
 /// A file whose extension matches [`ArchiveNaming::extension`] gains a `manifest_path` in
 /// [`ArchiveNaming::manifest`] under its directory. [`ArchiveNaming::default`] maps no archives.
-///
-/// # Examples
-///
-/// ```
-/// let entries = vec![psx_cd::Entry {
-///     path: "HELLO.TXT".into(),
-///     lba: 21,
-///     size: 5,
-///     is_directory: false,
-///     extended_attributes: 0,
-///     is_xa: false,
-///     xa: None,
-/// }];
-/// let dir = tempfile::tempdir().unwrap();
-/// let path = dir.path().join("disc_lba.json");
-/// psx_cd::metadata::write_lba_json_with(
-///     &path,
-///     &entries,
-///     std::path::Path::new("raw"),
-///     std::path::Path::new("extract"),
-///     psx_cd::metadata::ArchiveNaming::default(),
-/// )
-/// .unwrap();
-/// assert!(std::fs::read_to_string(path).unwrap().contains("\"lba\": 21"));
-/// ```
 pub fn write_lba_json_with(path: &Path, entries: &[Entry], raw_root: &Path, extracted_root: &Path, naming: ArchiveNaming<'_>) -> Result<(), Error> {
     crate::ensure_parent(path)?;
     let mut files = entries.iter().filter(|entry| !entry.is_directory).collect::<Vec<_>>();

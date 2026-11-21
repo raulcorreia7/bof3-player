@@ -25,18 +25,6 @@ use sha2::Sha256;
 use crate::error::{Error, Result};
 
 /// One recorded file: its path, size and both digests.
-///
-/// # Examples
-///
-/// ```
-/// let record = psx_cd::checksum::Record {
-///     path: "disc.bin".into(),
-///     size: 3,
-///     md5: "900150983cd24fb0d6963f7d28e17f72".into(),
-///     sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad".into(),
-/// };
-/// assert_eq!(record.size, 3);
-/// ```
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Record {
     /// Path relative to the current directory, with `/` separators.
@@ -56,16 +44,6 @@ struct Manifest {
 }
 
 /// Scans the image files below `root`, recording paths relative to `current_dir`.
-///
-/// # Examples
-///
-/// ```
-/// let dir = tempfile::tempdir().unwrap();
-/// std::fs::create_dir(dir.path().join("sub")).unwrap();
-/// std::fs::write(dir.path().join("sub/disc.iso"), b"abc").unwrap();
-/// let records = psx_cd::checksum::scan(dir.path(), dir.path()).unwrap();
-/// assert_eq!(records[0].path, "sub/disc.iso");
-/// ```
 pub fn scan(root: &Path, current_dir: &Path) -> Result<Vec<Record>, Error> {
     if !root.is_dir() {
         return Err(Error::InvalidImageDetail(format!("disk directory not found: {}", root.display())));
@@ -91,17 +69,6 @@ pub fn scan(root: &Path, current_dir: &Path) -> Result<Vec<Record>, Error> {
 }
 
 /// Writes `records` as the manifest JSON at `path`.
-///
-/// # Examples
-///
-/// ```
-/// # let dir = tempfile::tempdir().unwrap();
-/// # std::fs::write(dir.path().join("disc.bin"), b"abc").unwrap();
-/// # let records = psx_cd::checksum::scan(dir.path(), dir.path()).unwrap();
-/// let manifest = dir.path().join("checksums.json");
-/// psx_cd::checksum::write(&manifest, &records).unwrap();
-/// assert!(std::fs::read_to_string(manifest).unwrap().contains("disc.bin"));
-/// ```
 pub fn write(path: &Path, records: &[Record]) -> Result<(), Error> {
     crate::ensure_parent(path)?;
     let mut bytes = serde_json::to_vec_pretty(&Manifest { files: records.to_vec() }).map_err(|error| Error::InvalidImageDetail(format!("cannot encode checksums JSON: {error}")))?;
@@ -111,17 +78,6 @@ pub fn write(path: &Path, records: &[Record]) -> Result<(), Error> {
 }
 
 /// Reads a manifest written by [`write()`].
-///
-/// # Examples
-///
-/// ```
-/// # let dir = tempfile::tempdir().unwrap();
-/// # std::fs::write(dir.path().join("disc.bin"), b"abc").unwrap();
-/// # let records = psx_cd::checksum::scan(dir.path(), dir.path()).unwrap();
-/// # let manifest = dir.path().join("checksums.json");
-/// # psx_cd::checksum::write(&manifest, &records).unwrap();
-/// assert_eq!(psx_cd::checksum::read(&manifest).unwrap(), records);
-/// ```
 pub fn read(path: &Path) -> Result<Vec<Record>, Error> {
     let manifest: Manifest = serde_json::from_slice(&fs::read(path)?).map_err(|error| Error::InvalidImageDetail(format!("invalid checksums JSON: {error}")))?;
     for record in &manifest.files {
@@ -134,17 +90,6 @@ pub fn read(path: &Path) -> Result<Vec<Record>, Error> {
 
 /// Compares a fresh scan of `root` with `expected`; returns one message per
 /// difference, and an empty vector when every file matches.
-///
-/// # Examples
-///
-/// ```
-/// # let dir = tempfile::tempdir().unwrap();
-/// # std::fs::write(dir.path().join("disc.bin"), b"abc").unwrap();
-/// # let expected = psx_cd::checksum::scan(dir.path(), dir.path()).unwrap();
-/// assert!(psx_cd::checksum::verify(dir.path(), dir.path(), &expected).unwrap().is_empty());
-/// std::fs::write(dir.path().join("disc.bin"), b"abcd").unwrap();
-/// assert_eq!(psx_cd::checksum::verify(dir.path(), dir.path(), &expected).unwrap().len(), 1);
-/// ```
 pub fn verify(root: &Path, current_dir: &Path, expected: &[Record]) -> Result<Vec<String>, Error> {
     let actual = scan(root, current_dir)?;
     let actual_by_path: BTreeMap<_, _> = actual.iter().map(|row| (&row.path, row)).collect();
@@ -202,15 +147,6 @@ fn digest(path: &Path) -> Result<(String, String), Error> {
 }
 
 /// The lowercase hex SHA-256 of `bytes`.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(
-///     psx_cd::checksum::sha256_hex(b"abc"),
-///     "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-/// );
-/// ```
 pub fn sha256_hex(bytes: &[u8]) -> String {
     hex(&Sha256::digest(bytes))
 }

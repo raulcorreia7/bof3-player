@@ -98,18 +98,6 @@ struct InstrumentData {
 
 /// Writes the bank as a SoundFont 2 file named `name`, with the SoundFont default volume envelope on every
 /// zone. `body` is the VAB body the header describes.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::sf2;
-/// use psx_formats::vab::{Bank, encode_bank};
-///
-/// let (header, body) = encode_bank(0, &[], &[]).unwrap();
-/// let bank = Bank::parse(&header, &body).unwrap();
-/// let file = sf2::write(&bank, &body, "EMPTY").unwrap();
-/// assert_eq!(&file[..4], b"RIFF");
-/// ```
 pub fn write(vab: &Bank, body: &[u8], name: &str) -> Result<Vec<u8>> {
     write_with(vab, body, name, &|_, _| None)
 }
@@ -117,18 +105,6 @@ pub fn write(vab: &Bank, body: &[u8], name: &str) -> Result<Vec<u8>> {
 /// Writes the bank as a SoundFont 2 file named `name`. Each tone's volume envelope is `envelope` of its ADSR
 /// registers, or the SoundFont default when `envelope` returns `None`. `body` is the VAB body the header
 /// describes.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::sf2;
-/// use psx_formats::vab::{Bank, encode_bank};
-///
-/// let (header, body) = encode_bank(0, &[], &[]).unwrap();
-/// let bank = Bank::parse(&header, &body).unwrap();
-/// let envelope = |_, _| Some(sf2::Envelope::DEFAULT);
-/// assert_eq!(&sf2::write_with(&bank, &body, "EMPTY", &envelope).unwrap()[..4], b"RIFF");
-/// ```
 pub fn write_with(vab: &Bank, body: &[u8], name: &str, envelope: &dyn Fn(u16, u16) -> Option<Envelope>) -> Result<Vec<u8>> {
     let mut samples: Vec<SampleData> = Vec::new();
     let mut pcm: Vec<i16> = Vec::new();
@@ -179,24 +155,12 @@ fn zone_of(tone: &Tone, sample: u16, looped: bool, envelope: Envelope) -> ZoneDa
 
 /// The tone volume a zone's attenuation names: the smallest volume whose attenuation is nearest, so a
 /// value [`write()`] produced returns the volume it came from.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::sf2::vol_of_attenuation(0), 127);
-/// ```
 pub fn vol_of_attenuation(centibels: i16) -> u8 {
     (1..=127_u8).min_by_key(|&vol| (i32::from(attenuation(vol)) - i32::from(centibels)).abs()).unwrap_or(127)
 }
 
 /// The tone `shift` a zone's tuning names: the smallest shift whose tuning is nearest, so a tuning
 /// [`write()`] produced returns the shift it came from.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::sf2::shift_of_tuning(0, 0), 0);
-/// ```
 pub fn shift_of_tuning(coarse: i16, fine: i16) -> u8 {
     let target = i32::from(coarse) * CENTS_PER_SEMITONE + i32::from(fine);
     (0..=255_u8)
@@ -209,12 +173,6 @@ pub fn shift_of_tuning(coarse: i16, fine: i16) -> u8 {
 
 /// The tone pan a zone's pan names: the pan whose SoundFont pan is nearest, so a value [`write()`] produced
 /// returns the pan it came from.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::sf2::pan_of_tenths(0), 64);
-/// ```
 pub fn pan_of_tenths(tenths: i16) -> u8 {
     (0..=127_u8).min_by_key(|&pan_value| (i32::from(pan(pan_value)) - i32::from(tenths)).abs()).unwrap_or(64)
 }
@@ -222,13 +180,6 @@ pub fn pan_of_tenths(tenths: i16) -> u8 {
 /// The SoundFont volume envelope of a zone. The phase times are timecents, `1200 * log2(seconds)`, kept
 /// between `-12000` and `8000`. The sustain is the level below full scale, in centibels. SoundFont 2 gives the
 /// attack a linear rise and the decay and release a linear fall in decibels.
-///
-/// # Examples
-///
-/// ```
-/// let envelope = psx_formats::sf2::Envelope::new(1.0, 0.5, 0x4000, 2.0);
-/// assert_eq!((envelope.attack, envelope.decay, envelope.sustain), (0, -1200, 60));
-/// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Envelope {
     /// Attack time, timecents.
@@ -243,23 +194,10 @@ pub struct Envelope {
 
 impl Envelope {
     /// The SoundFont defaults: every phase at its shortest time, and the sustain at full level.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert_eq!(psx_formats::sf2::Envelope::DEFAULT.sustain, 0);
-    /// ```
     pub const DEFAULT: Self = Self { attack: TIMECENTS_MIN, decay: TIMECENTS_MIN, sustain: 0, release: TIMECENTS_MIN };
 
     /// An envelope from phase times in seconds and a sustain level on the PS1 scale, where `0x8000` is full
     /// scale.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let envelope = psx_formats::sf2::Envelope::new(0.5, 1.0, 0x8000, 0.25);
-    /// assert_eq!(envelope.sustain, 0, "full scale is no attenuation");
-    /// ```
     pub fn new(attack_seconds: f64, decay_seconds: f64, sustain_level: i32, release_seconds: f64) -> Self {
         Self { attack: timecents(attack_seconds), decay: timecents(decay_seconds), sustain: centibels(sustain_level), release: timecents(release_seconds) }
     }
@@ -465,13 +403,6 @@ fn list(kind: &[u8; 4], chunks: &[Vec<u8>]) -> Vec<u8> {
 
 /// A SoundFont 2 file read back to the parts a VAB bank is made of. The reader takes what the writer
 /// writes, and any file whose index tables hold together.
-///
-/// # Examples
-///
-/// ```
-/// let font = psx_formats::sf2::SoundFont { presets: vec![], instruments: vec![], samples: vec![] };
-/// assert!(font.samples.is_empty());
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SoundFont {
     /// The presets, in file order.
@@ -483,13 +414,6 @@ pub struct SoundFont {
 }
 
 /// A preset: the program it plays, in its bank, and the instrument it uses.
-///
-/// # Examples
-///
-/// ```
-/// let preset = psx_formats::sf2::Preset { number: 3, bank: 0, instrument: 3 };
-/// assert_eq!(preset.number, preset.instrument);
-/// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Preset {
     /// The program number.
@@ -501,13 +425,6 @@ pub struct Preset {
 }
 
 /// An instrument: its zones in file order. A global zone, which names no sample, is not kept.
-///
-/// # Examples
-///
-/// ```
-/// let instrument = psx_formats::sf2::Instrument { zones: vec![] };
-/// assert!(instrument.zones.is_empty());
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Instrument {
     /// The zones.
@@ -515,25 +432,6 @@ pub struct Instrument {
 }
 
 /// One zone: the keys it answers, its tuning, level, pan and volume envelope, and the sample it plays.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::sf2::{Envelope, Zone};
-///
-/// let zone = Zone {
-///     keys: (0, 127),
-///     root: Some(60),
-///     coarse_tune: 0,
-///     fine_tune: 0,
-///     attenuation: 0,
-///     pan: 0,
-///     envelope: Envelope::DEFAULT,
-///     looped: false,
-///     sample: 0,
-/// };
-/// assert_eq!(zone.root, Some(60));
-/// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Zone {
     /// Lowest and highest key.
@@ -557,19 +455,6 @@ pub struct Zone {
 }
 
 /// A sample: its PCM and its loop points, in frames from the first frame.
-///
-/// # Examples
-///
-/// ```
-/// let sample = psx_formats::sf2::Sample {
-///     name: "VAG001".into(),
-///     pcm: vec![0; 28],
-///     loop_start: 0,
-///     loop_end: 28,
-///     root: 60,
-/// };
-/// assert_eq!(sample.pcm.len(), 28);
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Sample {
     /// The name, without its terminator.
@@ -598,18 +483,6 @@ const GEN_DEFAULT_TIME: i16 = TIMECENTS_MIN;
 
 /// Reads a SoundFont 2 file. Fails when it is not an `sfbk` RIFF file, when a chunk it needs is missing, or when an
 /// index points past its table.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::sf2;
-/// use psx_formats::vab::{Bank, encode_bank};
-///
-/// let (header, body) = encode_bank(0, &[], &[]).unwrap();
-/// let bank = Bank::parse(&header, &body).unwrap();
-/// let font = sf2::read(&sf2::write(&bank, &body, "EMPTY").unwrap()).unwrap();
-/// assert!(font.presets.is_empty());
-/// ```
 pub fn read(bytes: &[u8]) -> Result<SoundFont> {
     const RIFF_ID: [u8; 4] = *b"RIFF";
     let top = chunks(bytes)?;

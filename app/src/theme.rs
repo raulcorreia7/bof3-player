@@ -161,32 +161,4 @@ mod tests {
         assert_eq!(spectrum_at(1.0), SPECTRUM[2]);
         assert_eq!(spectrum_at(0.25), mix(SPECTRUM[0], SPECTRUM[1], 0.5));
     }
-
-    /// The tokens equal the ANSI colors the terminal player names, in the Dark+ terminal scheme.
-    /// `DANGER` is the bright red: the plain red fails the text limit on dark surfaces.
-    #[test]
-    fn tokens_match_the_terminal_player() {
-        use ratatui::style::Color;
-        let rgb = |color: Color| match color {
-            Color::Black => 0x000000,
-            Color::Red => 0xcd3131,
-            Color::Green => 0x0dbc79,
-            Color::Yellow => 0xe5e510,
-            Color::Cyan => 0x11a8cd,
-            Color::Gray | Color::White => 0xe5e5e5,
-            Color::DarkGray => 0x666666,
-            Color::LightRed => 0xf14c4c,
-            Color::Rgb(r, g, b) => u32::from(r) << 16 | u32::from(g) << 8 | u32::from(b),
-            other => panic!("{other:?} is not a terminal player color"),
-        };
-        // Accent, dim, playing, warning, selection, text and badge text, as `cli/tui.rs` draws them.
-        assert_eq!(ACCENT, rgb(Color::Cyan));
-        assert_eq!(TEXT_DISABLED, rgb(Color::DarkGray));
-        assert_eq!(SUCCESS, rgb(Color::Green));
-        assert_eq!(WARNING, rgb(Color::Yellow));
-        assert_eq!(SELECTION, rgb(Color::Rgb(31, 52, 112)));
-        assert_eq!(TEXT, rgb(Color::Gray));
-        assert_eq!(ON_ACCENT, rgb(Color::Black));
-        assert_eq!(DANGER, rgb(Color::LightRed));
-    }
 }

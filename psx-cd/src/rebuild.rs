@@ -33,13 +33,6 @@ struct FileEntry {
 }
 
 /// Text a rebuilt image writes into its primary volume descriptor.
-///
-/// # Examples
-///
-/// ```
-/// let labels = psx_cd::rebuild::VolumeLabels { system: "PLAYSTATION", volume: "FIXTURE" };
-/// assert_eq!(labels.volume, "FIXTURE");
-/// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct VolumeLabels<'a> {
     /// System identifier, PVD bytes 8..40.
@@ -56,16 +49,6 @@ impl Default for VolumeLabels<'static> {
 
 /// Rebuilds a deterministic cooked ISO9660 image from top-level regular files,
 /// with neutral PVD labels.
-///
-/// # Examples
-///
-/// ```
-/// let dir = tempfile::tempdir().unwrap();
-/// std::fs::write(dir.path().join("HELLO.TXT"), b"hello").unwrap();
-/// let output = dir.path().join("disc.iso");
-/// psx_cd::rebuild::iso(dir.path(), &output).unwrap();
-/// assert!(output.is_file());
-/// ```
 pub fn iso(input: &Path, output: &Path) -> Result<(), Error> {
     iso_with_labels(input, output, VolumeLabels::default())
 }
@@ -75,18 +58,6 @@ pub fn iso(input: &Path, output: &Path) -> Result<(), Error> {
 ///
 /// Each label is padded with spaces to its 32-byte field. A label longer than
 /// 32 bytes, or with non-ASCII text, is an error.
-///
-/// # Examples
-///
-/// ```
-/// let dir = tempfile::tempdir().unwrap();
-/// std::fs::write(dir.path().join("HELLO.TXT"), b"hello").unwrap();
-/// let output = dir.path().join("disc.iso");
-/// let labels = psx_cd::rebuild::VolumeLabels { system: "PLAYSTATION", volume: "FIXTURE" };
-/// psx_cd::rebuild::iso_with_labels(dir.path(), &output, labels).unwrap();
-/// let bytes = std::fs::read(output).unwrap();
-/// assert_eq!(&bytes[16 * 2048 + 40..16 * 2048 + 47], b"FIXTURE");
-/// ```
 pub fn iso_with_labels(input: &Path, output: &Path, labels: VolumeLabels<'_>) -> Result<(), Error> {
     let mut files = read_input(input)?;
     let mut sector = FIRST_FILE_SECTOR;

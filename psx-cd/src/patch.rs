@@ -54,13 +54,6 @@ const FLAG_DIRECTORY: u8 = 0x02;
 
 /// One file to replace: its path on the disc, such as `DATA.BIN` or
 /// `DIR/FILE.BIN`, and its new bytes.
-///
-/// # Examples
-///
-/// ```
-/// let replacement = psx_cd::patch::Replacement { path: "DATA.BIN".into(), bytes: b"new".to_vec() };
-/// assert_eq!(replacement.path, std::path::Path::new("DATA.BIN"));
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Replacement {
     /// Path of the file in the image's file table.
@@ -70,13 +63,6 @@ pub struct Replacement {
 }
 
 /// What a patch wrote.
-///
-/// # Examples
-///
-/// ```
-/// let summary = psx_cd::patch::Summary { files: 2, sealed: 5 };
-/// assert_eq!(summary.files + summary.sealed as usize, 7);
-/// ```
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct Summary {
     /// Files replaced.

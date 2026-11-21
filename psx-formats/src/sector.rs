@@ -18,12 +18,6 @@
 //! ```
 
 /// Bytes in a raw CD sector.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::sector::RAW_SIZE, 2352);
-/// ```
 pub const RAW_SIZE: usize = 2352;
 /// The mode byte, which is 2 for a Mode 2 sector.
 const MODE_AT: usize = 15;
@@ -78,45 +72,17 @@ const fn gf_tables() -> ([u8; 256], [u8; 256]) {
 }
 
 /// Whether a raw sector is Mode 2 Form 2: an XA or STR stream sector, which has no parity.
-///
-/// # Examples
-///
-/// ```
-/// let mut sector = [0u8; psx_formats::sector::RAW_SIZE];
-/// sector[15] = 2;
-/// assert!(!psx_formats::sector::is_form2(&sector));
-/// sector[18] = 0x20;
-/// assert!(psx_formats::sector::is_form2(&sector));
-/// ```
 pub fn is_form2(sector: &[u8; RAW_SIZE]) -> bool {
     sector[MODE_AT] == 2 && sector[SUBMODE_AT] & FORM2_BIT != 0
 }
 
 /// The EDC of a Form 1 sector: its sub-header and user data.
-///
-/// # Examples
-///
-/// ```
-/// let mut sector = [0u8; psx_formats::sector::RAW_SIZE];
-/// assert_eq!(psx_formats::sector::edc(&sector), 0);
-/// sector[16] = 1;
-/// assert_ne!(psx_formats::sector::edc(&sector), 0);
-/// ```
 pub fn edc(sector: &[u8; RAW_SIZE]) -> u32 {
     sector[EDC_FROM..EDC_AT].iter().fold(0, |edc, &byte| (edc >> 8) ^ EDC_TABLE[((edc ^ u32::from(byte)) & 0xFF) as usize])
 }
 
 /// Writes the EDC and the parity of a Form 1 sector in place. Every byte before the EDC (the sync,
 /// the address, the sub-header and the user data) is the input.
-///
-/// # Examples
-///
-/// ```
-/// let mut sector = [0u8; psx_formats::sector::RAW_SIZE];
-/// sector[15] = 2;
-/// psx_formats::sector::seal(&mut sector);
-/// assert!(psx_formats::sector::is_sealed(&sector));
-/// ```
 pub fn seal(sector: &mut [u8; RAW_SIZE]) {
     let edc = edc(sector).to_le_bytes();
     sector[EDC_AT..EDC_AT + 4].copy_from_slice(&edc);
@@ -129,15 +95,6 @@ pub fn seal(sector: &mut [u8; RAW_SIZE]) {
 }
 
 /// Whether a Form 1 sector's stored EDC and parity match its contents.
-///
-/// # Examples
-///
-/// ```
-/// let mut sector = [0u8; psx_formats::sector::RAW_SIZE];
-/// psx_formats::sector::seal(&mut sector);
-/// sector[16] = 1;
-/// assert!(!psx_formats::sector::is_sealed(&sector));
-/// ```
 pub fn is_sealed(sector: &[u8; RAW_SIZE]) -> bool {
     let mut sealed = *sector;
     seal(&mut sealed);

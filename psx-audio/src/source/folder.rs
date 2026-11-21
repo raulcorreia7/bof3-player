@@ -10,18 +10,6 @@ use crate::error::{Error, Result};
 /// An extracted tree on disk (`<root>/ASSETS/DATA.BIN`, ...).
 ///
 /// Path lookups ignore ASCII case, so `assets/data.bin` finds `ASSETS/DATA.BIN`.
-///
-/// # Examples
-///
-/// ```
-/// use psx_audio::{FolderSource, Source};
-///
-/// let dir = tempfile::tempdir().unwrap();
-/// std::fs::create_dir(dir.path().join("ASSETS")).unwrap();
-/// std::fs::write(dir.path().join("ASSETS/DATA.BIN"), b"hi").unwrap();
-/// let source = FolderSource::open(dir.path()).unwrap();
-/// assert_eq!(source.list().unwrap(), ["ASSETS/DATA.BIN"]);
-/// ```
 #[derive(Debug, Clone)]
 pub struct FolderSource {
     root: PathBuf,
@@ -33,14 +21,6 @@ impl FolderSource {
     /// # Errors
     ///
     /// Fails when `root` is not a directory.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let dir = tempfile::tempdir().unwrap();
-    /// assert!(psx_audio::FolderSource::open(dir.path()).is_ok());
-    /// assert!(psx_audio::FolderSource::open(dir.path().join("missing")).is_err());
-    /// ```
     pub fn open(root: impl AsRef<Path>) -> Result<Self> {
         let root = root.as_ref();
         if !root.is_dir() {

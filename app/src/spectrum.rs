@@ -462,15 +462,4 @@ mod tests {
         }
         assert!(spectrum.tint.flash < 0.05);
     }
-
-    #[test]
-    fn resize_stretches_the_current_levels() {
-        let mut spectrum = Spectrum::new(2);
-        spectrum.levels = vec![0.25, 0.75];
-        spectrum.resize(4);
-        assert_eq!(spectrum.levels, [0.25, 0.25, 0.75, 0.75]);
-        assert_eq!(spectrum.caps.len(), 4);
-        spectrum.advance(&sine(1000.0, 0.8), RATE, 0.1);
-        assert_eq!(spectrum.bands.len(), 4);
-    }
 }

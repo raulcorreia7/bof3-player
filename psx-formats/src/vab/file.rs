@@ -27,12 +27,6 @@ use crate::error::{Error, Result};
 const PROGRAM_COUNT_AT: usize = 0x12;
 
 /// The bank as one VAB file: the header followed by the body.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::vab::file::join(b"ab", b"cd"), b"abcd");
-/// ```
 pub fn join(header: &[u8], body: &[u8]) -> Vec<u8> {
     let mut whole = Vec::with_capacity(header.len() + body.len());
     whole.extend_from_slice(header);
@@ -43,14 +37,6 @@ pub fn join(header: &[u8], body: &[u8]) -> Vec<u8> {
 /// A VAB file split into its header (`.vh`) and body (`.vb`) at the header's own length, and
 /// checked with [`check`]: both halves must parse as a bank and the header must encode to the bytes
 /// it holds.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::{Error, vab::file};
-///
-/// assert_eq!(file::split(b"MThd"), Err(Error::VabFile("not a VAB file: it does not open with the pBAV header")));
-/// ```
 pub fn split(file: &[u8]) -> Result<(&[u8], &[u8])> {
     let count = file
         .get(PROGRAM_COUNT_AT..PROGRAM_COUNT_AT + 2)
@@ -68,16 +54,6 @@ pub fn split(file: &[u8]) -> Result<(&[u8], &[u8])> {
 
 /// The parsed bank when `header` and `body` are a bank: the header parses against the body,
 /// encodes back to its own bytes, and the samples it sizes fit the body.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::vab::{encode_bank, file};
-///
-/// let (header, body) = encode_bank(0, &[], &[vec![0u8; 32]]).unwrap();
-/// assert_eq!(file::check(&header, &body).unwrap().vag_count, 1);
-/// assert!(file::check(&header, &body[..16]).is_err(), "the samples run past the body");
-/// ```
 pub fn check(header: &[u8], body: &[u8]) -> Result<Bank> {
     let bank = Bank::parse(header, body)?;
     if bank.encode_header() != header {

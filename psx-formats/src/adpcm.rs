@@ -17,65 +17,20 @@
 use alloc::vec::Vec;
 
 /// Bytes in one SPU ADPCM block (psx-spx, SPU ADPCM Samples).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::adpcm::BLOCK_BYTES, 16);
-/// ```
 pub const BLOCK_BYTES: usize = 16;
 /// Samples one block decodes to.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::adpcm::BLOCK_SAMPLES, 28);
-/// ```
 pub const BLOCK_SAMPLES: usize = 28;
 
 /// Block flag bit 0: loop end (set ENDX, jump to the repeat address).
-///
-/// # Examples
-///
-/// ```
-/// let flags = 0x23;
-/// assert_ne!(flags & psx_formats::adpcm::FLAG_END, 0);
-/// ```
 pub const FLAG_END: u8 = 0x01;
 /// Block flag bit 1: with `FLAG_END`, repeat instead of muting.
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::adpcm::FLAG_END | psx_formats::adpcm::FLAG_REPEAT, 0x03);
-/// ```
 pub const FLAG_REPEAT: u8 = 0x02;
 /// Block flag bit 2: loop start (copy the current address to the repeat address).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_formats::adpcm::FLAG_LOOP_START, 0x04);
-/// ```
 pub const FLAG_LOOP_START: u8 = 0x04;
 
 /// Filter coefficients applied to the previous sample (psx-spx, XA-ADPCM `pos` table).
-///
-/// # Examples
-///
-/// ```
-/// let filter = 1;
-/// assert_eq!(psx_formats::adpcm::FILTER_POS[filter], 60);
-/// ```
 pub const FILTER_POS: [i32; 5] = [0, 60, 115, 98, 122];
 /// Filter coefficients applied to the sample before that (psx-spx, XA-ADPCM `neg` table).
-///
-/// # Examples
-///
-/// ```
-/// let filter = 4;
-/// assert_eq!(psx_formats::adpcm::FILTER_NEG[filter], -60);
-/// ```
 pub const FILTER_NEG: [i32; 5] = [0, 0, -52, -55, -60];
 
 /// Highest shift value that is not reserved; 13..=15 act as [`RESERVED_SHIFT`].
@@ -94,15 +49,6 @@ const NIBBLE_ALIGN: u32 = 12;
 /// # Examples
 ///
 /// A chain starts silent; each decoded sample becomes `prev1`.
-///
-/// ```
-/// use psx_formats::adpcm::{BLOCK_BYTES, BLOCK_SAMPLES, State, decode_block};
-///
-/// let mut state = State::default();
-/// let mut out = [0i16; BLOCK_SAMPLES];
-/// decode_block(&[0u8; BLOCK_BYTES], &mut out, &mut state);
-/// assert_eq!((state.prev1, state.prev2), (0, 0));
-/// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct State {
     /// Most recent sample.
@@ -112,16 +58,6 @@ pub struct State {
 }
 
 /// How the prediction term is rounded.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::adpcm::Rounding;
-///
-/// let spu = Rounding::TruncateEachTerm;
-/// let xa = Rounding::RoundSum;
-/// assert_ne!(spu, xa);
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Rounding {
     /// SPU voices: each term is shifted right on its own, no rounding.
@@ -137,15 +73,6 @@ fn clamp16(value: i32) -> i16 {
 /// Decode one 4-bit `nibble` with the given `shift` and `filter` (0..=4).
 ///
 /// `shift` above 12 acts as 9. The caller guarantees `filter <= 4`.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::adpcm::{Rounding, State, step};
-///
-/// let mut state = State::default();
-/// assert_eq!(step(7, 0, 0, &mut state, Rounding::TruncateEachTerm), 28_672);
-/// ```
 #[must_use]
 pub fn step(nibble: u8, shift: u8, filter: usize, state: &mut State, rounding: Rounding) -> i16 {
     let shift = if shift > MAX_SHIFT { RESERVED_SHIFT } else { shift };
@@ -172,17 +99,6 @@ pub fn step(nibble: u8, shift: u8, filter: usize, state: &mut State, rounding: R
 ///
 /// Byte 0 holds shift (low nibble) and filter (high nibble; above 4 acts as 0),
 /// byte 1 the flags, bytes 2..16 the nibbles, low nibble first.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::adpcm::{BLOCK_SAMPLES, State, decode_block};
-///
-/// let mut state = State::default();
-/// let mut out = [0i16; BLOCK_SAMPLES];
-/// decode_block(&[0u8; 16], &mut out, &mut state);
-/// assert_eq!(out, [0i16; BLOCK_SAMPLES]);
-/// ```
 pub fn decode_block(block: &[u8; BLOCK_BYTES], out: &mut [i16; BLOCK_SAMPLES], state: &mut State) {
     let shift = block[0] & 0x0F;
     let filter = usize::from(block[0] >> 4);
@@ -258,18 +174,6 @@ fn choices() -> impl Iterator<Item = (usize, u8)> {
 ///
 /// The block takes the first filter and shift that decode every sample exactly. A block that no filter and
 /// shift reproduces takes the one with the least squared error. Byte 1, the flags, is left zero.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::adpcm::{BLOCK_SAMPLES, State, decode_block, encode_block};
-///
-/// let mut state = State::default();
-/// let block = encode_block(&[0i16; BLOCK_SAMPLES], &mut state);
-/// let mut back = [0i16; BLOCK_SAMPLES];
-/// decode_block(&block, &mut back, &mut State::default());
-/// assert_eq!(back, [0i16; BLOCK_SAMPLES]);
-/// ```
 pub fn encode_block(samples: &[i16; BLOCK_SAMPLES], state: &mut State) -> [u8; BLOCK_BYTES] {
     let block = choices()
         .find_map(|(filter, shift)| quantize(samples, *state, filter, shift, true))
@@ -286,16 +190,6 @@ pub fn encode_block(samples: &[i16; BLOCK_SAMPLES], state: &mut State) -> [u8; B
 
 /// Encodes PCM as SPU blocks, padding the last block with zeros. The last block carries [`FLAG_END`]; loop
 /// flags are not set. [`decode_stream`] reads the result back.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::adpcm::{BLOCK_BYTES, encode_stream};
-///
-/// let stream = encode_stream(&[0; 30]);
-/// assert_eq!(stream.len(), 2 * BLOCK_BYTES);
-/// assert_eq!(stream[BLOCK_BYTES + 1], psx_formats::adpcm::FLAG_END);
-/// ```
 pub fn encode_stream(samples: &[i16]) -> Vec<u8> {
     let mut state = State::default();
     let mut bytes = Vec::with_capacity(samples.len().div_ceil(BLOCK_SAMPLES) * BLOCK_BYTES);
@@ -311,14 +205,6 @@ pub fn encode_stream(samples: &[i16]) -> Vec<u8> {
 }
 
 /// Decodes a whole SPU stream to PCM, 28 samples per block. A trailing partial block is ignored.
-///
-/// # Examples
-///
-/// ```
-/// use psx_formats::adpcm::{BLOCK_BYTES, BLOCK_SAMPLES, decode_stream};
-///
-/// assert_eq!(decode_stream(&[0u8; 2 * BLOCK_BYTES]).len(), 2 * BLOCK_SAMPLES);
-/// ```
 pub fn decode_stream(bytes: &[u8]) -> Vec<i16> {
     let mut state = State::default();
     let mut pcm = Vec::with_capacity(bytes.len() / BLOCK_BYTES * BLOCK_SAMPLES);

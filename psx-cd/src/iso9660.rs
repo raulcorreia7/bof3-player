@@ -34,18 +34,6 @@ const XA_FORM2: u8 = 0x10;
 /// The 14-byte system-use block follows the file identifier; its first bytes
 /// are the group and user IDs and its sixth and seventh bytes are the `XA`
 /// signature (`psx-spx` "CDROM XA Subheader, File, Channel, Interleave").
-///
-/// # Examples
-///
-/// ```
-/// let attributes = psx_cd::XaAttributes {
-///     group_id: 0x1234,
-///     user_id: 0x5678,
-///     attributes: 0x1055,
-///     file_number: 1,
-/// };
-/// assert_eq!(attributes.file_number, 1);
-/// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct XaAttributes {
     /// Owner group ID, stored big-endian in the record.

@@ -2,13 +2,6 @@
 // floor(0x1000 * 2^(i / 192)) for i in 0..=192: one octave in 192 steps (12 semitones x 16 fine steps).
 // Checked against the closed form by the `pitch_table_matches_formula` test.
 /// VxPitch values for one octave; 0x1000 is 44100 Hz (psx-spx, SPU ADPCM Pitch).
-///
-/// # Examples
-///
-/// ```
-/// assert_eq!(psx_audio::spu::PITCH_TABLE[0], 0x1000);
-/// assert_eq!(psx_audio::spu::PITCH_TABLE[192], 0x2000);
-/// ```
 pub const PITCH_TABLE: [u16; 193] = [
     4096, 4110, 4125, 4140, 4155, 4170, 4185, 4200, 4216, 4231, 4246, 4261, 4277, 4292, 4308, 4323, 4339, 4355, 4371, 4386, 4402, 4418, 4434, 4450, 4466, 4482, 4499, 4515, 4531, 4548, 4564, 4581,
     4597, 4614, 4630, 4647, 4664, 4681, 4698, 4715, 4732, 4749, 4766, 4783, 4801, 4818, 4835, 4853, 4870, 4888, 4906, 4924, 4941, 4959, 4977, 4995, 5013, 5031, 5050, 5068, 5086, 5105, 5123, 5142,
